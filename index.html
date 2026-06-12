@@ -16,7 +16,7 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
-    <nav class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3">
+    <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md hidden flex-wrap justify-between items-center gap-3">
         <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
         <div class="flex flex-wrap gap-2">
             <button onclick="window.switchView('client-view')" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-medium transition">📱 Cliente</button>
@@ -56,7 +56,7 @@
                             Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
                         </div>
                         <button onclick="window.sendOrderWhatsApp()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-                            🟢 Enviar Pedido via WhatsApp
+                            🟢 Confirmar e Enviar Pedido
                         </button>
                     </div>
                 </div>
@@ -230,13 +230,11 @@
     <div id="invoice-print-section" class="hidden p-8 bg-white text-black font-mono"></div>
 
     <script type="module">
-        // Importação dos SDKs do Firebase via CDN do módulo v10
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Suas credenciais fornecidas
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
             authDomain: "fastgarcon.firebaseapp.com",
@@ -246,11 +244,9 @@
             appId: "1:417905940206:web:28911bac9acfcec54685ff"
         };
 
-        // Inicializa o Firebase e o Banco de Dados Firestore
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Estados Locais Dinâmicos (Sincronizados com o Firebase)
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
         let kitchenOrders = [];
@@ -260,15 +256,12 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
-        // --- INICIALIZAÇÃO E SINCRONIZAÇÃO EM TEMPO REAL ---
-        
-        // 1. Escuta alterações no Cardápio
+        // Sincronização do Cardápio
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
                 menuItems.push({ id: doc.id, ...doc.data() });
             });
-            // Se o cardápio padrão estiver totalmente vazio no Firebase, cria os itens básicos iniciais
             if(menuItems.length === 0) {
                 setupDefaultMenu();
             } else {
@@ -278,28 +271,24 @@
             }
         });
 
-        // 2. Escuta alterações no Relatório de Vendas Geral
+        // Sincronização do Painel Financeiro Geral
         onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
             if (snapshot.exists()) {
                 salesReport = snapshot.data();
-            } else {
-                salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
             }
             updateSalesReportView();
         });
 
-        // 3. Escuta alterações na Fila da Cozinha
+        // Sincronização da Cozinha em Tempo Real
         onSnapshot(collection(db, "kitchen"), (snapshot) => {
             kitchenOrders = [];
             snapshot.forEach(doc => {
                 kitchenOrders.push({ id: doc.id, ...doc.data() });
             });
-            // Ordena os pedidos por timestamp (mais antigos primeiro para a esteira funcionar de forma justa)
             kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             renderKitchenOrders();
         });
 
-        // Cadastra itens padrão caso o banco esteja limpo
         async function setupDefaultMenu() {
             const defaults = [
                 { name: "Hambúrguer Artesanal", price: 28.90, desc: "Blend de 150g, queijo prato, alface, tomate e maionese da casa.", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150" },
@@ -311,18 +300,28 @@
             }
         }
 
-        // Validação de URL/Mesa
+        // Validação e Controle de Segurança de Visão
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
+                
+                // Tranca a tela: esconde a navegação superior completamente
+                document.getElementById('main-navigation').classList.add('hidden');
+                
                 document.getElementById('client-blocked-state').classList.add('hidden');
                 document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+                window.switchView('client-view');
                 renderClientMenu();
             } else {
+                // Caso não tenha mesa na URL, exibe a barra de navegação para a equipe administrativa
+                document.getElementById('main-navigation').classList.remove('hidden');
+                document.getElementById('main-navigation').classList.add('flex');
+                
                 document.getElementById('client-blocked-state').classList.remove('hidden');
                 document.getElementById('client-allowed-state').classList.add('hidden');
+                window.switchView('admin-view'); // Inicializa na tela Admin para gerenciamento
             }
         }
 
@@ -388,31 +387,40 @@
 
             if (orderTotal === 0) { alert('Seu carrinho está vazio!'); return; }
 
-            // Salva na esteira de preparo da Cozinha do Firebase
-            await addOrderToKitchen(`Mesa ${currentTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
+            // 1. Mensagem de confirmação pré-envio
+            const userConfirmed = confirm(`--- CONFIRME SEU PEDIDO ---\n\n${orderItemsText}\nTotal Geral: R$ ${orderTotal.toFixed(2)}\n\nDeseja enviar este pedido para a cozinha?`);
+            if (!userConfirmed) return; 
 
-            // Atualiza os relatórios financeiros de forma cumulativa
-            await setDoc(doc(db, "reports", "sales"), {
-                totalRevenue: salesReport.totalRevenue + orderTotal,
-                totalOrders: salesReport.totalOrders + 1,
-                totalItemsSold: salesReport.totalItemsSold + itemsCount
-            });
+            try {
+                await addOrderToKitchen(`Mesa ${currentTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
 
-            // Incrementa o histórico acumulado de consumo financeiro da mesa no Firebase
-            const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
-            const mesaSnapshot = await getDoc(mesaDocRef);
-            let currentTableHistory = [];
-            if(mesaSnapshot.exists()) {
-                currentTableHistory = mesaSnapshot.data().orders || [];
+                await setDoc(doc(db, "reports", "sales"), {
+                    totalRevenue: salesReport.totalRevenue + orderTotal,
+                    totalOrders: salesReport.totalOrders + 1,
+                    totalItemsSold: salesReport.totalItemsSold + itemsCount
+                });
+
+                const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
+                const mesaSnapshot = await getDoc(mesaDocRef);
+                let currentTableHistory = [];
+                if(mesaSnapshot.exists()) {
+                    currentTableHistory = mesaSnapshot.data().orders || [];
+                }
+                currentTableHistory = currentTableHistory.concat(currentItems);
+                await setDoc(mesaDocRef, { orders: currentTableHistory });
+
+                // 2. Caixa de mensagem confirmando o envio
+                alert(`🎉 Pedido enviado com sucesso!\nSua solicitação já está na esteira da nossa cozinha. Você será redirecionado para o WhatsApp.`);
+
+                let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
+                window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                
+                cart = {};
+                renderClientMenu();
+            } catch (error) {
+                console.error("Erro ao processar pedido: ", error);
+                alert("Houve um problema de conexão ao enviar seu pedido. Tente novamente.");
             }
-            currentTableHistory = currentTableHistory.concat(currentItems);
-            await setDoc(mesaDocRef, { orders: currentTableHistory });
-
-            let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
-            window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-            
-            cart = {};
-            renderClientMenu();
         }
 
         // --- SISTEMA GARÇOM ---
@@ -478,10 +486,8 @@
 
             if (orderTotal === 0) { alert("Adicione pelo menos um item."); return; }
 
-            // Envia para a cozinha na Nuvem
             await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
 
-            // Consolida consumo no painel financeiro da mesa do Firebase
             const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
             const mesaSnapshot = await getDoc(mesaDocRef);
             let tableHistory = [];
@@ -491,14 +497,13 @@
             tableHistory = tableHistory.concat(currentItemsToSave);
             await setDoc(mesaDocRef, { orders: tableHistory });
 
-            // Atualiza faturamento global
             await setDoc(doc(db, "reports", "sales"), {
                 totalRevenue: salesReport.totalRevenue + orderTotal,
                 totalOrders: salesReport.totalOrders + 1,
                 totalItemsSold: salesReport.totalItemsSold + itemsCount
             });
 
-            alert(`Pedido da Mesa ${waiterActiveTable} enviado com sucesso!`);
+            alert(`Pedido da Mesa ${waiterActiveTable} enviado diretamente à cozinha!`);
             waiterCart = {};
             renderWaiterMenu();
         }
@@ -511,7 +516,7 @@
                 time: time,
                 items: items,
                 status: 'pending',
-                timestamp: Date.now() // Importante para ordenação em tempo real
+                timestamp: Date.now()
             });
         }
 
@@ -531,14 +536,23 @@
                     itemsListHTML += `<li class="text-gray-700 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`;
                 });
 
-                const cardClass = order.status === 'ready' ? 'border-emerald-500 opacity-60 bg-white' : 'border-amber-400 bg-amber-50/40';
-                const statusBadge = order.status === 'ready' 
+                const isReady = order.status === 'ready';
+                const cardClass = isReady ? 'border-emerald-500 opacity-60 bg-white' : 'border-amber-400 bg-amber-50/40';
+                const statusBadge = isReady 
                     ? `<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full font-bold">🟢 Entregue</span>` 
                     : `<span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold animate-pulse">🟡 Pendente</span>`;
                 
-                const actionButton = order.status === 'pending' 
-                    ? `<button onclick="window.setOrderStatus('${order.id}', 'ready')" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded shadow transition text-sm">✓ Marcar como Pronto</button>`
-                    : `<button onclick="window.deleteKitchenOrder('${order.id}') class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-600 font-medium py-1.5 rounded transition text-xs">Remover do Painel</button>`;
+                let actionButtonsHTML = '';
+                if (!isReady) {
+                    actionButtonsHTML = `
+                        <div class="grid grid-cols-1 gap-2 mt-4">
+                            <button onclick="window.setOrderStatus('${order.id}', 'ready')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded shadow transition text-sm">✓ Marcar como Pronto</button>
+                            <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full bg-red-100 hover:bg-red-200 text-red-600 font-medium py-1.5 rounded transition text-xs">❌ Remover Pedido</button>
+                        </div>`;
+                } else {
+                    actionButtonsHTML = `
+                        <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-600 font-medium py-1.5 rounded transition text-xs">Limpar do Painel</button>`;
+                }
 
                 container.innerHTML += `
                     <div class="p-5 rounded-xl shadow-md border-t-4 bg-white flex flex-col justify-between ${cardClass}">
@@ -552,7 +566,7 @@
                             </div>
                             <ul class="space-y-1.5">${itemsListHTML}</ul>
                         </div>
-                        <div>${actionButton}</div>
+                        <div>${actionButtonsHTML}</div>
                     </div>`;
             });
         }
@@ -563,7 +577,9 @@
         }
 
         window.deleteKitchenOrder = async function(orderId) {
-            await deleteDoc(doc(db, "kitchen", orderId));
+            if (confirm("Deseja realmente remover ou cancelar esse pedido deste monitor da cozinha?")) {
+                await deleteDoc(doc(db, "kitchen", orderId));
+            }
         }
 
         // --- PAINEL ADMINISTRATIVO ---
@@ -677,7 +693,6 @@
             const printSection = document.getElementById('invoice-print-section');
             if(!tableNum) { alert("Insira o número da mesa."); return; }
 
-            // Puxa do Firebase o consumo em aberto consolidado da mesa
             const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
             const snapshot = await getDoc(mesaDocRef);
 
@@ -728,11 +743,8 @@
             if(!tableNum) return;
 
             if(confirm(`Confirmar que a Mesa ${tableNum} efetuou o pagamento e liberar o espaço?`)) {
-                // Remove os dados de consumo em aberto daquela mesa específica do Cloud Firestore
                 await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
-                
                 alert(`Mesa ${tableNum} liberada e arquivada como Paga com sucesso.`);
-                
                 document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
                 document.getElementById('invoice-actions').classList.add('hidden');
             }
@@ -743,7 +755,6 @@
             document.getElementById(viewId).classList.remove('hidden');
         }
 
-        // Execução inicial de checagem
         checkTableFromURL();
     </script>
 </body>
