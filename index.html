@@ -255,16 +255,21 @@
         let waiterCart = {};    
         let currentTable = null;      
         let waiterActiveTable = null;
+        let isFirstLoad = true; // Impede que o menu padrão sobrescreva as exclusões
 
-        // Sincronização do Cardápio
+        // Sincronização do Cardápio em tempo real com Firestore
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
                 menuItems.push({ id: doc.id, ...doc.data() });
             });
-            if(menuItems.length === 0) {
+            
+            // Cria os padrões apenas se for a primeira abertura histórica E o banco estiver totalmente limpo
+            if(menuItems.length === 0 && isFirstLoad) {
+                isFirstLoad = false;
                 setupDefaultMenu();
             } else {
+                isFirstLoad = false;
                 if (currentTable) renderClientMenu();
                 renderWaiterMenu();
                 renderAdminMenu();
@@ -306,7 +311,7 @@
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
                 
-                // Tranca a tela: esconde a navegação superior completamente
+                // Tranca a tela: esconde a navegação superior completamente para o cliente
                 document.getElementById('main-navigation').classList.add('hidden');
                 
                 document.getElementById('client-blocked-state').classList.add('hidden');
@@ -315,13 +320,13 @@
                 window.switchView('client-view');
                 renderClientMenu();
             } else {
-                // Caso não tenha mesa na URL, exibe a barra de navegação para a equipe administrativa
+                // Caso não tenha mesa na URL, exibe a barra de navegação para a equipe do restaurante
                 document.getElementById('main-navigation').classList.remove('hidden');
                 document.getElementById('main-navigation').classList.add('flex');
                 
                 document.getElementById('client-blocked-state').classList.remove('hidden');
                 document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('admin-view'); // Inicializa na tela Admin para gerenciamento
+                window.switchView('admin-view'); // Inicializa na tela Admin
             }
         }
 
@@ -387,7 +392,7 @@
 
             if (orderTotal === 0) { alert('Seu carrinho está vazio!'); return; }
 
-            // 1. Mensagem de confirmação pré-envio
+            // Mensagem de confirmação pré-envio
             const userConfirmed = confirm(`--- CONFIRME SEU PEDIDO ---\n\n${orderItemsText}\nTotal Geral: R$ ${orderTotal.toFixed(2)}\n\nDeseja enviar este pedido para a cozinha?`);
             if (!userConfirmed) return; 
 
@@ -409,7 +414,7 @@
                 currentTableHistory = currentTableHistory.concat(currentItems);
                 await setDoc(mesaDocRef, { orders: currentTableHistory });
 
-                // 2. Caixa de mensagem confirmando o envio
+                // Caixa de mensagem confirmando o envio
                 alert(`🎉 Pedido enviado com sucesso!\nSua solicitação já está na esteira da nossa cozinha. Você será redirecionado para o WhatsApp.`);
 
                 let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
@@ -607,7 +612,7 @@
                         <td class="p-3 font-semibold">${item.name}</td>
                         <td class="p-3 text-green-600 font-bold">R$ ${item.price.toFixed(2)}</td>
                         <td class="p-3 text-center">
-                            <button onclick="window.deleteItem('${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-sm transition">Remover</button>
+                            <button onclick="window.deleteItem('${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-sm transition font-semibold">Remover</button>
                         </td>
                     </tr>`;
             });
@@ -620,13 +625,24 @@
             const desc = document.getElementById('item-desc').value;
             const img = document.getElementById('item-img').value;
 
-            await addDoc(collection(db, "menu"), { name, price, desc, img });
-            document.getElementById('add-item-form').reset();
+            try {
+                await addDoc(collection(db, "menu"), { name, price, desc, img });
+                document.getElementById('add-item-form').reset();
+            } catch(e) {
+                console.error("Erro ao adicionar item:", e);
+                alert("Erro ao salvar no banco. Verifique suas regras do Firebase.");
+            }
         }
 
         window.deleteItem = async function(id) {
-            if(confirm("Deseja remover este item do cardápio global?")) {
-                await deleteDoc(doc(db, "menu", id));
+            if(confirm("Deseja remover este item do cardápio global definitivamente?")) {
+                try {
+                    // Executa a deleção direta usando a referência correta do Document ID no Firestore
+                    await deleteDoc(doc(db, "menu", id));
+                } catch(e) {
+                    console.error("Erro ao deletar do Firebase:", e);
+                    alert("Não foi possível excluir o item. Verifique a conexão.");
+                }
             }
         }
 
@@ -755,6 +771,7 @@
             document.getElementById(viewId).classList.remove('hidden');
         }
 
+        // Executa a inicialização do estado da URL
         checkTableFromURL();
     </script>
 </body>
