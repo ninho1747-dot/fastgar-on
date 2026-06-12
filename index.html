@@ -19,35 +19,46 @@
     <nav class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3">
         <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
         <div class="flex flex-wrap gap-2">
-            <button onclick="switchView('client-view')" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-medium transition">📱 Cliente</button>
-            <button onclick="switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
-            <button onclick="switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
-            <button onclick="switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
+            <button onclick="window.switchView('client-view')" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-medium transition">📱 Cliente</button>
+            <button onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
+            <button onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
+            <button onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
         </div>
     </nav>
 
     <div class="max-w-6xl mx-auto p-4">
         
         <section id="client-view" class="view-section">
-            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Nosso Cardápio</h2>
-                <div class="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200 inline-block">
-                    <span class="font-semibold text-yellow-800">Mesa Atual:</span>
-                    <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Nenhuma (Acesso Geral)</span>
-                </div>
+            
+            <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200">
+                <div class="text-6xl mb-4">📸</div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Por favor, escaneie o QR Code</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">
+                    Para visualizar nosso cardápio e realizar pedidos, aponte a câmera do seu celular para o QR Code fixado na sua mesa.
+                </p>
             </div>
 
-            <div id="client-menu-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
+            <div id="client-allowed-state" class="hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Nosso Cardápio</h2>
+                    <div class="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200 inline-block">
+                        <span class="font-semibold text-yellow-800">Mesa Identificada:</span>
+                        <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Mesa --</span>
+                    </div>
                 </div>
 
-            <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 p-4 z-40">
-                <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="text-xl font-bold text-gray-800">
-                        Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
+                <div id="client-menu-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
                     </div>
-                    <button onclick="sendOrderWhatsApp()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-                        🟢 Enviar Pedido via WhatsApp
-                    </button>
+
+                <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 p-4 z-40">
+                    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="text-xl font-bold text-gray-800">
+                            Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
+                        </div>
+                        <button onclick="window.sendOrderWhatsApp()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+                            🟢 Enviar Pedido via WhatsApp
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -59,7 +70,7 @@
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-50 p-4 rounded border border-orange-200">
                     <div>
                         <label class="block text-sm font-bold text-orange-800 mb-1">Selecione a Mesa do Cliente:</label>
-                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="updateWaiterTable()" class="w-32 p-2 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 bg-white text-gray-800 font-bold outline-none text-center">
+                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 bg-white text-gray-800 font-bold outline-none text-center">
                     </div>
                     <div class="text-sm text-gray-600 self-end sm:self-center">
                         💡 Pedidos feitos pelo garçom salvam a conta da mesa e enviam o pedido direto para a tela da Cozinha.
@@ -75,7 +86,7 @@
                     <div class="text-xl font-bold text-gray-800">
                         Total do Atendimento: <span class="text-orange-600 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
                     </div>
-                    <button onclick="submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
                         📝 Lançar Pedido na Mesa
                     </button>
                 </div>
@@ -99,9 +110,9 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
                         <h3 class="text-xl font-bold text-gray-800">📊 Relatório de Vendas do Dia</h3>
-                        <p class="text-sm text-gray-500">Monitoramento de pedidos realizados e faturados.</p>
+                        <p class="text-sm text-gray-500">Monitoramento de pedidos realizados e faturados globalmente.</p>
                     </div>
-                    <button onclick="clearSalesReport()" class="bg-red-100 text-red-600 hover:bg-red-200 font-semibold px-4 py-2 rounded transition text-sm">
+                    <button onclick="window.clearSalesReport()" class="bg-red-100 text-red-600 hover:bg-red-200 font-semibold px-4 py-2 rounded transition text-sm">
                         🔄 Zerar Relatório Diário
                     </button>
                 </div>
@@ -125,7 +136,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-lg shadow-md h-fit">
                     <h3 class="text-lg font-bold text-gray-700 mb-4">Adicionar Item ao Cardápio</h3>
-                    <form id="add-item-form" onsubmit="handleAddItem(event)" class="space-y-4">
+                    <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Nome do Item</label>
                             <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none">
@@ -181,14 +192,14 @@
                                 <h4 class="font-bold text-gray-700 mb-3">Gerador de QR Code por Mesa</h4>
                                 <div class="flex gap-2 mb-3">
                                     <input type="number" id="qr-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none">
-                                    <button onclick="generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition">Gerar</button>
+                                    <button onclick="window.generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition">Gerar</button>
                                 </div>
                                 <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[180px]">
                                     <p class="text-gray-400 text-sm text-center">QR Code aparecerá aqui</p>
                                 </div>
                             </div>
                             <div id="download-btn-container" class="mt-3 hidden">
-                                <button onclick="downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2">
+                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2">
                                     📥 Baixar QR Code (PNG)
                                 </button>
                             </div>
@@ -199,7 +210,7 @@
                                 <h4 class="font-bold text-gray-700 mb-3">Caixa: Imprimir e Confirmar Conta</h4>
                                 <div class="flex gap-2 mb-3">
                                     <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none">
-                                    <button onclick="prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-semibold transition">Visualizar</button>
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-semibold transition">Visualizar</button>
                                 </div>
                             </div>
                             <div id="invoice-preview" class="text-sm bg-white p-3 border rounded text-gray-600 min-h-[140px] overflow-y-auto">
@@ -207,7 +218,7 @@
                             </div>
                             <div id="invoice-actions" class="grid grid-cols-2 gap-2 mt-3 hidden">
                                 <button onclick="window.print()" class="bg-gray-700 hover:bg-gray-800 text-white py-2 rounded font-semibold text-sm transition">🖨️ Imprimir Nota</button>
-                                <button onclick="confirmPayment()" class="bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold text-sm transition">💰 Dar Baixa / Pago</button>
+                                <button onclick="window.confirmPayment()" class="bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold text-sm transition">💰 Dar Baixa / Pago</button>
                             </div>
                         </div>
                     </div>
@@ -218,56 +229,107 @@
 
     <div id="invoice-print-section" class="hidden p-8 bg-white text-black font-mono"></div>
 
-    <script>
-        let menuItems = JSON.parse(localStorage.getItem('restaurant_menu')) || [
-            { id: 1, name: "Hambúrguer Artesanal", price: 28.90, desc: "Blend de 150g, queijo prato, alface, tomate e maionese da casa.", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150" },
-            { id: 2, name: "Batata Frita Tradicional", price: 18.00, desc: "Porção individual de batatas crocantes com sal e alecrim.", img: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=150" },
-            { id: 3, name: "Refrigerante Lata", price: 6.00, desc: "Coca-cola, Guaraná ou Soda (350ml).", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=150" }
-        ];
+    <script type="module">
+        // Importação dos SDKs do Firebase via CDN do módulo v10
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        let salesReport = JSON.parse(localStorage.getItem('restaurant_sales_report')) || {
-            totalRevenue: 0,
-            totalOrders: 0,
-            totalItemsSold: 0
+        // Suas credenciais fornecidas
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
+            authDomain: "fastgarcon.firebaseapp.com",
+            projectId: "fastgarcon",
+            storageBucket: "fastgarcon.firebasestorage.app",
+            messagingSenderId: "417905940206",
+            appId: "1:417905940206:web:28911bac9acfcec54685ff"
         };
 
-        // Fila de pedidos unificada da cozinha
-        let kitchenOrders = JSON.parse(localStorage.getItem('restaurant_kitchen_orders')) || [];
+        // Inicializa o Firebase e o Banco de Dados Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Estados Locais Dinâmicos (Sincronizados com o Firebase)
+        let menuItems = [];
+        let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
+        let kitchenOrders = [];
 
         let cart = {};          
         let waiterCart = {};    
         let currentTable = null;      
-        let waiterActiveTable = null; 
+        let waiterActiveTable = null;
 
-        window.onload = function() {
-            checkTableFromURL();
-            renderClientMenu();
-            renderWaiterMenu();
-            renderKitchenOrders();
-            renderAdminMenu();
+        // --- INICIALIZAÇÃO E SINCRONIZAÇÃO EM TEMPO REAL ---
+        
+        // 1. Escuta alterações no Cardápio
+        onSnapshot(collection(db, "menu"), (snapshot) => {
+            menuItems = [];
+            snapshot.forEach(doc => {
+                menuItems.push({ id: doc.id, ...doc.data() });
+            });
+            // Se o cardápio padrão estiver totalmente vazio no Firebase, cria os itens básicos iniciais
+            if(menuItems.length === 0) {
+                setupDefaultMenu();
+            } else {
+                if (currentTable) renderClientMenu();
+                renderWaiterMenu();
+                renderAdminMenu();
+            }
+        });
+
+        // 2. Escuta alterações no Relatório de Vendas Geral
+        onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
+            if (snapshot.exists()) {
+                salesReport = snapshot.data();
+            } else {
+                salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
+            }
             updateSalesReportView();
-        };
+        });
 
-        function checkTableFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('mesa')) {
-                currentTable = urlParams.get('mesa');
-                document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+        // 3. Escuta alterações na Fila da Cozinha
+        onSnapshot(collection(db, "kitchen"), (snapshot) => {
+            kitchenOrders = [];
+            snapshot.forEach(doc => {
+                kitchenOrders.push({ id: doc.id, ...doc.data() });
+            });
+            // Ordena os pedidos por timestamp (mais antigos primeiro para a esteira funcionar de forma justa)
+            kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            renderKitchenOrders();
+        });
+
+        // Cadastra itens padrão caso o banco esteja limpo
+        async function setupDefaultMenu() {
+            const defaults = [
+                { name: "Hambúrguer Artesanal", price: 28.90, desc: "Blend de 150g, queijo prato, alface, tomate e maionese da casa.", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150" },
+                { name: "Batata Frita Tradicional", price: 18.00, desc: "Porção individual de batatas crocantes com sal e alecrim.", img: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=150" },
+                { name: "Refrigerante Lata", price: 6.00, desc: "Coca-cola, Guaraná ou Soda (350ml).", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=150" }
+            ];
+            for (const item of defaults) {
+                await addDoc(collection(db, "menu"), item);
             }
         }
 
-        function switchView(viewId) {
-            document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
-        }
-
-        function saveMenuToStorage() {
-            localStorage.setItem('restaurant_menu', JSON.stringify(menuItems));
+        // Validação de URL/Mesa
+        function checkTableFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
+                currentTable = urlParams.get('mesa');
+                document.getElementById('client-blocked-state').classList.add('hidden');
+                document.getElementById('client-allowed-state').classList.remove('hidden');
+                document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+                renderClientMenu();
+            } else {
+                document.getElementById('client-blocked-state').classList.remove('hidden');
+                document.getElementById('client-allowed-state').classList.add('hidden');
+            }
         }
 
         // --- SISTEMA CLIENTE ---
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
+            if(!container) return;
             container.innerHTML = '';
             menuItems.forEach(item => {
                 const qty = cart[item.id] || 0;
@@ -281,9 +343,9 @@
                             <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
                                 <span class="text-green-600 font-bold text-lg">R$ ${item.price.toFixed(2)}</span>
                                 <div class="flex items-center border rounded-lg bg-gray-50">
-                                    <button onclick="updateQuantity(${item.id}, -1)" class="px-3 py-1 font-bold text-gray-600 hover:bg-gray-200 rounded-l-lg">-</button>
+                                    <button onclick="window.updateQuantity('${item.id}', -1)" class="px-3 py-1 font-bold text-gray-600 hover:bg-gray-200 rounded-l-lg">-</button>
                                     <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
-                                    <button onclick="updateQuantity(${item.id}, 1)" class="px-3 py-1 font-bold text-gray-600 hover:bg-gray-200 rounded-r-lg">+</button>
+                                    <button onclick="window.updateQuantity('${item.id}', 1)" class="px-3 py-1 font-bold text-gray-600 hover:bg-gray-200 rounded-r-lg">+</button>
                                 </div>
                             </div>
                         </div>
@@ -292,7 +354,7 @@
             updateTotal();
         }
 
-        function updateQuantity(id, change) {
+        window.updateQuantity = function(id, change) {
             if (!cart[id]) cart[id] = 0;
             cart[id] += change;
             if (cart[id] <= 0) delete cart[id];
@@ -305,7 +367,7 @@
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
-        function sendOrderWhatsApp() {
+        window.sendOrderWhatsApp = async function() {
             const phoneNumber = document.getElementById('restaurant-phone').value.replace(/\D/g, '');
             if (!phoneNumber) { alert('Configure o WhatsApp do estabelecimento.'); return; }
 
@@ -320,44 +382,47 @@
                     orderItemsText += `• ${cart[item.id]}x ${item.name} (R$ ${subtotal.toFixed(2)})\n`;
                     orderTotal += subtotal;
                     itemsCount += cart[item.id];
-                    currentItems.push({ name: item.name, qty: cart[item.id] });
+                    currentItems.push({ name: item.name, qty: cart[item.id], price: item.price });
                 }
             });
 
             if (orderTotal === 0) { alert('Seu carrinho está vazio!'); return; }
 
-            // Adiciona na Fila da Cozinha
-            addOrderToKitchen(currentTable ? `Mesa ${currentTable}` : "Acesso Geral (Balcão)", currentItems);
+            // Salva na esteira de preparo da Cozinha do Firebase
+            await addOrderToKitchen(`Mesa ${currentTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
 
-            // Regista nos Relatórios Financeiros
-            salesReport.totalRevenue += orderTotal;
-            salesReport.totalOrders += 1;
-            salesReport.totalItemsSold += itemsCount;
-            localStorage.setItem('restaurant_sales_report', JSON.stringify(salesReport));
-            updateSalesReportView();
+            // Atualiza os relatórios financeiros de forma cumulativa
+            await setDoc(doc(db, "reports", "sales"), {
+                totalRevenue: salesReport.totalRevenue + orderTotal,
+                totalOrders: salesReport.totalOrders + 1,
+                totalItemsSold: salesReport.totalItemsSold + itemsCount
+            });
 
-            let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable ? currentTable : 'Não informada'}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
-            
-            if(currentTable) {
-                let tableHistory = JSON.parse(localStorage.getItem(`mesa_${currentTable}`)) || [];
-                menuItems.forEach(item => {
-                    if (cart[item.id]) tableHistory.push({ name: item.name, qty: cart[item.id], price: item.price });
-                });
-                localStorage.setItem(`mesa_${currentTable}`, JSON.stringify(tableHistory));
+            // Incrementa o histórico acumulado de consumo financeiro da mesa no Firebase
+            const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
+            const mesaSnapshot = await getDoc(mesaDocRef);
+            let currentTableHistory = [];
+            if(mesaSnapshot.exists()) {
+                currentTableHistory = mesaSnapshot.data().orders || [];
             }
+            currentTableHistory = currentTableHistory.concat(currentItems);
+            await setDoc(mesaDocRef, { orders: currentTableHistory });
 
+            let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
             window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+            
             cart = {};
             renderClientMenu();
         }
 
         // --- SISTEMA GARÇOM ---
-        function updateWaiterTable() {
+        window.updateWaiterTable = function() {
             waiterActiveTable = document.getElementById('waiter-table-number').value || null;
         }
 
         function renderWaiterMenu() {
             const container = document.getElementById('waiter-menu-list');
+            if(!container) return;
             container.innerHTML = '';
             menuItems.forEach(item => {
                 const qty = waiterCart[item.id] || 0;
@@ -370,9 +435,9 @@
                             <div class="flex justify-between items-center mt-2 flex-wrap gap-2">
                                 <span class="text-orange-600 font-bold">R$ ${item.price.toFixed(2)}</span>
                                 <div class="flex items-center border border-orange-200 rounded-lg bg-orange-50">
-                                    <button onclick="updateWaiterQuantity(${item.id}, -1)" class="px-3 py-0.5 font-bold text-orange-700 hover:bg-orange-200 rounded-l-lg">-</button>
+                                    <button onclick="window.updateWaiterQuantity('${item.id}', -1)" class="px-3 py-0.5 font-bold text-orange-700 hover:bg-orange-200 rounded-l-lg">-</button>
                                     <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
-                                    <button onclick="updateWaiterQuantity(${item.id}, 1)" class="px-3 py-0.5 font-bold text-orange-700 hover:bg-orange-200 rounded-r-lg">+</button>
+                                    <button onclick="window.updateWaiterQuantity('${item.id}', 1)" class="px-3 py-0.5 font-bold text-orange-700 hover:bg-orange-200 rounded-r-lg">+</button>
                                 </div>
                             </div>
                         </div>
@@ -381,7 +446,7 @@
             updateWaiterTotal();
         }
 
-        function updateWaiterQuantity(id, change) {
+        window.updateWaiterQuantity = function(id, change) {
             if (!waiterCart[id]) waiterCart[id] = 0;
             waiterCart[id] += change;
             if (waiterCart[id] <= 0) delete waiterCart[id];
@@ -394,7 +459,7 @@
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
         }
 
-        function submitWaiterOrder() {
+        window.submitWaiterOrder = async function() {
             if (!waiterActiveTable) { alert("Por favor, informe o número da mesa."); return; }
 
             let orderTotal = 0;
@@ -413,42 +478,46 @@
 
             if (orderTotal === 0) { alert("Adicione pelo menos um item."); return; }
 
-            // Envia para a cozinha e salva histórico da mesa
-            addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
+            // Envia para a cozinha na Nuvem
+            await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
 
-            let tableHistory = JSON.parse(localStorage.getItem(`mesa_${waiterActiveTable}`)) || [];
+            // Consolida consumo no painel financeiro da mesa do Firebase
+            const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
+            const mesaSnapshot = await getDoc(mesaDocRef);
+            let tableHistory = [];
+            if(mesaSnapshot.exists()) {
+                tableHistory = mesaSnapshot.data().orders || [];
+            }
             tableHistory = tableHistory.concat(currentItemsToSave);
-            localStorage.setItem(`mesa_${waiterActiveTable}`, JSON.stringify(tableHistory));
+            await setDoc(mesaDocRef, { orders: tableHistory });
 
-            // Finanças
-            salesReport.totalRevenue += orderTotal;
-            salesReport.totalOrders += 1;
-            salesReport.totalItemsSold += itemsCount;
-            localStorage.setItem('restaurant_sales_report', JSON.stringify(salesReport));
-            updateSalesReportView();
+            // Atualiza faturamento global
+            await setDoc(doc(db, "reports", "sales"), {
+                totalRevenue: salesReport.totalRevenue + orderTotal,
+                totalOrders: salesReport.totalOrders + 1,
+                totalItemsSold: salesReport.totalItemsSold + itemsCount
+            });
 
-            alert(`Pedido da Mesa ${waiterActiveTable} enviado para a cozinha!`);
+            alert(`Pedido da Mesa ${waiterActiveTable} enviado com sucesso!`);
             waiterCart = {};
             renderWaiterMenu();
         }
 
-        // --- SISTEMA DA COZINHA (LOGÍTICA DE PEDIDOS) ---
-        function addOrderToKitchen(origin, items) {
+        // --- MONITOR DA COZINHA ---
+        async function addOrderToKitchen(origin, items) {
             const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const newOrder = {
-                id: Date.now(),
+            await addDoc(collection(db, "kitchen"), {
                 origin: origin,
                 time: time,
                 items: items,
-                status: 'pending' // pending | ready
-            };
-            kitchenOrders.push(newOrder);
-            localStorage.setItem('restaurant_kitchen_orders', JSON.stringify(kitchenOrders));
-            renderKitchenOrders();
+                status: 'pending',
+                timestamp: Date.now() // Importante para ordenação em tempo real
+            });
         }
 
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
+            if(!container) return;
             container.innerHTML = '';
 
             if(kitchenOrders.length === 0) {
@@ -468,8 +537,8 @@
                     : `<span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold animate-pulse">🟡 Pendente</span>`;
                 
                 const actionButton = order.status === 'pending' 
-                    ? `<button onclick="setOrderStatus(${order.id}, 'ready')" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded shadow transition text-sm">✓ Marcar como Pronto</button>`
-                    : `<button onclick="deleteKitchenOrder(${order.id})" class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-600 font-medium py-1.5 rounded transition text-xs">Remover do Painel</button>`;
+                    ? `<button onclick="window.setOrderStatus('${order.id}', 'ready')" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded shadow transition text-sm">✓ Marcar como Pronto</button>`
+                    : `<button onclick="window.deleteKitchenOrder('${order.id}') class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-600 font-medium py-1.5 rounded transition text-xs">Remover do Painel</button>`;
 
                 container.innerHTML += `
                     <div class="p-5 rounded-xl shadow-md border-t-4 bg-white flex flex-col justify-between ${cardClass}">
@@ -488,38 +557,31 @@
             });
         }
 
-        function setOrderStatus(orderId, newStatus) {
-            kitchenOrders = kitchenOrders.map(order => {
-                if(order.id === orderId) order.status = newStatus;
-                return order;
-            });
-            localStorage.setItem('restaurant_kitchen_orders', JSON.stringify(kitchenOrders));
-            renderKitchenOrders();
+        window.setOrderStatus = async function(orderId, newStatus) {
+            const orderDoc = doc(db, "kitchen", orderId);
+            await updateDoc(orderDoc, { status: newStatus });
         }
 
-        function deleteKitchenOrder(orderId) {
-            kitchenOrders = kitchenOrders.filter(order => order.id !== orderId);
-            localStorage.setItem('restaurant_kitchen_orders', JSON.stringify(kitchenOrders));
-            renderKitchenOrders();
+        window.deleteKitchenOrder = async function(orderId) {
+            await deleteDoc(doc(db, "kitchen", orderId));
         }
 
-        // --- SISTEMA ADMINISTRATIVO ---
+        // --- PAINEL ADMINISTRATIVO ---
         function updateSalesReportView() {
             document.getElementById('sales-total-money').innerText = salesReport.totalRevenue.toFixed(2);
             document.getElementById('sales-total-orders').innerText = salesReport.totalOrders;
             document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold;
         }
 
-        function clearSalesReport() {
-            if(confirm("Deseja realmente zerar o relatório de vendas do dia?")) {
-                salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
-                localStorage.setItem('restaurant_sales_report', JSON.stringify(salesReport));
-                updateSalesReportView();
+        window.clearSalesReport = async function() {
+            if(confirm("Deseja realmente zerar o relatório de vendas global no Firebase?")) {
+                await setDoc(doc(db, "reports", "sales"), { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 });
             }
         }
 
         function renderAdminMenu() {
             const tableBody = document.getElementById('admin-menu-table');
+            if(!tableBody) return;
             tableBody.innerHTML = '';
             menuItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
@@ -529,38 +591,30 @@
                         <td class="p-3 font-semibold">${item.name}</td>
                         <td class="p-3 text-green-600 font-bold">R$ ${item.price.toFixed(2)}</td>
                         <td class="p-3 text-center">
-                            <button onclick="deleteItem(${item.id})" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-sm transition">Remover</button>
+                            <button onclick="window.deleteItem('${item.id}')" class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-sm transition">Remover</button>
                         </td>
                     </tr>`;
             });
         }
 
-        function handleAddItem(event) {
+        window.handleAddItem = async function(event) {
             event.preventDefault();
             const name = document.getElementById('item-name').value;
             const price = parseFloat(document.getElementById('item-price').value);
             const desc = document.getElementById('item-desc').value;
             const img = document.getElementById('item-img').value;
 
-            menuItems.push({ id: Date.now(), name, price, desc, img });
-            saveMenuToStorage();
-            renderAdminMenu();
-            renderClientMenu();
-            renderWaiterMenu();
+            await addDoc(collection(db, "menu"), { name, price, desc, img });
             document.getElementById('add-item-form').reset();
         }
 
-        function deleteItem(id) {
-            if(confirm("Deseja remover este item do cardápio?")) {
-                menuItems = menuItems.filter(item => item.id !== id);
-                saveMenuToStorage();
-                renderAdminMenu();
-                renderClientMenu();
-                renderWaiterMenu();
+        window.deleteItem = async function(id) {
+            if(confirm("Deseja remover este item do cardápio global?")) {
+                await deleteDoc(doc(db, "menu", id));
             }
         }
 
-        function generateTableQRCode() {
+        window.generateTableQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value;
             const qrContainer = document.getElementById('qrcode-container');
             if(!tableNum) { alert("Digite o número da mesa."); return; }
@@ -581,7 +635,7 @@
             document.getElementById('download-btn-container').classList.remove('hidden');
         }
 
-        function downloadQRCode() {
+        window.downloadQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value;
             const qrImgElement = document.querySelector('#qrcode-container img');
             const qrCanvasElement = document.querySelector('#qrcode-container canvas');
@@ -617,18 +671,23 @@
             }
         }
 
-        function prepareInvoice() {
+        window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
             const printSection = document.getElementById('invoice-print-section');
             if(!tableNum) { alert("Insira o número da mesa."); return; }
 
-            const tableOrders = JSON.parse(localStorage.getItem(`mesa_${tableNum}`)) || [];
-            if (tableOrders.length === 0) {
+            // Puxa do Firebase o consumo em aberto consolidado da mesa
+            const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
+            const snapshot = await getDoc(mesaDocRef);
+
+            if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
                 previewContainer.innerHTML = `<span class="text-red-500">Nenhum pedido ativo registrado para a Mesa ${tableNum}.</span>`;
                 document.getElementById('invoice-actions').classList.add('hidden');
                 return;
             }
+
+            const tableOrders = snapshot.data().orders;
 
             let invoiceHTML = `
                 <div style="text-align: center; font-family: monospace;">
@@ -664,27 +723,28 @@
             document.getElementById('invoice-actions').classList.remove('hidden');
         }
 
-        // Dá baixa no sistema e remove do consumo ativo
-        function confirmPayment() {
+        window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
 
             if(confirm(`Confirmar que a Mesa ${tableNum} efetuou o pagamento e liberar o espaço?`)) {
-                // Limpa o histórico cumulativo da mesa de consumo ativo
-                localStorage.removeItem(`mesa_${tableNum}`);
+                // Remove os dados de consumo em aberto daquela mesa específica do Cloud Firestore
+                await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
                 
-                // Limpa os cards de pedidos na cozinha associados especificamente a essa mesa
-                kitchenOrders = kitchenOrders.filter(order => order.origin !== `Mesa ${tableNum}`);
-                localStorage.setItem('restaurant_kitchen_orders', JSON.stringify(kitchenOrders));
+                alert(`Mesa ${tableNum} liberada e arquivada como Paga com sucesso.`);
                 
-                alert(`Mesa ${tableNum} liberada e marcada como Paga.`);
-                
-                // Reseta visões
                 document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
                 document.getElementById('invoice-actions').classList.add('hidden');
-                renderKitchenOrders();
             }
         }
+
+        window.switchView = function(viewId) {
+            document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        // Execução inicial de checagem
+        checkTableFromURL();
     </script>
 </body>
 </html>
