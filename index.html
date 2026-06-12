@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Pedidos - Restaurante</title>
+    <!-- Tailwind CSS para um design moderno e responsivo -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* Estilização de alta fidelidade para Impressoras Térmicas de Cupom (80mm/58mm) */
@@ -16,7 +18,7 @@
                 left: 0; 
                 top: 0; 
                 width: 100%; 
-                max-width: 80mm; /* Força largura padrão de bobina térmica */
+                max-width: 80mm; 
                 font-family: 'Courier New', Courier, monospace;
                 font-size: 12px;
                 color: #000;
@@ -32,6 +34,7 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
+    <!-- Navegação de Telas -->
     <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md hidden flex-wrap justify-between items-center gap-3">
         <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
         <div class="flex flex-wrap gap-2">
@@ -44,6 +47,7 @@
 
     <div class="max-w-6xl mx-auto p-4">
         
+        <!-- ================= CARDÁPIO DO CLIENTE ================= -->
         <section id="client-view" class="view-section">
             <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200">
                 <div class="text-6xl mb-4">📸</div>
@@ -63,7 +67,8 @@
                 </div>
 
                 <div id="client-menu-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
-                    </div>
+                    <!-- Inserido via JS -->
+                </div>
 
                 <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 p-4 z-40">
                     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -78,6 +83,7 @@
             </div>
         </section>
 
+        <!-- ================= VISÃO DO GARÇOM ================= -->
         <section id="waiter-view" class="view-section hidden">
             <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-orange-500">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Painel de Atendimento do Garçom</h2>
@@ -93,7 +99,8 @@
             </div>
 
             <div id="waiter-menu-list" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
-                </div>
+                <!-- Inserido via JS -->
+            </div>
 
             <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-orange-200 p-4 z-40">
                 <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -107,18 +114,22 @@
             </div>
         </section>
 
+        <!-- ================= PAINEL DA COZINHA ================= -->
         <section id="kitchen-view" class="view-section hidden">
             <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300">
                 <h2 class="text-3xl font-bold text-gray-800">👨‍🍳 Monitor da Cozinha</h2>
                 <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-semibold text-sm">Modo de Preparo Realtime</span>
             </div>
             <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                </div>
+                <!-- Cards de Pedidos via JS -->
+            </div>
         </section>
 
+        <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
             <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 border-gray-300">Painel do Administrador</h2>
             
+            <!-- Relatório de Vendas -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
@@ -147,6 +158,7 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Cadastro de Itens -->
                 <div class="bg-white p-6 rounded-lg shadow-md h-fit">
                     <h3 class="text-lg font-bold text-gray-700 mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
@@ -176,6 +188,7 @@
                     </div>
                 </div>
 
+                <!-- Gerência do Cardápio -->
                 <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 space-y-6">
                     <div>
                         <h3 class="text-lg font-bold text-gray-700 mb-4">Itens Atuais no Cardápio</h3>
@@ -190,13 +203,15 @@
                                     </tr>
                                 </thead>
                                 <tbody id="admin-menu-table">
-                                    </tbody>
+                                    <!-- Inserido via JS -->
+                                </tbody>
                             </table>
                         </div>
                     </div>
 
                     <hr class="border-gray-200">
 
+                    <!-- QR Code e Caixa Faturamento -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
                             <div>
@@ -216,23 +231,34 @@
                             </div>
                         </div>
 
+                        <!-- SEÇÃO DO CAIXA: Sempre Visível com Botões Claros -->
                         <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-700 mb-3">Caixa: Imprimir e Confirmar Conta</h4>
+                                <h4 class="font-bold text-gray-700 mb-3">Fechar Conta da Mesa (Cupom Fiscal)</h4>
                                 <div class="flex gap-2 mb-3">
-                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-semibold transition">Visualizar</button>
+                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold">
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition">Buscar</button>
                                 </div>
                             </div>
-                            <div id="invoice-preview" class="text-xs font-mono bg-white p-4 border rounded border-gray-300 text-gray-800 min-h-[140px] max-h-[250px] overflow-y-auto leading-relaxed shadow-inner">
-                                Insira o número da mesa para gerenciar a conta.
+                            
+                            <!-- Preview do cupom no estilo térmico -->
+                            <div id="invoice-preview" class="text-xs font-mono bg-white p-4 border rounded border-gray-300 text-gray-800 min-h-[150px] max-h-[220px] overflow-y-auto leading-relaxed shadow-inner mb-3">
+                                Insira o número da mesa acima e clique em "Buscar".
                             </div>
-                            <div id="invoice-actions" class="flex flex-col gap-2 mt-3 hidden">
+                            
+                            <!-- BOTÕES DE IMPRESSÃO E DOWNLOAD (SEMPRE VISÍVEIS) -->
+                            <div class="flex flex-col gap-2">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-xs transition flex items-center justify-center gap-1">🖨️ Imprimir Cupom</button>
-                                    <button onclick="window.downloadInvoicePDF()" class="bg-gray-700 hover:bg-gray-800 text-white py-2.5 rounded font-bold text-xs transition flex items-center justify-center gap-1">📥 Baixar PDF</button>
+                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                                        🖨️ Imprimir
+                                    </button>
+                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-800 hover:bg-gray-900 text-white py-3 rounded font-bold text-sm transition flex items-center justify-center gap-2 shadow">
+                                        📥 Baixar Cupom
+                                    </button>
                                 </div>
-                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold text-sm transition">💰 Finalizar / Dar Baixa na Mesa</button>
+                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold text-sm transition shadow">
+                                    💰 Dar Baixa / Liberar Mesa
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -241,8 +267,10 @@
         </section>
     </div>
 
+    <!-- Container Oculto - Usado apenas pelo navegador na hora da impressão física -->
     <div id="invoice-print-section" class="hidden"></div>
 
+    <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
@@ -264,6 +292,7 @@
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
         let kitchenOrders = [];
+        let activeInvoiceText = ""; // Guarda o texto puro do cupom montado
 
         let cart = {};          
         let waiterCart = {};    
@@ -585,20 +614,25 @@
             if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
         }
 
-        // LOGICA DE MONTAGEM E IMPRESSÃO DA CONTA DA MESA
+        // MONTAGEM DO CUPOM DE FECHAMENTO
         window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
             const printSection = document.getElementById('invoice-print-section');
-            if(!tableNum) { alert("Insira o número da mesa."); return; }
+            
+            if(!tableNum) { 
+                alert("Insira o número da mesa primeiro!"); 
+                return; 
+            }
 
             try {
                 const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
                 const snapshot = await getDoc(mesaDocRef);
 
                 if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
-                    previewContainer.innerHTML = `<span class="text-red-500 font-sans">Nenhum pedido ativo registrado para a Mesa ${tableNum}.</span>`;
-                    document.getElementById('invoice-actions').classList.add('hidden');
+                    previewContainer.innerHTML = `<span class="text-red-500 font-bold">Nenhum pedido ativo para a Mesa ${tableNum}.</span>`;
+                    activeInvoiceText = "";
+                    printSection.innerHTML = "";
                     return;
                 }
 
@@ -606,68 +640,84 @@
                 const dataAtual = new Date().toLocaleDateString('pt-BR');
                 const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
-                // Template de texto limpo respeitando limites de espaçamento de colunas para impressoras térmicas comuns
-                let invoiceHTML = `
-========================================
-       *** EXTRATO DE CONSUMO *** RESTAURANTE E LANCHES FASTORDER   
-========================================
-MESA: ${tableNum.padStart(2, '0')}          Data: ${dataAtual}
-Atendimento Geral       Hora: ${horaAtual}
-----------------------------------------
-Item                 Qtd       Total(R$)
-----------------------------------------\n`;
+                // Alinhamento ideal para espaçamento de bobinas térmicas padrão de 80mm/58mm
+                let textCupom = `========================================\n`;
+                textCupom += `          *** REBOBINA / CUPOM ***      \n`;
+                textCupom += `            RESTAURANTE FASTORDER       \n`;
+                textCupom += `========================================\n`;
+                textCupom += `MESA: ${tableNum.padStart(2, '0')}          Data: ${dataAtual}\n`;
+                textCupom += `Atendimento Geral       Hora: ${horaAtual}\n`;
+                textCupom += `----------------------------------------\n`;
+                textCupom += `Item                 Qtd       Total(R$)\n`;
+                textCupom += `----------------------------------------\n`;
 
                 let totalGeral = 0;
                 tableOrders.forEach(item => {
                     const totalItem = item.qty * item.price;
                     totalGeral += totalItem;
                     
-                    // Tratamento simples de string para que colunas fiquem retas no papel termo-espaçado
                     let nameCut = item.name.substring(0, 18).padEnd(18, ' ');
                     let qtyStr = item.qty.toString().padStart(4, ' ');
                     let valStr = totalItem.toFixed(2).padStart(14, ' ');
                     
-                    invoiceHTML += `${nameCut}${qtyStr}${valStr}\n`;
+                    textCupom += `${nameCut}${qtyStr}${valStr}\n`;
                 });
 
-                invoiceHTML += `
-----------------------------------------
-TOTAL DA CONTA:            R$ ${totalGeral.toFixed(2).padStart(12, ' ')}
-----------------------------------------
-       Obrigado e volte sempre!         
-========================================`;
+                textCupom += `----------------------------------------\n`;
+                textCupom += `TOTAL DA CONTA:            R$ ${totalGeral.toFixed(2).padStart(12, ' ')}\n`;
+                textCupom += `----------------------------------------\n`;
+                textCupom += `       Obrigado e volte sempre!         \n`;
+                textCupom += `========================================`;
 
-                // Renderiza pré-visualizações idênticas
-                previewContainer.innerHTML = `<pre class="whitespace-pre-wrap">${invoiceHTML}</pre>`;
-                printSection.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace;">${invoiceHTML}</pre>`;
-                document.getElementById('invoice-actions').classList.remove('hidden');
+                activeInvoiceText = textCupom; // Armazena globalmente para download
+                
+                // Exibe nas seções corretas
+                previewContainer.innerHTML = `<pre class="whitespace-pre-wrap font-mono">${textCupom}</pre>`;
+                printSection.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #000;">${textCupom}</pre>`;
             } catch(e) {
                 console.error(e);
-                alert("Erro ao resgatar conta.");
+                alert("Erro ao buscar dados da mesa.");
             }
         }
 
-        // Dispara o comando direto do hardware do sistema operacional/Navegador
+        // AÇÃO: Disparar impressão física do navegador em tamanho de bobina
         window.printInvoice = function() {
+            const tableNum = document.getElementById('print-table-number').value;
+            if(!activeInvoiceText) {
+                alert(`Busque os dados de uma mesa ativa antes de tentar imprimir.`);
+                return;
+            }
             window.print();
         }
 
-        // Baixa o cupom diretamente gerando um fluxo PDF estruturado nativo
-        window.downloadInvoicePDF = function() {
+        // AÇÃO: Baixa o arquivo .TXT nativo do cupom
+        window.downloadInvoiceTXT = function() {
             const tableNum = document.getElementById('print-table-number').value;
-            // Altera temporariamente a visualização para focar o download no PDF e retorna em seguida
-            window.print();
+            if(!activeInvoiceText) {
+                alert("Busque os dados da mesa antes de tentar baixar o cupom.");
+                return;
+            }
+
+            // Cria um blob de texto e faz o download automático limpo
+            const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `cupom_mesa_${tableNum || '00'}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
-            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}?`)) {
+            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso apagará os dados desta mesa.`)) {
                 try {
                     await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
                     alert(`Mesa ${tableNum} dada como paga e liberada no sistema!`);
                     document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
-                    document.getElementById('invoice-actions').classList.add('hidden');
+                    activeInvoiceText = "";
+                    document.getElementById('invoice-print-section').innerHTML = "";
                 } catch(e) { console.error(e); }
             }
         }
