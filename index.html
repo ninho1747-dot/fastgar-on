@@ -9,10 +9,16 @@
     <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        /* Estilização de alta fidelidade para Impressoras Térmicas de Cupom (80mm/58mm) */
+        /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
         @media print {
-            body * { visibility: hidden; }
-            #invoice-print-section, #invoice-print-section * { visibility: visible; }
+            /* Esconde absolutamente tudo na página */
+            body * { 
+                display: none !important; 
+            }
+            /* Exibe única e exclusivamente a seção do cupom */
+            #invoice-print-section, #invoice-print-section * { 
+                display: block !important; 
+            }
             #invoice-print-section { 
                 position: absolute; 
                 left: 0; 
@@ -23,7 +29,8 @@
                 font-size: 12px;
                 color: #000;
                 line-height: 1.2;
-                padding: 0 5mm;
+                padding: 4mm;
+                background: #fff;
             }
             @page {
                 size: auto;
@@ -75,7 +82,7 @@
                         <div class="text-xl font-bold text-gray-800">
                             Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
                         </div>
-                        <button onclick="window.sendOrderWhatsApp()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+                        <button onclick="window.sendOrderDirect()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
                             🟢 Confirmar e Enviar Pedido
                         </button>
                     </div>
@@ -246,7 +253,7 @@
                                 Insira o número da mesa acima e clique em "Buscar".
                             </div>
                             
-                            <!-- BOTÕES DE IMPRESSÃO E DOWNLOAD (SEMPRE VISÍVEIS) -->
+                            <!-- BOTÕES DE IMPRESSÃO E DOWNLOAD -->
                             <div class="flex flex-col gap-2">
                                 <div class="grid grid-cols-2 gap-2">
                                     <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold text-sm transition flex items-center justify-center gap-2 shadow">
@@ -267,8 +274,8 @@
         </section>
     </div>
 
-    <!-- Container Oculto - Usado apenas pelo navegador na hora da impressão física -->
-    <div id="invoice-print-section" class="hidden"></div>
+    <!-- Elemento Global Isolado para Impressão limpa no Navegador -->
+    <div id="invoice-print-section"></div>
 
     <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
@@ -292,7 +299,7 @@
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
         let kitchenOrders = [];
-        let activeInvoiceText = ""; // Guarda o texto puro do cupom montado
+        let activeInvoiceText = ""; 
 
         let cart = {};          
         let waiterCart = {};    
@@ -344,7 +351,7 @@
             }
         }
 
-        // --- SISTEMA CLIENTE ---
+        // --- SISTEMA CLIENTE (SEM REDIRECIONAR PARA O WHATSAPP) ---
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
             if(!container) return;
@@ -389,10 +396,7 @@
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
-        window.sendOrderWhatsApp = async function() {
-            const phoneNumber = document.getElementById('restaurant-phone').value.replace(/\D/g, '');
-            if (!phoneNumber) { alert('Configure o WhatsApp do estabelecimento.'); return; }
-
+        window.sendOrderDirect = async function() {
             let orderItemsText = '';
             let orderTotal = 0;
             let itemsCount = 0;
@@ -414,13 +418,17 @@
             if (!userConfirmed) return; 
 
             try {
+                // Envia para o painel da cozinha
                 await addOrderToKitchen(`Mesa ${currentTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
+                
+                // Incrementa relatório global
                 await setDoc(doc(db, "reports", "sales"), {
                     totalRevenue: salesReport.totalRevenue + orderTotal,
                     totalOrders: salesReport.totalOrders + 1,
                     totalItemsSold: salesReport.totalItemsSold + itemsCount
                 });
 
+                // Registra o extrato na mesa correspondente para fechamento posterior
                 const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
                 const mesaSnapshot = await getDoc(mesaDocRef);
                 let currentTableHistory = [];
@@ -428,14 +436,12 @@
                 currentTableHistory = currentTableHistory.concat(currentItems);
                 await setDoc(mesaDocRef, { orders: currentTableHistory });
 
-                alert(`🎉 Pedido enviado à cozinha e direcionando ao WhatsApp.`);
-                let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
-                window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-                
+                alert(`🎉 Sucesso! Seu pedido foi enviado para a cozinha.`);
                 cart = {};
                 renderClientMenu();
             } catch (error) {
-                console.error(error);
+                console.error("Erro ao processar pedido:", error);
+                alert("Houve um problema ao processar seu pedido. Tente novamente.");
             }
         }
 
@@ -571,7 +577,7 @@
             if (confirm("Remover este pedido do monitor?")) await deleteDoc(doc(db, "kitchen", orderId));
         }
 
-        // --- PAINEL ADMINISTRATIVO E GERADOR DE NOTAS FISCAIS ---
+        // --- PAINEL ADMINISTRATIVO E ENGENHARIA DO CUPOM ---
         function updateSalesReportView() {
             document.getElementById('sales-total-money').innerText = salesReport.totalRevenue.toFixed(2);
             document.getElementById('sales-total-orders').innerText = salesReport.totalOrders;
@@ -614,7 +620,7 @@
             if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
         }
 
-        // MONTAGEM DO CUPOM DE FECHAMENTO
+        // MONTAGEM DO PRODUTO FINAL DO TEXTO DO CUPOM
         window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
@@ -640,9 +646,8 @@
                 const dataAtual = new Date().toLocaleDateString('pt-BR');
                 const horaAtual = new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
-                // Alinhamento ideal para espaçamento de bobinas térmicas padrão de 80mm/58mm
                 let textCupom = `========================================\n`;
-                textCupom += `          *** REBOBINA / CUPOM ***      \n`;
+                textCupom += `          *** EXTRATO DE CONTA ***      \n`;
                 textCupom += `            RESTAURANTE FASTORDER       \n`;
                 textCupom += `========================================\n`;
                 textCupom += `MESA: ${tableNum.padStart(2, '0')}          Data: ${dataAtual}\n`;
@@ -669,28 +674,27 @@
                 textCupom += `       Obrigado e volte sempre!         \n`;
                 textCupom += `========================================`;
 
-                activeInvoiceText = textCupom; // Armazena globalmente para download
+                activeInvoiceText = textCupom; 
                 
-                // Exibe nas seções corretas
+                // Popula a visualização interna da tela e a área dedicada à impressora física
                 previewContainer.innerHTML = `<pre class="whitespace-pre-wrap font-mono">${textCupom}</pre>`;
-                printSection.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #000;">${textCupom}</pre>`;
+                printSection.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #000; background: #fff; margin: 0; padding: 0;">${textCupom}</pre>`;
             } catch(e) {
                 console.error(e);
                 alert("Erro ao buscar dados da mesa.");
             }
         }
 
-        // AÇÃO: Disparar impressão física do navegador em tamanho de bobina
+        // CORREÇÃO DA IMPRESSÃO EM BRANCO: Garante sincronia e fluxo limpo
         window.printInvoice = function() {
-            const tableNum = document.getElementById('print-table-number').value;
             if(!activeInvoiceText) {
                 alert(`Busque os dados de uma mesa ativa antes de tentar imprimir.`);
                 return;
             }
+            // Dispara o fluxo nativo utilizando o contêiner estruturado
             window.print();
         }
 
-        // AÇÃO: Baixa o arquivo .TXT nativo do cupom
         window.downloadInvoiceTXT = function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!activeInvoiceText) {
@@ -698,7 +702,6 @@
                 return;
             }
 
-            // Cria um blob de texto e faz o download automático limpo
             const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
