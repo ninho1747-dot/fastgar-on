@@ -235,13 +235,14 @@
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // CONFIGURAÇÃO ATUALIZADA COM AS SUAS NOVAS CREDENCIAIS ENVIADAS
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
             authDomain: "fastgarcon.firebaseapp.com",
             projectId: "fastgarcon",
             storageBucket: "fastgarcon.firebasestorage.app",
             messagingSenderId: "417905940206",
-            appId: "1:417905940206:web:28911bac9acfcec54685ff"
+            appId: "1:417905940206:web:a2a65ffa6d36a7204685ff"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -255,25 +256,20 @@
         let waiterCart = {};    
         let currentTable = null;      
         let waiterActiveTable = null;
-        let isFirstLoad = true; // Impede que o menu padrão sobrescreva as exclusões
 
-        // Sincronização do Cardápio em tempo real com Firestore
+        // Escuta em tempo real as mudanças no cardápio
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
                 menuItems.push({ id: doc.id, ...doc.data() });
             });
             
-            // Cria os padrões apenas se for a primeira abertura histórica E o banco estiver totalmente limpo
-            if(menuItems.length === 0 && isFirstLoad) {
-                isFirstLoad = false;
-                setupDefaultMenu();
-            } else {
-                isFirstLoad = false;
-                if (currentTable) renderClientMenu();
-                renderWaiterMenu();
-                renderAdminMenu();
-            }
+            if (currentTable) renderClientMenu();
+            renderWaiterMenu();
+            renderAdminMenu();
+        }, (error) => {
+            console.error("Erro na leitura em tempo real:", error);
+            alert("Erro de permissão no Firebase. Certifique-se de que publicou as Regras de segurança como 'allow read, write: if true;' ou conforme as regras seguras estruturadas.");
         });
 
         // Sincronização do Painel Financeiro Geral
@@ -294,24 +290,13 @@
             renderKitchenOrders();
         });
 
-        async function setupDefaultMenu() {
-            const defaults = [
-                { name: "Hambúrguer Artesanal", price: 28.90, desc: "Blend de 150g, queijo prato, alface, tomate e maionese da casa.", img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=150" },
-                { name: "Batata Frita Tradicional", price: 18.00, desc: "Porção individual de batatas crocantes com sal e alecrim.", img: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=150" },
-                { name: "Refrigerante Lata", price: 6.00, desc: "Coca-cola, Guaraná ou Soda (350ml).", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=150" }
-            ];
-            for (const item of defaults) {
-                await addDoc(collection(db, "menu"), item);
-            }
-        }
-
-        // Validação e Controle de Segurança de Visão
+        // Validação e Controle de Segurança de Visão por URL
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
                 
-                // Tranca a tela: esconde a navegação superior completamente para o cliente
+                // Tranca a tela: esconde a barra superior de navegação para o cliente final
                 document.getElementById('main-navigation').classList.add('hidden');
                 
                 document.getElementById('client-blocked-state').classList.add('hidden');
@@ -320,13 +305,13 @@
                 window.switchView('client-view');
                 renderClientMenu();
             } else {
-                // Caso não tenha mesa na URL, exibe a barra de navegação para a equipe do restaurante
+                // Caso não tenha mesa na URL, exibe a barra para os funcionários
                 document.getElementById('main-navigation').classList.remove('hidden');
                 document.getElementById('main-navigation').classList.add('flex');
                 
                 document.getElementById('client-blocked-state').classList.remove('hidden');
                 document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('admin-view'); // Inicializa na tela Admin
+                window.switchView('admin-view'); // Inicia na tela de Administração
             }
         }
 
@@ -335,6 +320,12 @@
             const container = document.getElementById('client-menu-list');
             if(!container) return;
             container.innerHTML = '';
+            
+            if(menuItems.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum item cadastrado no cardápio do restaurante.</div>`;
+                return;
+            }
+
             menuItems.forEach(item => {
                 const qty = cart[item.id] || 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
@@ -392,7 +383,6 @@
 
             if (orderTotal === 0) { alert('Seu carrinho está vazio!'); return; }
 
-            // Mensagem de confirmação pré-envio
             const userConfirmed = confirm(`--- CONFIRME SEU PEDIDO ---\n\n${orderItemsText}\nTotal Geral: R$ ${orderTotal.toFixed(2)}\n\nDeseja enviar este pedido para a cozinha?`);
             if (!userConfirmed) return; 
 
@@ -414,7 +404,6 @@
                 currentTableHistory = currentTableHistory.concat(currentItems);
                 await setDoc(mesaDocRef, { orders: currentTableHistory });
 
-                // Caixa de mensagem confirmando o envio
                 alert(`🎉 Pedido enviado com sucesso!\nSua solicitação já está na esteira da nossa cozinha. Você será redirecionado para o WhatsApp.`);
 
                 let message = `*Novo Pedido - FastOrder*\n=========================\n📍 *Mesa:* ${currentTable}\n=========================\n\n*Itens Solicitados:*\n${orderItemsText}\n*Total Geral:* R$ ${orderTotal.toFixed(2)}`;
@@ -424,7 +413,7 @@
                 renderClientMenu();
             } catch (error) {
                 console.error("Erro ao processar pedido: ", error);
-                alert("Houve um problema de conexão ao enviar seu pedido. Tente novamente.");
+                alert("Erro ao salvar no Firebase. Verifique se você publicou as Regras de Segurança no painel do Firebase Console.");
             }
         }
 
@@ -489,28 +478,33 @@
                 }
             });
 
-            if (orderTotal === 0) { alert("Adicione pelo menos um item."); return; }
+            if (orderTotal === 0) { alert("Adicione pelo menos um item ao atendimento."); return; }
 
-            await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
+            try {
+                await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
 
-            const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
-            const mesaSnapshot = await getDoc(mesaDocRef);
-            let tableHistory = [];
-            if(mesaSnapshot.exists()) {
-                tableHistory = mesaSnapshot.data().orders || [];
+                const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
+                const mesaSnapshot = await getDoc(mesaDocRef);
+                let tableHistory = [];
+                if(mesaSnapshot.exists()) {
+                    tableHistory = mesaSnapshot.data().orders || [];
+                }
+                tableHistory = tableHistory.concat(currentItemsToSave);
+                await setDoc(mesaDocRef, { orders: tableHistory });
+
+                await setDoc(doc(db, "reports", "sales"), {
+                    totalRevenue: salesReport.totalRevenue + orderTotal,
+                    totalOrders: salesReport.totalOrders + 1,
+                    totalItemsSold: salesReport.totalItemsSold + itemsCount
+                });
+
+                alert(`Pedido da Mesa ${waiterActiveTable} enviado diretamente à cozinha!`);
+                waiterCart = {};
+                renderWaiterMenu();
+            } catch(e) {
+                console.error(e);
+                alert("Erro ao lançar pedido. Garanta que as Regras de segurança do seu Cloud Firestore estejam liberadas.");
             }
-            tableHistory = tableHistory.concat(currentItemsToSave);
-            await setDoc(mesaDocRef, { orders: tableHistory });
-
-            await setDoc(doc(db, "reports", "sales"), {
-                totalRevenue: salesReport.totalRevenue + orderTotal,
-                totalOrders: salesReport.totalOrders + 1,
-                totalItemsSold: salesReport.totalItemsSold + itemsCount
-            });
-
-            alert(`Pedido da Mesa ${waiterActiveTable} enviado diretamente à cozinha!`);
-            waiterCart = {};
-            renderWaiterMenu();
         }
 
         // --- MONITOR DA COZINHA ---
@@ -604,6 +598,7 @@
             const tableBody = document.getElementById('admin-menu-table');
             if(!tableBody) return;
             tableBody.innerHTML = '';
+            
             menuItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
                 tableBody.innerHTML += `
@@ -629,19 +624,19 @@
                 await addDoc(collection(db, "menu"), { name, price, desc, img });
                 document.getElementById('add-item-form').reset();
             } catch(e) {
-                console.error("Erro ao adicionar item:", e);
-                alert("Erro ao salvar no banco. Verifique suas regras do Firebase.");
+                console.error("Erro completo do Firebase ao adicionar:", e);
+                alert("Erro de Gravação: Verifique suas Regras de Segurança no painel do Firebase Console.");
             }
         }
 
         window.deleteItem = async function(id) {
             if(confirm("Deseja remover este item do cardápio global definitivamente?")) {
                 try {
-                    // Executa a deleção direta usando a referência correta do Document ID no Firestore
+                    // Remove do banco de dados referenciando diretamente o ID exclusivo gerado pelo Firebase
                     await deleteDoc(doc(db, "menu", id));
                 } catch(e) {
-                    console.error("Erro ao deletar do Firebase:", e);
-                    alert("Não foi possível excluir o item. Verifique a conexão.");
+                    console.error("Erro completo do Firebase ao deletar:", e);
+                    alert("Erro de Deleção: O banco de dados recusou a ação. Verifique se as Regras estão configuradas.");
                 }
             }
         }
@@ -709,49 +704,54 @@
             const printSection = document.getElementById('invoice-print-section');
             if(!tableNum) { alert("Insira o número da mesa."); return; }
 
-            const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
-            const snapshot = await getDoc(mesaDocRef);
+            try {
+                const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
+                const snapshot = await getDoc(mesaDocRef);
 
-            if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
-                previewContainer.innerHTML = `<span class="text-red-500">Nenhum pedido ativo registrado para a Mesa ${tableNum}.</span>`;
-                document.getElementById('invoice-actions').classList.add('hidden');
-                return;
+                if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
+                    previewContainer.innerHTML = `<span class="text-red-500">Nenhum pedido ativo registrado para a Mesa ${tableNum}.</span>`;
+                    document.getElementById('invoice-actions').classList.add('hidden');
+                    return;
+                }
+
+                const tableOrders = snapshot.data().orders;
+
+                let invoiceHTML = `
+                    <div style="text-align: center; font-family: monospace;">
+                        <h2>*** NOTA FISCAL DE CONSUMO ***</h2>
+                        <h3>RESTAURANTE E LANCHES FASTORDER</h3>
+                        <p>----------------------------------------</p>
+                        <p><strong>MESA: ${tableNum}</strong> | Data: ${new Date().toLocaleDateString('pt-BR')}</p>
+                        <p>----------------------------------------</p>
+                        <table style="width: 100%; text-align: left; font-size: 14px;">
+                            <thead>
+                                <tr><th>Item</th><th style="text-align:center;">Qtd</th><th style="text-align:right;">Total</th></tr>
+                            </thead>
+                            <tbody>`;
+
+                let totalGeral = 0;
+                tableOrders.forEach(item => {
+                    const totalItem = item.qty * item.price;
+                    totalGeral += totalItem;
+                    invoiceHTML += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">R$ ${totalItem.toFixed(2)}</td></tr>`;
+                });
+
+                invoiceHTML += `
+                            </tbody>
+                        </table>
+                        <p>----------------------------------------</p>
+                        <h3 style="text-align: right;">TOTAL DA CONTA: R$ ${totalGeral.toFixed(2)}</h3>
+                        <p>----------------------------------------</p>
+                        <p>Obrigado e volte sempre!</p>
+                    </div>`;
+
+                previewContainer.innerHTML = invoiceHTML;
+                printSection.innerHTML = invoiceHTML;
+                document.getElementById('invoice-actions').classList.remove('hidden');
+            } catch(e) {
+                console.error(e);
+                alert("Erro ao puxar conta da mesa do Firebase.");
             }
-
-            const tableOrders = snapshot.data().orders;
-
-            let invoiceHTML = `
-                <div style="text-align: center; font-family: monospace;">
-                    <h2>*** NOTA FISCAL DE CONSUMO ***</h2>
-                    <h3>RESTAURANTE E LANCHES FASTORDER</h3>
-                    <p>----------------------------------------</p>
-                    <p><strong>MESA: ${tableNum}</strong> | Data: ${new Date().toLocaleDateString('pt-BR')}</p>
-                    <p>----------------------------------------</p>
-                    <table style="width: 100%; text-align: left; font-size: 14px;">
-                        <thead>
-                            <tr><th>Item</th><th style="text-align:center;">Qtd</th><th style="text-align:right;">Total</th></tr>
-                        </thead>
-                        <tbody>`;
-
-            let totalGeral = 0;
-            tableOrders.forEach(item => {
-                const totalItem = item.qty * item.price;
-                totalGeral += totalItem;
-                invoiceHTML += `<tr><td>${item.name}</td><td style="text-align:center;">${item.qty}</td><td style="text-align:right;">R$ ${totalItem.toFixed(2)}</td></tr>`;
-            });
-
-            invoiceHTML += `
-                        </tbody>
-                    </table>
-                    <p>----------------------------------------</p>
-                    <h3 style="text-align: right;">TOTAL DA CONTA: R$ ${totalGeral.toFixed(2)}</h3>
-                    <p>----------------------------------------</p>
-                    <p>Obrigado e volte sempre!</p>
-                </div>`;
-
-            previewContainer.innerHTML = invoiceHTML;
-            printSection.innerHTML = invoiceHTML;
-            document.getElementById('invoice-actions').classList.remove('hidden');
         }
 
         window.confirmPayment = async function() {
@@ -759,10 +759,15 @@
             if(!tableNum) return;
 
             if(confirm(`Confirmar que a Mesa ${tableNum} efetuou o pagamento e liberar o espaço?`)) {
-                await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
-                alert(`Mesa ${tableNum} liberada e arquivada como Paga com sucesso.`);
-                document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
-                document.getElementById('invoice-actions').classList.add('hidden');
+                try {
+                    await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
+                    alert(`Mesa ${tableNum} liberada com sucesso.`);
+                    document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
+                    document.getElementById('invoice-actions').classList.add('hidden');
+                } catch(e) {
+                    console.error(e);
+                    alert("Erro ao dar baixa no pagamento no Firebase.");
+                }
             }
         }
 
@@ -771,7 +776,7 @@
             document.getElementById(viewId).classList.remove('hidden');
         }
 
-        // Executa a inicialização do estado da URL
+        // Executa a validação da URL inicial do cliente
         checkTableFromURL();
     </script>
 </body>
