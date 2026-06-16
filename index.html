@@ -705,17 +705,17 @@
             document.body.removeChild(link);
         }
 
-        // ATUALIZAÇÃO: Agora localiza e remove simultaneamente todos os pedidos correspondentes à mesa no monitor da cozinha
+        // CONFIRMAÇÃO DE PAGAMENTO: Limpa histórico do Firebase, ordens da Cozinha e memória local
         window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
             
             if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso esvaziará a mesa e os painéis da cozinha.`)) {
                 try {
-                    // 1. Remove os registros do histórico de consumo da mesa no banco de dados
+                    // 1. Remove os registros do histórico de consumo da mesa no banco de dados (Firebase)
                     await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
                     
-                    // 2. Localiza e limpa as ordens correspondentes a esta mesa no monitor da cozinha
+                    // 2. Localiza e limpa simultaneamente as ordens correspondentes a esta mesa na cozinha
                     const labelBusca = `Mesa ${tableNum}`;
                     const itemsParaRemover = kitchenOrders.filter(order => order.origin === labelBusca);
                     
@@ -760,6 +760,7 @@
             document.getElementById('download-btn-container').classList.remove('hidden');
         }
 
+        // CORREÇÃO SMARTPHONE: Converte o código Base64 para um Blob binário real evitando downloads de arquivos HTML inesperados
         window.downloadQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value || '00';
             const qrContainer = document.getElementById('qrcode-container');
@@ -770,12 +771,26 @@
                 return;
             }
 
-            const link = document.createElement('a');
-            link.href = qrImg.src;
-            link.download = `qrcode_mesa_${tableNum}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const base64Data = qrImg.src;
+
+            // Faz o processamento binário seguro para navegadores de celulares
+            fetch(base64Data)
+                .then(res => res.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `qrcode_mesa_${tableNum}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    console.error("Erro ao processar download do QR Code:", err);
+                    alert("Não foi possível processar o download automático. Caso esteja em smartphone, você pode manter o dedo pressionado sobre a imagem do QR Code e escolher 'Salvar imagem'.");
+                });
         }
 
         window.switchView = function(viewId) {
