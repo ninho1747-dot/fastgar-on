@@ -291,7 +291,6 @@
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
-        // Importando recursos de autenticação do Firebase
         import { 
             getAuth, signInWithEmailAndPassword, signOut 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -319,7 +318,7 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
-        // OUVINTE EM TEMPO REAL: Qualquer alteração de item atualiza as 3 telas instantaneamente!
+        // OUVINTE EM TEMPO REAL: Atualiza instantaneamente as visualizações!
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
@@ -346,7 +345,6 @@
             renderKitchenOrders();
         });
 
-        // VERIFICA SE É CLIENTE OU SE DEVE PEDIR LOGIN
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
@@ -367,7 +365,6 @@
             }
         }
 
-        // CONTROLE DE LOGIN CONECTADO DIRETAMENTE AO FIREBASE AUTH
         window.handleLogin = async function(event) {
             event.preventDefault();
             const email = document.getElementById('login-email').value.trim().toLowerCase();
@@ -376,7 +373,6 @@
 
             try {
                 const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-                const user = userCredential.user;
                 
                 errorMsg.classList.add('hidden');
                 document.getElementById('login-form').reset();
@@ -389,7 +385,6 @@
                 let userBadge = "Funcionário";
                 let allowedViews = [];
 
-                // Verificação de permissões por palavra-chave no e-mail
                 if (email.includes("admin") || email.includes("gerente") || email.includes("caixa") || email === "seu-email-atual@gmail.com") {
                     userBadge = "Administrador";
                     allowedViews = ["admin-view", "client-view", "waiter-view", "kitchen-view"];
@@ -406,7 +401,6 @@
 
                 document.getElementById('nav-user-badge').innerText = userBadge;
 
-                // Controla visibilidade dos botões da barra superior
                 document.getElementById('nav-btn-client-preview').classList.add('hidden');
                 document.getElementById('nav-btn-waiter').classList.add('hidden');
                 document.getElementById('nav-btn-kitchen').classList.add('hidden');
@@ -417,7 +411,6 @@
                 if (allowedViews.includes('kitchen-view')) document.getElementById('nav-btn-kitchen').classList.remove('hidden');
                 if (allowedViews.includes('admin-view')) document.getElementById('nav-btn-admin').classList.remove('hidden');
 
-                // Entra direto no Painel do Administrador se tiver permissão
                 window.switchView(allowedViews[0]);
 
             } catch (error) {
@@ -436,19 +429,19 @@
             }
         };
 
-        // --- SISTEMA CLIENTE (CORRIGIDO PARA SEMPRE EXIBIR OS ITENS) ---
+        // --- SISTEMA CLIENTE (CORRIGIDO E PREVENIDO CONTRA TELA BRANCA) ---
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
             if(!container) return;
             container.innerHTML = '';
             
-            if(menuItems.length === 0) {
+            if(!menuItems || menuItems.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum item cadastrado no cardápio.</div>`;
                 return;
             }
             
             menuItems.forEach(item => {
-                const qty = cart[item.id] || 0;
+                const qty = cart && cart[item.id] ? cart[item.id] : 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
                 container.innerHTML += `
                     <div class="bg-white rounded-lg shadow p-4 flex gap-4 border border-gray-100 items-center">
@@ -471,6 +464,7 @@
         }
 
         window.updateQuantity = function(id, change) {
+            if (!cart) cart = {};
             if (!cart[id]) cart[id] = 0;
             cart[id] += change;
             if (cart[id] <= 0) delete cart[id];
@@ -479,9 +473,11 @@
 
         function updateTotal() {
             let total = 0;
-            menuItems.forEach(item => { 
-                if (cart[item.id]) total += item.price * cart[item.id]; 
-            });
+            if (menuItems && cart) {
+                menuItems.forEach(item => { 
+                    if (cart[item.id]) total += item.price * cart[item.id]; 
+                });
+            }
             const priceElem = document.getElementById('client-total-price');
             if(priceElem) priceElem.innerText = total.toFixed(2);
         }
@@ -621,7 +617,6 @@
             }
         }
 
-        // --- MONITOR DA COZINHA ---
         async function addOrderToKitchen(origin, items) {
             const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             await addDoc(collection(db, "kitchen"), {
