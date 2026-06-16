@@ -9,11 +9,9 @@
     <style>
         /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
         @media print {
-            /* Esconde absolutamente tudo na página */
             body * { 
                 display: none !important; 
             }
-            /* Exibe única e exclusivamente a seção do cupom */
             #invoice-print-section, #invoice-print-section * { 
                 display: block !important; 
             }
@@ -39,20 +37,49 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
+    <section id="login-view" class="view-section min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-gray-200">
+            <div class="text-center mb-6">
+                <span class="text-5xl">🔐</span>
+                <h2 class="text-2xl font-bold text-gray-800 mt-2">Acesso Restrito</h2>
+                <p class="text-gray-500 text-sm">Insira suas credenciais do Firebase para acessar</p>
+            </div>
+            <form id="login-form" onsubmit="window.handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600">E-mail Cadastrado</label>
+                    <input type="email" id="login-email" required placeholder="funcionario@restaurante.com" class="w-full mt-1 p-2.5 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 text-gray-800">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600">Senha de Acesso</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full mt-1 p-2.5 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-bold">
+                </div>
+                <div id="login-error-msg" class="text-red-600 font-semibold text-sm hidden text-center bg-red-50 p-2 rounded">
+                    </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center gap-2">
+                    <span>Entrar no Sistema</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
     <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md hidden flex-wrap justify-between items-center gap-3">
-        <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
+        <div class="flex items-center gap-3">
+            <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
+            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel</span>
+        </div>
         <div class="flex flex-wrap gap-2">
-            <button onclick="window.switchView('client-view')" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-medium transition">📱 Cliente</button>
-            <button onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
-            <button onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
-            <button onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="hidden bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
+            <button id="nav-btn-client-preview" onclick="window.switchView('client-view')" class="hidden bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm font-medium transition">👁️ Ver Cardápio</button>
+            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="hidden bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
+            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="hidden bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
+            <button onclick="window.handleLogout()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition">🚪 Sair</button>
         </div>
     </nav>
 
     <div class="max-w-6xl mx-auto p-4">
         
-        <section id="client-view" class="view-section">
-            <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200">
+        <section id="client-view" class="view-section hidden">
+            <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200 hidden">
                 <div class="text-6xl mb-4">📸</div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Por favor, escaneie o QR Code</h3>
                 <p class="text-gray-500 text-sm leading-relaxed">
@@ -60,12 +87,12 @@
                 </p>
             </div>
 
-            <div id="client-allowed-state" class="hidden">
+            <div id="client-allowed-state">
                 <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 mb-2">Nosso Cardápio</h2>
                     <div class="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200 inline-block">
-                        <span class="font-semibold text-yellow-800">Mesa Identificada:</span>
-                        <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Mesa --</span>
+                        <span class="font-semibold text-yellow-800">Status da Visualização:</span>
+                        <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Modo de Visualização</span>
                     </div>
                 </div>
 
@@ -159,27 +186,27 @@
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Nome do Item</label>
-                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none">
+                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none">
+                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Descrição</label>
-                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none"></textarea>
+                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800"></textarea>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-600">URL da Imagem</label>
-                            <input type="url" id="item-img" placeholder="https://linkdaimagem.com/foto.jpg" class="w-full mt-1 p-2 border rounded outline-none">
+                            <input type="url" id="item-img" placeholder="https://linkdaimagem.com/foto.jpg" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition">Adicionar ao Cardápio</button>
+                        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition shadow">Adicionar ao Cardápio</button>
                     </form>
                     <hr class="my-6 border-gray-200">
                     <h3 class="text-lg font-bold text-gray-700 mb-4">Configurações Gerais</h3>
                     <div>
                         <label class="block text-sm font-medium text-gray-600">WhatsApp do Restaurante (com DDD)</label>
-                        <input type="text" id="restaurant-phone" value="5511999999999" class="w-full mt-1 p-2 border rounded outline-none">
+                        <input type="text" id="restaurant-phone" value="5511999999999" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
                     </div>
                 </div>
 
@@ -263,6 +290,11 @@
         import { 
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        // Importando recursos de autenticação do Firebase
+        import { 
+            getAuth, signInWithEmailAndPassword, signOut 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
@@ -275,6 +307,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app); 
 
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
@@ -286,16 +319,17 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
+        // OUVINTE EM TEMPO REAL: Qualquer alteração de item atualiza as 3 telas instantaneamente!
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
                 menuItems.push({ id: doc.id, ...doc.data() });
             });
-            if (currentTable) renderClientMenu();
+            renderClientMenu();
             renderWaiterMenu();
             renderAdminMenu();
         }, (error) => {
-            console.error(error);
+            console.error("Erro ao carregar cardápio:", error);
         });
 
         onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
@@ -312,34 +346,107 @@
             renderKitchenOrders();
         });
 
+        // VERIFICA SE É CLIENTE OU SE DEVE PEDIR LOGIN
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
+                
+                document.getElementById('login-view').classList.add('hidden');
                 document.getElementById('main-navigation').classList.add('hidden');
                 document.getElementById('client-blocked-state').classList.add('hidden');
                 document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+                
                 window.switchView('client-view');
-                renderClientMenu();
             } else {
-                document.getElementById('main-navigation').classList.remove('hidden');
-                document.getElementById('main-navigation').classList.add('flex');
+                document.getElementById('main-navigation').classList.add('hidden');
                 document.getElementById('client-blocked-state').classList.remove('hidden');
                 document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('admin-view');
+                window.switchView('login-view');
             }
         }
 
-        // --- SISTEMA CLIENTE ---
+        // CONTROLE DE LOGIN CONECTADO DIRETAMENTE AO FIREBASE AUTH
+        window.handleLogin = async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const pass = document.getElementById('login-password').value;
+            const errorMsg = document.getElementById('login-error-msg');
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+                
+                errorMsg.classList.add('hidden');
+                document.getElementById('login-form').reset();
+                
+                document.getElementById('login-view').classList.add('hidden');
+                const nav = document.getElementById('main-navigation');
+                nav.classList.remove('hidden');
+                nav.classList.add('flex');
+
+                let userBadge = "Funcionário";
+                let allowedViews = [];
+
+                // Verificação de permissões por palavra-chave no e-mail
+                if (email.includes("admin") || email.includes("gerente") || email.includes("caixa") || email === "seu-email-atual@gmail.com") {
+                    userBadge = "Administrador";
+                    allowedViews = ["admin-view", "client-view", "waiter-view", "kitchen-view"];
+                } else if (email.includes("cozinha") || email.includes("chef")) {
+                    userBadge = "Cozinha";
+                    allowedViews = ["kitchen-view"];
+                } else if (email.includes("garcom") || email.includes("atendimento")) {
+                    userBadge = "Garçom";
+                    allowedViews = ["waiter-view", "client-view"];
+                } else {
+                    userBadge = "Atendimento";
+                    allowedViews = ["waiter-view", "kitchen-view"];
+                }
+
+                document.getElementById('nav-user-badge').innerText = userBadge;
+
+                // Controla visibilidade dos botões da barra superior
+                document.getElementById('nav-btn-client-preview').classList.add('hidden');
+                document.getElementById('nav-btn-waiter').classList.add('hidden');
+                document.getElementById('nav-btn-kitchen').classList.add('hidden');
+                document.getElementById('nav-btn-admin').classList.add('hidden');
+
+                if (allowedViews.includes('client-view')) document.getElementById('nav-btn-client-preview').classList.remove('hidden');
+                if (allowedViews.includes('waiter-view')) document.getElementById('nav-btn-waiter').classList.remove('hidden');
+                if (allowedViews.includes('kitchen-view')) document.getElementById('nav-btn-kitchen').classList.remove('hidden');
+                if (allowedViews.includes('admin-view')) document.getElementById('nav-btn-admin').classList.remove('hidden');
+
+                // Entra direto no Painel do Administrador se tiver permissão
+                window.switchView(allowedViews[0]);
+
+            } catch (error) {
+                console.error("Erro na autenticação:", error);
+                errorMsg.innerText = "❌ Usuário ou senha incorretos cadastrados no Firebase!";
+                errorMsg.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = async function() {
+            try {
+                await signOut(auth);
+                window.location.search = ""; 
+            } catch(e) {
+                window.location.reload();
+            }
+        };
+
+        // --- SISTEMA CLIENTE (CORRIGIDO PARA SEMPRE EXIBIR OS ITENS) ---
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
             if(!container) return;
             container.innerHTML = '';
+            
             if(menuItems.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum item cadastrado no cardápio.</div>`;
                 return;
             }
+            
             menuItems.forEach(item => {
                 const qty = cart[item.id] || 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
@@ -372,11 +479,18 @@
 
         function updateTotal() {
             let total = 0;
-            menuItems.forEach(item => { if (cart[item.id]) total += item.price * cart[item.id]; });
-            document.getElementById('client-total-price').innerText = total.toFixed(2);
+            menuItems.forEach(item => { 
+                if (cart[item.id]) total += item.price * cart[item.id]; 
+            });
+            const priceElem = document.getElementById('client-total-price');
+            if(priceElem) priceElem.innerText = total.toFixed(2);
         }
 
         window.sendOrderDirect = async function() {
+            if (!currentTable) {
+                alert('⚠️ Você está em modo de visualização interna da equipe. Para simular e enviar pedidos reais à cozinha, acesse o painel de "Garçom" ou escaneie o QR Code de uma mesa.');
+                return;
+            }
             let orderItemsText = '';
             let orderTotal = 0;
             let itemsCount = 0;
@@ -597,7 +711,6 @@
             if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
         }
 
-        // MONTAGEM DO PRODUTO FINAL DO TEXTO DO CUPOM
         window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
@@ -685,17 +798,14 @@
             document.body.removeChild(link);
         }
 
-        // CONFIRMAÇÃO DE PAGAMENTO: Limpa histórico do Firebase, ordens da Cozinha e memória local
         window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
             
             if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso esvaziará a mesa e os painéis da cozinha.`)) {
                 try {
-                    // 1. Remove os registros do histórico de consumo da mesa no banco de dados (Firebase)
                     await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
                     
-                    // 2. Localiza e limpa simultaneamente as ordens correspondentes a esta mesa na cozinha
                     const labelBusca = `Mesa ${tableNum}`;
                     const itemsParaRemover = kitchenOrders.filter(order => order.origin === labelBusca);
                     
@@ -703,11 +813,9 @@
                         await deleteDoc(doc(db, "kitchen", order.id));
                     }
                     
-                    // 3. Limpa os carrinhos locais da memória imediatamente
                     cart = {};
                     waiterCart = {};
                     
-                    // 4. Reseta as interfaces visuais vinculadas
                     document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
                     activeInvoiceText = "";
                     document.getElementById('invoice-print-section').innerHTML = "";
@@ -718,8 +826,7 @@
                     const totalGarcomElem = document.getElementById('waiter-total-price');
                     if(totalGarcomElem) totalGarcomElem.innerText = "0.00";
 
-                    // 5. Força a atualização gráfica dos menus locais
-                    if (currentTable) renderClientMenu();
+                    renderClientMenu();
                     renderWaiterMenu();
 
                     alert(`Mesa ${tableNum} foi limpa no caixa e na cozinha. Está liberada para os próximos clientes!`);
@@ -740,12 +847,10 @@
             document.getElementById('download-btn-container').classList.remove('hidden');
         }
 
-        // CORREÇÃO DEFINITIVA SMARTPHONE: Captura o canvas puro ou imagem e converte com segurança em Blob PNG
         window.downloadQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value || '00';
             const qrContainer = document.getElementById('qrcode-container');
             
-            // Tenta obter o Canvas (desenho puro) ou a Imagem gerada pela biblioteca
             const canvas = qrContainer.querySelector('canvas');
             const qrImg = qrContainer.querySelector('img');
 
@@ -769,12 +874,10 @@
                     });
             };
 
-            // Se o canvas estiver disponível, extrai os dados diretamente dele (método mais seguro para mobile)
             if (canvas) {
                 const base64Data = canvas.toDataURL("image/png");
                 processDownload(base64Data);
             } else if (qrImg && qrImg.src) {
-                // Caso contrário, tenta ler a tag de imagem gerada
                 processDownload(qrImg.src);
             } else {
                 alert("Gere um QR Code primeiro antes de tentar baixá-lo!");
@@ -783,7 +886,19 @@
 
         window.switchView = function(viewId) {
             document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
-            document.getElementById(viewId).classList.remove('hidden');
+            const elem = document.getElementById(viewId);
+            if(elem) elem.classList.remove('hidden');
+
+            const labelMesa = document.getElementById('current-table-label');
+            if (viewId === 'client-view') {
+                if (currentTable) {
+                    labelMesa.innerText = `Mesa ${currentTable}`;
+                    document.getElementById('client-blocked-state').classList.add('hidden');
+                } else {
+                    labelMesa.innerText = `👁️ Modo Visualização (Equipe)`;
+                    document.getElementById('client-blocked-state').classList.add('hidden');
+                }
+            }
         }
 
         checkTableFromURL();
