@@ -685,17 +685,41 @@
             document.body.removeChild(link);
         }
 
+        // RECONSTRUÇÃO: Além de apagar no banco, agora limpa toda a memória local da mesa
         window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
-            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso apagará os dados desta mesa.`)) {
+            
+            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso esvaziará a mesa para os próximos clientes.`)) {
                 try {
+                    // 1. Remove os registros do banco de dados (Firebase)
                     await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
-                    alert(`Mesa ${tableNum} dada como paga e liberada no sistema!`);
+                    
+                    // 2. Limpa os carrinhos locais da memória imediatamente
+                    cart = {};
+                    waiterCart = {};
+                    
+                    // 3. Reseta as interfaces visuais vinculadas
                     document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
                     activeInvoiceText = "";
                     document.getElementById('invoice-print-section').innerHTML = "";
-                } catch(e) { console.error(e); }
+                    
+                    // Se for a própria mesa do cliente visualizando, zera os totais na tela dele
+                    const totalClienteElem = document.getElementById('client-total-price');
+                    if(totalClienteElem) totalClienteElem.innerText = "0.00";
+                    
+                    const totalGarcomElem = document.getElementById('waiter-total-price');
+                    if(totalGarcomElem) totalGarcomElem.innerText = "0.00";
+
+                    // 4. Força a atualização gráfica dos menus locais
+                    if (currentTable) renderClientMenu();
+                    renderWaiterMenu();
+
+                    alert(`Mesa ${tableNum} foi limpa e está liberada para novos clientes!`);
+                } catch(e) { 
+                    console.error("Erro ao liberar mesa:", e); 
+                    alert("Ocorreu um erro ao tentar limpar a mesa.");
+                }
             }
         }
 
@@ -709,7 +733,6 @@
             document.getElementById('download-btn-container').classList.remove('hidden');
         }
 
-        // NOVA FUNÇÃO: Faz a captura da tag <img> gerada pela biblioteca do QRCode e força o download
         window.downloadQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value || '00';
             const qrContainer = document.getElementById('qrcode-container');
