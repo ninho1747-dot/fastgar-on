@@ -359,6 +359,7 @@
                 window.switchView('client-view');
             } else {
                 document.getElementById('main-navigation').classList.add('hidden');
+                document.getElementById('client-blocked-state').remove;
                 document.getElementById('client-blocked-state').classList.remove('hidden');
                 document.getElementById('client-allowed-state').classList.add('hidden');
                 window.switchView('login-view');
@@ -429,7 +430,6 @@
             }
         };
 
-        // --- SISTEMA CLIENTE (CORRIGIDO E PREVENIDO CONTRA TELA BRANCA) ---
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
             if(!container) return;
@@ -441,8 +441,10 @@
             }
             
             menuItems.forEach(item => {
-                const qty = cart && cart[item.id] ? cart[item.id] : 0;
+                const qty = (cart && cart[item.id]) ? cart[item.id] : 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
+                const parsedPrice = Number(item.price) || 0;
+                
                 container.innerHTML += `
                     <div class="bg-white rounded-lg shadow p-4 flex gap-4 border border-gray-100 items-center">
                         <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md flex-shrink-0 bg-gray-200">
@@ -450,7 +452,7 @@
                             <h4 class="text-lg font-bold text-gray-800 truncate">${item.name}</h4>
                             <p class="text-sm text-gray-500 line-clamp-2 mt-1">${item.desc || 'Sem descrição.'}</p>
                             <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
-                                <span class="text-green-600 font-bold text-lg">R$ ${item.price.toFixed(2)}</span>
+                                <span class="text-green-600 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
                                 <div class="flex items-center border rounded-lg bg-gray-50">
                                     <button onclick="window.updateQuantity('${item.id}', -1)" class="px-3 py-1 font-bold text-gray-600 hover:bg-gray-200 rounded-l-lg">-</button>
                                     <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
@@ -475,7 +477,10 @@
             let total = 0;
             if (menuItems && cart) {
                 menuItems.forEach(item => { 
-                    if (cart[item.id]) total += item.price * cart[item.id]; 
+                    if (cart[item.id]) {
+                        const parsedPrice = Number(item.price) || 0;
+                        total += parsedPrice * cart[item.id]; 
+                    }
                 });
             }
             const priceElem = document.getElementById('client-total-price');
@@ -493,12 +498,13 @@
             let currentItems = [];
 
             menuItems.forEach(item => {
-                if (cart[item.id]) {
-                    const subtotal = item.price * cart[item.id];
+                if (cart && cart[item.id]) {
+                    const parsedPrice = Number(item.price) || 0;
+                    const subtotal = parsedPrice * cart[item.id];
                     orderItemsText += `• ${cart[item.id]}x ${item.name} (R$ ${subtotal.toFixed(2)})\n`;
                     orderTotal += subtotal;
                     itemsCount += cart[item.id];
-                    currentItems.push({ name: item.name, qty: cart[item.id], price: item.price });
+                    currentItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
                 }
             });
 
@@ -544,13 +550,15 @@
             menuItems.forEach(item => {
                 const qty = waiterCart[item.id] || 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
+                const parsedPrice = Number(item.price) || 0;
+
                 container.innerHTML += `
                     <div class="bg-white rounded-lg shadow p-4 flex gap-4 border border-gray-100 items-center">
                         <img src="${imgUrl}" class="w-20 h-20 object-cover rounded-md flex-shrink-0 bg-gray-200">
                         <div class="flex-1 min-w-0">
                             <h4 class="text-base font-bold text-gray-800 truncate">${item.name}</h4>
                             <div class="flex justify-between items-center mt-2 flex-wrap gap-2">
-                                <span class="text-orange-600 font-bold">R$ ${item.price.toFixed(2)}</span>
+                                <span class="text-orange-600 font-bold">R$ ${parsedPrice.toFixed(2)}</span>
                                 <div class="flex items-center border border-orange-200 rounded-lg bg-orange-50">
                                     <button onclick="window.updateWaiterQuantity('${item.id}', -1)" class="px-3 py-0.5 font-bold text-orange-700 hover:bg-orange-200 rounded-l-lg">-</button>
                                     <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
@@ -572,7 +580,12 @@
 
         function updateWaiterTotal() {
             let total = 0;
-            menuItems.forEach(item => { if (waiterCart[item.id]) total += item.price * waiterCart[item.id]; });
+            menuItems.forEach(item => { 
+                if (waiterCart[item.id]) {
+                    const parsedPrice = Number(item.price) || 0;
+                    total += parsedPrice * waiterCart[item.id]; 
+                }
+            });
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
         }
 
@@ -585,9 +598,10 @@
 
             menuItems.forEach(item => {
                 if (waiterCart[item.id]) {
-                    orderTotal += item.price * waiterCart[item.id];
+                    const parsedPrice = Number(item.price) || 0;
+                    orderTotal += parsedPrice * waiterCart[item.id];
                     itemsCount += waiterCart[item.id];
-                    currentItemsToSave.push({ name: item.name, qty: waiterCart[item.id], price: item.price });
+                    currentItemsToSave.push({ name: item.name, qty: waiterCart[item.id], price: parsedPrice });
                     kitchenItems.push({ name: item.name, qty: waiterCart[item.id] });
                 }
             });
@@ -663,11 +677,12 @@
             if (confirm("Remover este pedido do monitor?")) await deleteDoc(doc(db, "kitchen", orderId));
         }
 
-        // --- PAINEL ADMINISTRATIVO ---
+        // --- PAINEL ADMINISTRATIVO CORRIGIDO ---
         function updateSalesReportView() {
-            document.getElementById('sales-total-money').innerText = salesReport.totalRevenue.toFixed(2);
-            document.getElementById('sales-total-orders').innerText = salesReport.totalOrders;
-            document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold;
+            const parsedRevenue = Number(salesReport.totalRevenue) || 0;
+            document.getElementById('sales-total-money').innerText = parsedRevenue.toFixed(2);
+            document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
+            document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
         }
 
         window.clearSalesReport = async function() {
@@ -678,32 +693,53 @@
             const tableBody = document.getElementById('admin-menu-table');
             if(!tableBody) return;
             tableBody.innerHTML = '';
+            
+            if(!menuItems || menuItems.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400 text-sm">Nenhum item adicionado ainda.</td></tr>`;
+                return;
+            }
+
             menuItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
+                const parsedPrice = Number(item.price) || 0;
+
                 tableBody.innerHTML += `
                     <tr class="border-b text-gray-700">
                         <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded"></td>
                         <td class="p-3 font-semibold">${item.name}</td>
-                        <td class="p-3 text-green-600 font-bold">R$ ${item.price.toFixed(2)}</td>
-                        <td class="p-3 text-center"><button onclick="window.deleteItem('${item.id}')" class="text-red-600 font-semibold bg-red-50 px-2 py-1 rounded">Remover</button></td>
+                        <td class="p-3 text-green-600 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
+                        <td class="p-3 text-center"><button onclick="window.deleteItem('${item.id}')" class="text-red-600 font-semibold bg-red-50 hover:bg-red-100 px-2 py-1 rounded cursor-pointer transition">Remover</button></td>
                     </tr>`;
             });
         }
 
+        // CORREÇÃO: Função mapeada diretamente ao objeto global window para o form encontrar
         window.handleAddItem = async function(event) {
             event.preventDefault();
-            const name = document.getElementById('item-name').value;
-            const price = parseFloat(document.getElementById('item-price').value);
-            const desc = document.getElementById('item-desc').value;
-            const img = document.getElementById('item-img').value;
+            const name = document.getElementById('item-name').value.trim();
+            const rawPrice = document.getElementById('item-price').value;
+            const desc = document.getElementById('item-desc').value.trim();
+            const img = document.getElementById('item-img').value.trim();
+            
+            // Força a conversão correta para número puro aceitável pelo Firebase e JS
+            const price = Number(parseFloat(rawPrice).toFixed(2)) || 0;
+
             try {
                 await addDoc(collection(db, "menu"), { name, price, desc, img });
                 document.getElementById('add-item-form').reset();
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Erro ao adicionar:", e); }
         }
 
+        // CORREÇÃO: Função vinculada à window para resolver o erro de exclusão silencioso do Módulo
         window.deleteItem = async function(id) {
-            if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
+            if(confirm("Excluir item definitivamente do cardápio?")) {
+                try {
+                    await deleteDoc(doc(db, "menu", id));
+                } catch(e) {
+                    console.error("Erro ao deletar:", e);
+                    alert("Não foi possível excluir o item do banco de dados.");
+                }
+            }
         }
 
         window.prepareInvoice = async function() {
@@ -743,7 +779,8 @@
 
                 let totalGeral = 0;
                 tableOrders.forEach(item => {
-                    const totalItem = item.qty * item.price;
+                    const parsedPrice = Number(item.price) || 0;
+                    const totalItem = item.qty * parsedPrice;
                     totalGeral += totalItem;
                     
                     let nameCut = item.name.substring(0, 18).padEnd(18, ' ');
@@ -886,6 +923,7 @@
 
             const labelMesa = document.getElementById('current-table-label');
             if (viewId === 'client-view') {
+                renderClientMenu();
                 if (currentTable) {
                     labelMesa.innerText = `Mesa ${currentTable}`;
                     document.getElementById('client-blocked-state').classList.add('hidden');
