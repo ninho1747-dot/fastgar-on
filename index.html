@@ -37,42 +37,16 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
-    <section id="login-view" class="view-section min-h-screen flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-gray-200">
-            <div class="text-center mb-6">
-                <span class="text-5xl">🔐</span>
-                <h2 class="text-2xl font-bold text-gray-800 mt-2">Acesso Restrito</h2>
-                <p class="text-gray-500 text-sm">Insira suas credenciais do Firebase para acessar</p>
-            </div>
-            <form id="login-form" onsubmit="window.handleLogin(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-600">E-mail Cadastrado</label>
-                    <input type="email" id="login-email" required placeholder="funcionario@restaurante.com" class="w-full mt-1 p-2.5 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 text-gray-800">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-600">Senha de Acesso</label>
-                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full mt-1 p-2.5 border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-bold">
-                </div>
-                <div id="login-error-msg" class="text-red-600 font-semibold text-sm hidden text-center bg-red-50 p-2 rounded">
-                    </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md flex justify-center items-center gap-2">
-                    <span>Entrar no Sistema</span>
-                </button>
-            </form>
-        </div>
-    </section>
-
-    <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md hidden flex-wrap justify-between items-center gap-3">
+    <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
-            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel</span>
+            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="hidden bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
-            <button id="nav-btn-client-preview" onclick="window.switchView('client-view')" class="hidden bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm font-medium transition">👁️ Ver Cardápio</button>
-            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="hidden bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
-            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="hidden bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
-            <button onclick="window.handleLogout()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-medium transition">🚪 Sair</button>
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
+            <button id="nav-btn-client-preview" onclick="window.switchView('client-view')" class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm font-medium transition">👁️ Ver Cardápio</button>
+            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
+            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
         </div>
     </nav>
 
@@ -150,7 +124,7 @@
                 </div>
         </section>
 
-        <section id="admin-view" class="view-section hidden">
+        <section id="admin-view">
             <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 border-gray-300">Painel do Administrador</h2>
             
             <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-blue-500">
@@ -288,12 +262,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, updateDoc, deleteDoc 
+            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        
-        import { 
-            getAuth, signInWithEmailAndPassword, signOut 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
@@ -306,7 +276,6 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app); 
 
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
@@ -318,7 +287,7 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
-        // OUVINTE EM TEMPO REAL: Atualiza instantaneamente as visualizações!
+        // OUVINTES EM TEMPO REAL
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
             snapshot.forEach(doc => {
@@ -327,8 +296,6 @@
             renderClientMenu();
             renderWaiterMenu();
             renderAdminMenu();
-        }, (error) => {
-            console.error("Erro ao carregar cardápio:", error);
         });
 
         onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
@@ -349,86 +316,16 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
-                
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('main-navigation').classList.add('hidden');
                 document.getElementById('client-blocked-state').classList.add('hidden');
                 document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
-                
                 window.switchView('client-view');
             } else {
-                document.getElementById('main-navigation').classList.add('hidden');
-                document.getElementById('client-blocked-state').remove;
-                document.getElementById('client-blocked-state').classList.remove('hidden');
-                document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('login-view');
+                document.getElementById('client-blocked-state').classList.add('hidden');
+                document.getElementById('client-allowed-state').classList.remove('hidden');
+                window.switchView('admin-view'); // Abre no Admin por padrão se não houver mesa na URL
             }
         }
-
-        window.handleLogin = async function(event) {
-            event.preventDefault();
-            const email = document.getElementById('login-email').value.trim().toLowerCase();
-            const pass = document.getElementById('login-password').value;
-            const errorMsg = document.getElementById('login-error-msg');
-
-            try {
-                const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-                
-                errorMsg.classList.add('hidden');
-                document.getElementById('login-form').reset();
-                
-                document.getElementById('login-view').classList.add('hidden');
-                const nav = document.getElementById('main-navigation');
-                nav.classList.remove('hidden');
-                nav.classList.add('flex');
-
-                let userBadge = "Funcionário";
-                let allowedViews = [];
-
-                if (email.includes("admin") || email.includes("gerente") || email.includes("caixa") || email === "seu-email-atual@gmail.com") {
-                    userBadge = "Administrador";
-                    allowedViews = ["admin-view", "client-view", "waiter-view", "kitchen-view"];
-                } else if (email.includes("cozinha") || email.includes("chef")) {
-                    userBadge = "Cozinha";
-                    allowedViews = ["kitchen-view"];
-                } else if (email.includes("garcom") || email.includes("atendimento")) {
-                    userBadge = "Garçom";
-                    allowedViews = ["waiter-view", "client-view"];
-                } else {
-                    userBadge = "Atendimento";
-                    allowedViews = ["waiter-view", "kitchen-view"];
-                }
-
-                document.getElementById('nav-user-badge').innerText = userBadge;
-
-                document.getElementById('nav-btn-client-preview').classList.add('hidden');
-                document.getElementById('nav-btn-waiter').classList.add('hidden');
-                document.getElementById('nav-btn-kitchen').classList.add('hidden');
-                document.getElementById('nav-btn-admin').classList.add('hidden');
-
-                if (allowedViews.includes('client-view')) document.getElementById('nav-btn-client-preview').classList.remove('hidden');
-                if (allowedViews.includes('waiter-view')) document.getElementById('nav-btn-waiter').classList.remove('hidden');
-                if (allowedViews.includes('kitchen-view')) document.getElementById('nav-btn-kitchen').classList.remove('hidden');
-                if (allowedViews.includes('admin-view')) document.getElementById('nav-btn-admin').classList.remove('hidden');
-
-                window.switchView(allowedViews[0]);
-
-            } catch (error) {
-                console.error("Erro na autenticação:", error);
-                errorMsg.innerText = "❌ Usuário ou senha incorretos cadastrados no Firebase!";
-                errorMsg.classList.remove('hidden');
-            }
-        };
-
-        window.handleLogout = async function() {
-            try {
-                await signOut(auth);
-                window.location.search = ""; 
-            } catch(e) {
-                window.location.reload();
-            }
-        };
 
         function renderClientMenu() {
             const container = document.getElementById('client-menu-list');
@@ -441,7 +338,7 @@
             }
             
             menuItems.forEach(item => {
-                const qty = (cart && cart[item.id]) ? cart[item.id] : 0;
+                const qty = cart[item.id] || 0;
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
                 const parsedPrice = Number(item.price) || 0;
                 
@@ -466,7 +363,6 @@
         }
 
         window.updateQuantity = function(id, change) {
-            if (!cart) cart = {};
             if (!cart[id]) cart[id] = 0;
             cart[id] += change;
             if (cart[id] <= 0) delete cart[id];
@@ -475,21 +371,17 @@
 
         function updateTotal() {
             let total = 0;
-            if (menuItems && cart) {
-                menuItems.forEach(item => { 
-                    if (cart[item.id]) {
-                        const parsedPrice = Number(item.price) || 0;
-                        total += parsedPrice * cart[item.id]; 
-                    }
-                });
-            }
-            const priceElem = document.getElementById('client-total-price');
-            if(priceElem) priceElem.innerText = total.toFixed(2);
+            menuItems.forEach(item => { 
+                if (cart[item.id]) {
+                    total += (Number(item.price) || 0) * cart[item.id]; 
+                }
+            });
+            document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
         window.sendOrderDirect = async function() {
             if (!currentTable) {
-                alert('⚠️ Você está em modo de visualização interna da equipe. Para simular e enviar pedidos reais à cozinha, acesse o painel de "Garçom" ou escaneie o QR Code de uma mesa.');
+                alert('⚠️ Você está em modo de visualização. Para enviar pedidos reais à cozinha, acesse o painel de "Garçom" ou escaneie o QR Code de uma mesa.');
                 return;
             }
             let orderItemsText = '';
@@ -498,7 +390,7 @@
             let currentItems = [];
 
             menuItems.forEach(item => {
-                if (cart && cart[item.id]) {
+                if (cart[item.id]) {
                     const parsedPrice = Number(item.price) || 0;
                     const subtotal = parsedPrice * cart[item.id];
                     orderItemsText += `• ${cart[item.id]}x ${item.name} (R$ ${subtotal.toFixed(2)})\n`;
@@ -533,12 +425,10 @@
                 cart = {};
                 renderClientMenu();
             } catch (error) {
-                console.error("Erro ao processar pedido:", error);
-                alert("Houve um problema ao processar seu pedido.");
+                console.error(error);
             }
         }
 
-        // --- SISTEMA GARÇOM ---
         window.updateWaiterTable = function() {
             waiterActiveTable = document.getElementById('waiter-table-number').value || null;
         }
@@ -582,8 +472,7 @@
             let total = 0;
             menuItems.forEach(item => { 
                 if (waiterCart[item.id]) {
-                    const parsedPrice = Number(item.price) || 0;
-                    total += parsedPrice * waiterCart[item.id]; 
+                    total += (Number(item.price) || 0) * waiterCart[item.id]; 
                 }
             });
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
@@ -626,9 +515,7 @@
                 alert(`Pedido da Mesa ${waiterActiveTable} enviado à cozinha!`);
                 waiterCart = {};
                 renderWaiterMenu();
-            } catch(e) {
-                console.error(e);
-            }
+            } catch(e) { console.error(e); }
         }
 
         async function addOrderToKitchen(origin, items) {
@@ -677,10 +564,8 @@
             if (confirm("Remover este pedido do monitor?")) await deleteDoc(doc(db, "kitchen", orderId));
         }
 
-        // --- PAINEL ADMINISTRATIVO CORRIGIDO ---
         function updateSalesReportView() {
-            const parsedRevenue = Number(salesReport.totalRevenue) || 0;
-            document.getElementById('sales-total-money').innerText = parsedRevenue.toFixed(2);
+            document.getElementById('sales-total-money').innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
             document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
             document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
         }
@@ -702,42 +587,46 @@
             menuItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
                 const parsedPrice = Number(item.price) || 0;
+                const itemIdStr = String(item.id).trim();
 
                 tableBody.innerHTML += `
                     <tr class="border-b text-gray-700">
                         <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded"></td>
                         <td class="p-3 font-semibold">${item.name}</td>
                         <td class="p-3 text-green-600 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
-                        <td class="p-3 text-center"><button onclick="window.deleteItem('${item.id}')" class="text-red-600 font-semibold bg-red-50 hover:bg-red-100 px-2 py-1 rounded cursor-pointer transition">Remover</button></td>
+                        <td class="p-3 text-center">
+                            <button onclick="window.deleteItem('${itemIdStr}')" class="text-red-600 font-semibold bg-red-50 hover:bg-red-100 px-2 py-1 rounded cursor-pointer transition">
+                                Remover
+                            </button>
+                        </td>
                     </tr>`;
             });
         }
 
-        // CORREÇÃO: Função mapeada diretamente ao objeto global window para o form encontrar
         window.handleAddItem = async function(event) {
             event.preventDefault();
             const name = document.getElementById('item-name').value.trim();
             const rawPrice = document.getElementById('item-price').value;
             const desc = document.getElementById('item-desc').value.trim();
             const img = document.getElementById('item-img').value.trim();
-            
-            // Força a conversão correta para número puro aceitável pelo Firebase e JS
             const price = Number(parseFloat(rawPrice).toFixed(2)) || 0;
 
             try {
                 await addDoc(collection(db, "menu"), { name, price, desc, img });
                 document.getElementById('add-item-form').reset();
-            } catch(e) { console.error("Erro ao adicionar:", e); }
+            } catch(e) { console.error(e); }
         }
 
-        // CORREÇÃO: Função vinculada à window para resolver o erro de exclusão silencioso do Módulo
         window.deleteItem = async function(id) {
+            if(!id || id === "undefined") {
+                alert("Erro: O ID deste item não foi encontrado no Firebase.");
+                return;
+            }
             if(confirm("Excluir item definitivamente do cardápio?")) {
                 try {
                     await deleteDoc(doc(db, "menu", id));
                 } catch(e) {
-                    console.error("Erro ao deletar:", e);
-                    alert("Não foi possível excluir o item do banco de dados.");
+                    alert("Não foi possível excluir do Firebase: " + e.message);
                 }
             }
         }
@@ -746,11 +635,7 @@
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
             const printSection = document.getElementById('invoice-print-section');
-            
-            if(!tableNum) { 
-                alert("Insira o número da mesa primeiro!"); 
-                return; 
-            }
+            if(!tableNum) { alert("Insira o número da mesa!"); return; }
 
             try {
                 const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
@@ -786,7 +671,6 @@
                     let nameCut = item.name.substring(0, 18).padEnd(18, ' ');
                     let qtyStr = item.qty.toString().padStart(4, ' ');
                     let valStr = totalItem.toFixed(2).padStart(14, ' ');
-                    
                     textCupom += `${nameCut}${qtyStr}${valStr}\n`;
                 });
 
@@ -797,30 +681,19 @@
                 textCupom += `========================================`;
 
                 activeInvoiceText = textCupom; 
-                
                 previewContainer.innerHTML = `<pre class="whitespace-pre-wrap font-mono">${textCupom}</pre>`;
                 printSection.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #000; background: #fff; margin: 0; padding: 0;">${textCupom}</pre>`;
-            } catch(e) {
-                console.error(e);
-                alert("Erro ao buscar dados da mesa.");
-            }
+            } catch(e) { alert("Erro ao buscar dados da mesa."); }
         }
 
         window.printInvoice = function() {
-            if(!activeInvoiceText) {
-                alert(`Busque os dados de uma mesa ativa antes de tentar imprimir.`);
-                return;
-            }
+            if(!activeInvoiceText) { alert(`Busque os dados de uma mesa ativa primeiro.`); return; }
             window.print();
         }
 
         window.downloadInvoiceTXT = function() {
             const tableNum = document.getElementById('print-table-number').value;
-            if(!activeInvoiceText) {
-                alert("Busque os dados da mesa antes de tentar baixar o cupom.");
-                return;
-            }
-
+            if(!activeInvoiceText) { alert("Busque os dados da mesa primeiro."); return; }
             const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -834,38 +707,26 @@
             const tableNum = document.getElementById('print-table-number').value;
             if(!tableNum) return;
             
-            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso esvaziará a mesa e os painéis da cozinha.`)) {
+            if(confirm(`Confirmar encerramento e pagamento da Mesa ${tableNum}? Isso liberará as telas.`)) {
                 try {
                     await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
-                    
                     const labelBusca = `Mesa ${tableNum}`;
                     const itemsParaRemover = kitchenOrders.filter(order => order.origin === labelBusca);
-                    
                     for (const order of itemsParaRemover) {
                         await deleteDoc(doc(db, "kitchen", order.id));
                     }
-                    
                     cart = {};
                     waiterCart = {};
-                    
                     document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa para gerenciar a conta.";
                     activeInvoiceText = "";
                     document.getElementById('invoice-print-section').innerHTML = "";
-                    
-                    const totalClienteElem = document.getElementById('client-total-price');
-                    if(totalClienteElem) totalClienteElem.innerText = "0.00";
-                    
-                    const totalGarcomElem = document.getElementById('waiter-total-price');
-                    if(totalGarcomElem) totalGarcomElem.innerText = "0.00";
+                    if(document.getElementById('client-total-price')) document.getElementById('client-total-price').innerText = "0.00";
+                    if(document.getElementById('waiter-total-price')) document.getElementById('waiter-total-price').innerText = "0.00";
 
                     renderClientMenu();
                     renderWaiterMenu();
-
-                    alert(`Mesa ${tableNum} foi limpa no caixa e na cozinha. Está liberada para os próximos clientes!`);
-                } catch(e) { 
-                    console.error("Erro ao liberar mesa e cozinha:", e); 
-                    alert("Ocorreu um erro ao tentar limpar os dados da mesa.");
-                }
+                    alert(`Mesa ${tableNum} liberada com sucesso!`);
+                } catch(e) { alert("Ocorreu um erro ao tentar limpar a mesa."); }
             }
         }
 
@@ -882,38 +743,24 @@
         window.downloadQRCode = function() {
             const tableNum = document.getElementById('qr-table-number').value || '00';
             const qrContainer = document.getElementById('qrcode-container');
-            
             const canvas = qrContainer.querySelector('canvas');
             const qrImg = qrContainer.querySelector('img');
 
             const processDownload = (base64Data) => {
-                fetch(base64Data)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `qrcode_mesa_${tableNum}.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                    })
-                    .catch(err => {
-                        console.error("Erro no processamento do Blob:", err);
-                        alert("Não foi possível processar o download automático. Toque e segure na imagem para salvar.");
-                    });
+                fetch(base64Data).then(res => res.blob()).then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `qrcode_mesa_${tableNum}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                });
             };
 
-            if (canvas) {
-                const base64Data = canvas.toDataURL("image/png");
-                processDownload(base64Data);
-            } else if (qrImg && qrImg.src) {
-                processDownload(qrImg.src);
-            } else {
-                alert("Gere um QR Code primeiro antes de tentar baixá-lo!");
-            }
+            if (canvas) processDownload(canvas.toDataURL("image/png"));
+            else if (qrImg && qrImg.src) processDownload(qrImg.src);
         }
 
         window.switchView = function(viewId) {
@@ -929,7 +776,6 @@
                     document.getElementById('client-blocked-state').classList.add('hidden');
                 } else {
                     labelMesa.innerText = `👁️ Modo Visualização (Equipe)`;
-                    document.getElementById('client-blocked-state').classList.add('hidden');
                 }
             }
         }
