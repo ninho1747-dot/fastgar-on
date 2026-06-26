@@ -4,69 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Pedidos - Restaurante</title>
-    <!-- Tailwind CSS para um design moderno e responsivo -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
         @media print {
-            body * { 
-                display: none !important; 
-            }
-            #invoice-print-section, #invoice-print-section * { 
-                display: block !important; 
-            }
+            body * { display: none !important; }
+            #invoice-print-section, #invoice-print-section * { display: block !important; }
             #invoice-print-section { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                max-width: 80mm; 
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                color: #000;
-                line-height: 1.2;
-                padding: 4mm;
-                background: #fff;
+                position: absolute; left: 0; top: 0; width: 100%; max-width: 80mm; 
+                font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000;
+                line-height: 1.2; padding: 4mm; background: #fff;
             }
-            @page {
-                size: auto;
-                margin: 0mm;
-            }
+            @page { size: auto; margin: 0mm; }
         }
     </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
-    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só ativa para a equipe) -->
+    <section id="login-view" class="view-section min-h-screen flex items-center justify-center p-4 bg-gray-900 hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-100">
+            <div class="text-center mb-6">
+                <span class="text-4xl">🔐</span>
+                <h2 class="text-2xl font-bold text-gray-800 mt-2">Acesso Restrito</h2>
+                <p class="text-gray-400 text-sm mt-1">Autenticação oficial via Firebase Auth</p>
+            </div>
+            
+            <form id="login-form" onsubmit="window.handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">E-mail Cadastrado</label>
+                    <input type="email" id="login-email" required placeholder="seu-email@dominio.com" class="w-full p-2.5 border rounded bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Sua Senha</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-2.5 border rounded bg-gray-50 text-gray-800 outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition cursor-pointer shadow-md">
+                    Entrar no Sistema
+                </button>
+            </form>
+            <div id="login-error-msg" class="text-red-500 text-sm font-semibold text-center mt-3 hidden"></div>
+        </div>
+    </section>
+
     <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
-            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
+            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold tracking-wider truncate max-w-[150px]">Painel</span>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
-            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
-            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">⚙️ Admin</button>
+            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">💼 Garçom</button>
+            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">👨‍🍳 Cozinha</button>
+            <button onclick="window.handleLogout()" class="bg-red-700 hover:bg-red-800 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">🚪 Sair</button>
         </div>
     </nav>
 
     <div class="max-w-6xl mx-auto p-4">
         
-        <!-- ================= CARDÁPIO DO CLIENTE ================= -->
         <section id="client-view" class="view-section hidden">
-            <!-- Mensagem de bloqueio de segurança -->
             <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200">
                 <div class="text-6xl mb-4">📸</div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Acesso Restrito ao Cardápio</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">
-                    Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa.
-                </p>
+                <p class="text-gray-500 text-sm leading-relaxed">Aponte a câmera do celular para o **QR Code físico** da mesa.</p>
             </div>
 
-            <!-- Área do Cardápio Categorizado -->
-            <div id="client-allowed-state" class="hidden space-y-8">
+            <div id="client-allowed-state" class="hidden space-y-8 pb-24">
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-2xl font-bold text-gray-800 mb-2">Nosso Cardápio</h2>
                     <div class="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200 inline-block">
@@ -74,197 +76,117 @@
                         <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Mesa --</span>
                     </div>
                 </div>
-
-                <!-- Categoria: Refeições -->
-                <div>
-                    <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300">🍔 REFEIÇÕES</h3>
-                    <div id="client-menu-meals" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-                </div>
-
-                <!-- Categoria: Bebidas -->
-                <div class="pb-24">
-                    <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300">🥤 BEBIDAS</h3>
-                    <div id="client-menu-drinks" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-                </div>
-
+                <div id="client-dynamic-menu-container" class="space-y-8"></div>
                 <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 p-4 z-40">
                     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="text-xl font-bold text-gray-800">
-                            Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
-                        </div>
-                        <button onclick="window.sendOrderDirect()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-                            🟢 Confirmar e Enviar Pedido
-                        </button>
+                        <div class="text-xl font-bold text-gray-800">Total: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span></div>
+                        <button onclick="window.sendOrderDirect()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition cursor-pointer">🟢 Confirmar Pedido</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ================= VISÃO DO GARÇOM ================= -->
-        <section id="waiter-view" class="view-section hidden space-y-8">
+        <section id="waiter-view" class="view-section hidden space-y-8 pb-24">
             <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Painel de Atendimento do Garçom</h2>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-50 p-4 rounded border border-orange-200">
-                    <div>
-                        <label class="block text-sm font-bold text-orange-800 mb-1">Selecione a Mesa do Cliente:</label>
-                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 bg-white text-gray-800 font-bold outline-none text-center">
-                    </div>
-                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Painel do Garçom</h2>
+                <input type="number" id="waiter-table-number" min="1" placeholder="Nº Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border rounded font-bold text-center">
             </div>
-
-            <!-- Refeições Garçom -->
-            <div>
-                <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300">🍔 REFEIÇÕES</h3>
-                <div id="waiter-menu-meals" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-            </div>
-
-            <!-- Bebidas Garçom -->
-            <div class="pb-24">
-                <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300">🥤 BEBIDAS</h3>
-                <div id="waiter-menu-drinks" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-            </div>
-
+            <div id="waiter-dynamic-menu-container" class="space-y-8"></div>
             <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-orange-200 p-4 z-40">
-                <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="text-xl font-bold text-gray-800">
-                        Total do Atendimento: <span class="text-orange-600 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
-                    </div>
-                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
-                        📝 Lançar Pedido na Mesa
-                    </button>
+                <div class="max-w-6xl mx-auto flex justify-between items-center p-2">
+                    <span class="font-bold">Total: R$ <span id="waiter-total-price">0.00</span></span>
+                    <button onclick="window.submitWaiterOrder()" class="bg-orange-600 text-white px-6 py-2 rounded font-bold cursor-pointer">📝 Lançar Pedido</button>
                 </div>
             </div>
         </section>
 
-        <!-- ================= PAINEL DA COZINHA ================= -->
         <section id="kitchen-view" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300">
-                <h2 class="text-3xl font-bold text-gray-800">👨‍🍳 Monitor da Cozinha</h2>
-            </div>
-            <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <h2 class="text-2xl font-bold mb-4">👨‍🍳 Cozinha</h2>
+            <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
         </section>
 
-        <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 border-gray-300">Painel do Administrador</h2>
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Painel do Administrador</h2>
             
-            <!-- Relatório de Vendas -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-blue-500">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-800">📊 Relatório de Vendas do Dia</h3>
-                    </div>
-                    <button onclick="window.clearSalesReport()" class="bg-red-100 text-red-600 hover:bg-red-200 font-semibold px-4 py-2 rounded transition text-sm">🔄 Zerar Relatório</button>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <p class="text-sm text-green-700 font-semibold uppercase">Total Faturado</p>
-                        <p class="text-3xl font-black text-green-600 mt-1">R$ <span id="sales-total-money">0.00</span></p>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <p class="text-sm text-blue-700 font-semibold uppercase">Pedidos Realizados</p>
-                        <p class="text-3xl font-black text-blue-600 mt-1"><span id="sales-total-orders">0</span></p>
-                    </div>
-                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                        <p class="text-sm text-purple-700 font-semibold uppercase">Itens Vendidos</p>
-                        <p class="text-3xl font-black text-purple-600 mt-1"><span id="sales-total-items">0</span></p>
-                    </div>
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="bg-green-50 p-3 rounded">Faturado: <b class="text-green-600 block">R$ <span id="sales-total-money">0.00</span></b></div>
+                    <div class="bg-blue-50 p-3 rounded">Pedidos: <b class="text-blue-600 block"><span id="sales-total-orders">0</span></b></div>
+                    <div class="bg-purple-50 p-3 rounded">Itens: <b class="text-purple-600 block"><span id="sales-total-items">0</span></b></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cadastro de Itens com SELETOR DE CATEGORIA -->
-                <div class="bg-white p-6 rounded-lg shadow-md h-fit">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4">Adicionar Item ao Cardápio</h3>
-                    <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">Categoria</label>
-                            <select id="item-category" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800 font-medium">
-                                <option value="refeicao">🍔 Refeição</option>
-                                <option value="bebida">🥤 Bebida</option>
-                            </select>
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md border border-purple-100">
+                        <h3 class="text-lg font-bold text-gray-700 mb-3">🗂️ Criar Nova Categoria</h3>
+                        <form id="add-category-form" onsubmit="window.handleCreateCategory(event)" class="space-y-3">
+                            <input type="text" id="category-name" required placeholder="Ex: Pizzas, Cervejas" class="w-full p-2 border rounded bg-gray-50 text-gray-800 outline-none">
+                            <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded font-semibold hover:bg-purple-700 cursor-pointer transition">Salvar Categoria</button>
+                        </form>
+                        <div class="mt-4">
+                            <p class="text-xs font-bold text-gray-400 uppercase mb-2">Categorias Criadas:</p>
+                            <div id="admin-categories-badges" class="flex flex-wrap gap-1.5"></div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">Nome do Item</label>
-                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">Descrição</label>
-                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600">URL da Imagem</label>
-                            <input type="url" id="item-img" placeholder="https://linkdaimagem.com/foto.jpg" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
-                        </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition shadow">Adicionar ao Cardápio</button>
-                    </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-lg shadow-md border border-blue-100">
+                        <h3 class="text-lg font-bold text-gray-700 mb-3">🍳 Adicionar Item</h3>
+                        <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-3">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 block mb-1">Selecione a Categoria abaixo:</label>
+                                <select id="item-category" required class="w-full p-2 border border-gray-300 rounded bg-white text-gray-800 font-medium cursor-pointer">
+                                    <option value="">Aguardando categorias...</option>
+                                </select>
+                            </div>
+                            <input type="text" id="item-name" placeholder="Nome do item" required class="w-full p-2 border rounded">
+                            <input type="number" id="item-price" step="0.01" placeholder="Preço R$" required class="w-full p-2 border rounded">
+                            <input type="text" id="item-desc" placeholder="Descrição curta" class="w-full p-2 border rounded">
+                            <input type="url" id="item-img" placeholder="Link da foto (opcional)" class="w-full p-2 border rounded">
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 cursor-pointer transition">Adicionar ao Cardápio</button>
+                        </form>
+                    </div>
                 </div>
 
-                <!-- Gerência do Cardápio Visual / Admin -->
                 <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 space-y-6">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-700 mb-4">Cardápio Cadastrado</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase">
-                                        <th class="p-3">Foto</th>
-                                        <th class="p-3">Item / Categoria</th>
-                                        <th class="p-3">Preço</th>
-                                        <th class="p-3 text-center">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="admin-menu-table"></tbody>
-                            </table>
-                        </div>
+                    <h3 class="text-lg font-bold text-gray-700">Cardápio Cadastrado</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-gray-100 text-xs uppercase text-gray-600"><th class="p-2">Foto</th><th class="p-2">Item</th><th class="p-2">Preço</th><th class="p-2 text-center">Ações</th></tr>
+                            </thead>
+                            <tbody id="admin-menu-table"></tbody>
+                        </table>
                     </div>
 
                     <hr class="border-gray-200">
 
-                    <!-- QR Code e Caixa Faturamento -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
-                            <div>
-                                <h4 class="font-bold text-gray-700 mb-3">Gerador de QR Code por Mesa</h4>
-                                <div class="flex gap-2 mb-3">
-                                    <input type="number" id="qr-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none">
-                                    <button onclick="window.generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition">Gerar</button>
-                                </div>
-                                <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[180px]">
-                                    <p class="text-gray-400 text-sm text-center">QR Code aparecerá aqui</p>
-                                </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded border">
+                            <h4 class="font-bold text-gray-700 mb-2">QR Code da Mesa</h4>
+                            <div class="flex gap-2 mb-2">
+                                <input type="number" id="qr-table-number" placeholder="Nº Mesa" class="w-full p-2 border rounded font-bold text-center">
+                                <button onclick="window.generateTableQRCode()" class="bg-purple-600 text-white px-4 rounded font-bold cursor-pointer transition hover:bg-purple-700">Gerar</button>
                             </div>
-                            <div id="download-btn-container" class="mt-3 hidden">
-                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2">📥 Baixar QR Code</button>
+                            <div id="qrcode-container" class="bg-white p-2 border flex justify-center items-center min-h-[140px] mb-2">
+                                <p class="text-gray-400 text-xs text-center">Digite o número da mesa<br>e clique em Gerar.</p>
                             </div>
+                            <button onclick="window.printQRCode()" class="w-full bg-blue-600 text-white py-1.5 rounded text-xs font-bold cursor-pointer transition hover:bg-blue-700">🖨️ Imprimir QR Code</button>
                         </div>
 
-                        <!-- SEÇÃO DO CAIXA -->
-                        <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
-                            <div>
-                                <h4 class="font-bold text-gray-700 mb-3">Fechar Conta da Mesa</h4>
-                                <div class="flex gap-2 mb-3">
-                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition">Buscar</button>
-                                </div>
+                        <div class="bg-gray-50 p-4 rounded border">
+                            <h4 class="font-bold text-gray-700 mb-2">Fechar Conta</h4>
+                            <div class="flex gap-2 mb-2">
+                                <input type="number" id="print-table-number" placeholder="Nº Mesa" class="w-full p-2 border rounded font-bold text-center">
+                                <button onclick="window.prepareInvoice()" class="bg-amber-600 text-white px-4 rounded font-bold cursor-pointer hover:bg-amber-700">Buscar</button>
                             </div>
-                            <div id="invoice-preview" class="text-xs font-mono bg-white p-4 border rounded border-gray-300 text-gray-800 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
-                                Insira o número da mesa acima.
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition">🖨️ Imprimir</button>
-                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-800 hover:bg-gray-900 text-white py-2.5 rounded font-bold text-sm transition">📥 Baixar</button>
-                                </div>
-                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition">💰 Liberar Mesa</button>
+                            <div id="invoice-preview" class="text-xs font-mono bg-white p-2 border rounded max-h-[100px] overflow-y-auto"></div>
+                            <div class="grid grid-cols-2 gap-1 mt-2">
+                                <button onclick="window.printInvoice()" class="bg-blue-600 text-white py-1 rounded text-xs font-bold cursor-pointer hover:bg-blue-700">🖨️ Extrato</button>
+                                <button onclick="window.confirmPayment()" class="bg-green-600 text-white py-1 rounded text-xs font-bold cursor-pointer hover:bg-green-700">💰 Liberar</button>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </section>
@@ -272,12 +194,10 @@
 
     <div id="invoice-print-section" style="display: none;"></div>
 
-    <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { 
-            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
@@ -290,8 +210,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         let menuItems = [];
+        let categories = []; 
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
         let kitchenOrders = [];
         let activeInvoiceText = ""; 
@@ -301,15 +223,73 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
-        // OUVINTES DO BANCO DE DADOS
-        onSnapshot(collection(db, "menu"), (snapshot) => {
-            menuItems = [];
-            snapshot.forEach(doc => {
-                menuItems.push({ id: doc.id, ...doc.data() });
-            });
+        // OUVINTE EM TEMPO REAL DO ESTADO DE LOGIN
+        onAuthStateChanged(auth, (user) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isClient = urlParams.has('mesa') && urlParams.get('mesa').trim() !== "";
+
+            if (isClient) {
+                document.getElementById('main-navigation').classList.add('hidden');
+                document.getElementById('login-view').classList.add('hidden');
+                checkTableFromURL();
+            } else {
+                if (user) {
+                    document.getElementById('login-view').classList.add('hidden');
+                    document.getElementById('main-navigation').classList.remove('hidden');
+                    document.getElementById('nav-user-badge').innerText = user.email;
+                    
+                    // Renderização forçada inicial pós-login
+                    renderAllMenus();
+                    window.switchView('admin-view');
+                } else {
+                    document.getElementById('main-navigation').classList.add('hidden');
+                    window.switchView('login-view');
+                }
+            }
+        });
+
+        // Função auxiliar para atualizar todas as telas de uma vez só
+        function renderAllMenus() {
+            updateAdminCategoriesUI();
             renderClientMenu();
             renderWaiterMenu();
             renderAdminMenu();
+        }
+
+        // FORMULÁRIO DE LOGIN
+        window.handleLogin = async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error-msg');
+            errorDiv.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                document.getElementById('login-form').reset();
+            } catch (error) {
+                errorDiv.innerText = "E-mail ou senha incorretos.";
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        window.handleLogout = async function() {
+            if(confirm("Deseja encerrar sua sessão?")) {
+                try { await signOut(auth); } catch(e) { console.error(e); }
+            }
+        }
+
+        // ESCUTAS EM TEMPO REAL DO FIRESTORE (Garante sincronia instantânea)
+        onSnapshot(collection(db, "categories"), (snapshot) => {
+            categories = [];
+            snapshot.forEach(doc => { categories.push({ id: doc.id, ...doc.data() }); });
+            categories.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+            renderAllMenus();
+        });
+
+        onSnapshot(collection(db, "menu"), (snapshot) => {
+            menuItems = [];
+            snapshot.forEach(doc => { menuItems.push({ id: doc.id, ...doc.data() }); });
+            renderAllMenus();
         });
 
         onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
@@ -319,168 +299,147 @@
 
         onSnapshot(collection(db, "kitchen"), (snapshot) => {
             kitchenOrders = [];
-            snapshot.forEach(doc => {
-                kitchenOrders.push({ id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => { kitchenOrders.push({ id: doc.id, ...doc.data() }); });
             kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             renderKitchenOrders();
         });
 
-        // TRAVA E RECONHECIMENTO DE ACESSO URL
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
                 currentTable = urlParams.get('mesa');
-                document.getElementById('main-navigation').classList.add('hidden'); // Oculta navegação para cliente
                 document.getElementById('client-blocked-state').classList.add('hidden');
                 document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
                 window.switchView('client-view');
-            } else {
-                document.getElementById('main-navigation').classList.remove('hidden'); // Exibe navegação para equipe
-                document.getElementById('client-blocked-state').classList.remove('hidden');
-                document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('admin-view'); 
             }
         }
 
-        // AUXILIAR DE REDUÇÃO HTML PARA CARDS DO CARDÁPIO
+        function updateAdminCategoriesUI() {
+            const select = document.getElementById('item-category');
+            const badgesContainer = document.getElementById('admin-categories-badges');
+            if(!select || !badgesContainer) return;
+            const previousSelection = select.value;
+            select.innerHTML = ''; badgesContainer.innerHTML = '';
+            if(categories.length === 0) {
+                select.innerHTML = '<option value="">⚠️ Cadastre uma categoria acima primeiro!</option>';
+                badgesContainer.innerHTML = '<p class="text-gray-400 text-xs">Nenhuma categoria criada.</p>';
+                return;
+            }
+            select.innerHTML = '<option value="" disabled selected>Escolha uma Categoria...</option>';
+            categories.forEach(cat => {
+                select.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+                badgesContainer.innerHTML += `
+                    <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-xs font-bold px-2 py-0.5 rounded border border-purple-200">
+                        ${cat.name}
+                        <button type="button" onclick="window.handleDeleteCategory('${cat.id}', '${cat.name}')" class="text-red-500 hover:text-red-700 font-black ml-1 cursor-pointer">×</button>
+                    </span>`;
+            });
+            if(previousSelection) { select.value = previousSelection; }
+        }
+
+        window.handleCreateCategory = async function(event) {
+            event.preventDefault();
+            const input = document.getElementById('category-name');
+            const catName = input.value.trim();
+            if(!catName) return;
+            if(categories.some(c => String(c.name).toLowerCase() === catName.toLowerCase())) { alert("Essa categoria já existe!"); return; }
+            try {
+                await addDoc(collection(db, "categories"), { name: catName });
+                input.value = '';
+            } catch(e) { alert("Erro ao salvar categoria."); }
+        }
+
+        window.handleDeleteCategory = async function(id, name) {
+            if(confirm(`Remover categoria "${name}"?`)) { try { await deleteDoc(doc(db, "categories", id)); } catch(e) { console.error(e); } }
+        }
+
         function createItemCardHTML(item, qty, isWaiter = false) {
             const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
-            const parsedPrice = Number(item.price) || 0;
             const updateFn = isWaiter ? 'window.updateWaiterQuantity' : 'window.updateQuantity';
-            const borderCol = isWaiter ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50';
-            const textCol = isWaiter ? 'text-orange-700' : 'text-gray-600';
-
             return `
-                <div class="bg-white rounded-lg shadow p-4 flex gap-4 border border-gray-100 items-center">
-                    <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md flex-shrink-0 bg-gray-200">
+                <div class="bg-white rounded-lg shadow p-3 flex gap-3 border border-gray-100 items-center">
+                    <img src="${imgUrl}" class="w-16 h-16 object-cover rounded-md flex-shrink-0 bg-gray-200">
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-lg font-bold text-gray-800 truncate">${item.name}</h4>
-                        <p class="text-sm text-gray-500 line-clamp-2 mt-1">${item.desc || 'Sem descrição.'}</p>
-                        <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
-                            <span class="text-green-600 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
-                            <div class="flex items-center border rounded-lg ${borderCol}">
-                                <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 rounded-l-lg">-</button>
-                                <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
-                                <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 rounded-r-lg">+</button>
+                        <h4 class="text-base font-bold text-gray-800 truncate">${item.name}</h4>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-green-600 font-bold">R$ ${Number(item.price).toFixed(2)}</span>
+                            <div class="flex items-center border rounded">
+                                <button onclick="${updateFn}('${item.id}', -1)" class="px-2 py-0.5 font-bold hover:bg-gray-200 cursor-pointer">-</button>
+                                <span class="px-2 text-sm font-semibold">${qty}</span>
+                                <button onclick="${updateFn}('${item.id}', 1)" class="px-2 py-0.5 font-bold hover:bg-gray-200 cursor-pointer">+</button>
                             </div>
                         </div>
                     </div>
                 </div>`;
         }
 
-        // RENDERIZAR CARDÁPIO DO CLIENTE SEPARADO
         function renderClientMenu() {
-            const mealsContainer = document.getElementById('client-menu-meals');
-            const drinksContainer = document.getElementById('client-menu-drinks');
-            if(!mealsContainer || !drinksContainer) return;
-
-            mealsContainer.innerHTML = '';
-            drinksContainer.innerHTML = '';
-
-            const meals = menuItems.filter(i => i.category !== 'bebida');
-            const drinks = menuItems.filter(i => i.category === 'bebida');
-
-            if(meals.length === 0) mealsContainer.innerHTML = '<p class="text-gray-400 text-sm pl-2">Nenhuma refeição ativa.</p>';
-            if(drinks.length === 0) drinksContainer.innerHTML = '<p class="text-gray-400 text-sm pl-2">Nenhuma bebida ativa.</p>';
-
-            meals.forEach(item => {
-                mealsContainer.innerHTML += createItemCardHTML(item, cart[item.id] || 0, false);
+            const container = document.getElementById('client-dynamic-menu-container');
+            if(!container) return; container.innerHTML = '';
+            categories.forEach(cat => {
+                const filteredItems = menuItems.filter(item => item.category === cat.name);
+                if(filteredItems.length > 0) {
+                    let html = `<div><h3 class="text-md font-black text-gray-700 mb-2 uppercase border-b pb-1">📦 ${cat.name}</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                    filteredItems.forEach(item => { html += createItemCardHTML(item, cart[item.id] || 0, false); });
+                    html += `</div></div>`; container.innerHTML += html;
+                }
             });
-            drinks.forEach(item => {
-                drinksContainer.innerHTML += createItemCardHTML(item, cart[item.id] || 0, false);
-            });
-
             updateTotal();
         }
 
         window.updateQuantity = function(id, change) {
-            if (!cart[id]) cart[id] = 0;
-            cart[id] += change;
+            if (!cart[id]) cart[id] = 0; cart[id] += change;
             if (cart[id] <= 0) delete cart[id];
             renderClientMenu();
         }
 
         function updateTotal() {
-            let total = 0;
-            menuItems.forEach(item => { if (cart[item.id]) total += (Number(item.price) || 0) * cart[item.id]; });
+            let total = 0; menuItems.forEach(item => { if (cart[item.id]) total += Number(item.price) * cart[item.id]; });
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
-        // RENDERIZAR CARDÁPIO DO GARÇOM SEPARADO
         function renderWaiterMenu() {
-            const mealsContainer = document.getElementById('waiter-menu-meals');
-            const drinksContainer = document.getElementById('waiter-menu-drinks');
-            if(!mealsContainer || !drinksContainer) return;
-
-            mealsContainer.innerHTML = '';
-            drinksContainer.innerHTML = '';
-
-            const meals = menuItems.filter(i => i.category !== 'bebida');
-            const drinks = menuItems.filter(i => i.category === 'bebida');
-
-            if(meals.length === 0) mealsContainer.innerHTML = '<p class="text-gray-400 text-sm pl-2">Nenhuma refeição ativa.</p>';
-            if(drinks.length === 0) drinksContainer.innerHTML = '<p class="text-gray-400 text-sm pl-2">Nenhuma bebida ativa.</p>';
-
-            meals.forEach(item => {
-                mealsContainer.innerHTML += createItemCardHTML(item, waiterCart[item.id] || 0, true);
+            const container = document.getElementById('waiter-dynamic-menu-container');
+            if(!container) return; container.innerHTML = '';
+            if(categories.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Nenhuma categoria ou item localizado.</p>';
+                return;
+            }
+            categories.forEach(cat => {
+                const filteredItems = menuItems.filter(item => item.category === cat.name);
+                if(filteredItems.length > 0) {
+                    let html = `<div><h3 class="text-md font-bold text-gray-700 mb-2 uppercase border-b pb-1">📦 ${cat.name}</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                    filteredItems.forEach(item => { html += createItemCardHTML(item, waiterCart[item.id] || 0, true); });
+                    html += `</div></div>`; container.innerHTML += html;
+                }
             });
-            drinks.forEach(item => {
-                drinksContainer.innerHTML += createItemCardHTML(item, waiterCart[item.id] || 0, true);
-            });
-
             updateWaiterTotal();
         }
 
         window.updateWaiterQuantity = function(id, change) {
-            if (!waiterCart[id]) waiterCart[id] = 0;
-            waiterCart[id] += change;
+            if (!waiterCart[id]) waiterCart[id] = 0; waiterCart[id] += change;
             if (waiterCart[id] <= 0) delete waiterCart[id];
             renderWaiterMenu();
         }
 
         function updateWaiterTotal() {
-            let total = 0;
-            menuItems.forEach(item => { if (waiterCart[item.id]) total += (Number(item.price) || 0) * waiterCart[item.id]; });
+            let total = 0; menuItems.forEach(item => { if (waiterCart[item.id]) total += Number(item.price) * waiterCart[item.id]; });
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
         }
 
-        // EXIBIÇÃO ORGANIZADA DO CARDÁPIO NA PÁGINA DO ADMIN
         function renderAdminMenu() {
             const tableBody = document.getElementById('admin-menu-table');
-            if(!tableBody) return;
-            tableBody.innerHTML = '';
-            
-            if(menuItems.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400 text-sm">Cardápio vazio.</td></tr>`;
-                return;
-            }
-
-            // Ordena colocando refeições primeiro, depois bebidas
-            const sortedItems = [...menuItems].sort((a, b) => {
-                const catA = a.category === 'bebida' ? 1 : 0;
-                const catB = b.category === 'bebida' ? 1 : 0;
-                return catA - catB;
-            });
-
+            if(!tableBody) return; tableBody.innerHTML = '';
+            const sortedItems = [...menuItems].sort((a, b) => String(a.category).localeCompare(String(b.category)));
             sortedItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
-                const parsedPrice = Number(item.price) || 0;
-                const catLabel = item.category === 'bebida' ? '🥤 Bebida' : '🍔 Refeição';
-                const catColor = item.category === 'bebida' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800';
-
                 tableBody.innerHTML += `
-                    <tr class="border-b text-gray-700 bg-white hover:bg-gray-50 transition">
-                        <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded-md border shadow-sm"></td>
-                        <td class="p-3">
-                            <div class="font-bold text-gray-800">${item.name}</div>
-                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${catColor}">${catLabel}</span>
-                        </td>
-                        <td class="p-3 text-green-600 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="window.deleteItem('${item.id}')" class="text-red-600 font-semibold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg cursor-pointer transition text-xs">🗑️ Remover</button>
-                        </td>
+                    <tr class="border-b text-sm text-gray-700 bg-white">
+                        <td class="p-2"><img src="${imgUrl}" class="w-10 h-10 object-cover rounded"></td>
+                        <td class="p-2"><b>${item.name}</b> <br><span class="text-[9px] bg-blue-100 text-blue-800 px-1 rounded uppercase font-bold">${item.category}</span></td>
+                        <td class="p-2 text-green-600 font-bold">R$ ${Number(item.price).toFixed(2)}</td>
+                        <td class="p-2 text-center"><button onclick="window.deleteItem('${item.id}')" class="text-red-600 text-xs bg-red-50 p-1 rounded cursor-pointer">Remover</button></td>
                     </tr>`;
             });
         }
@@ -489,99 +448,57 @@
             event.preventDefault();
             const category = document.getElementById('item-category').value;
             const name = document.getElementById('item-name').value.trim();
-            const rawPrice = document.getElementById('item-price').value;
+            const price = Number(parseFloat(document.getElementById('item-price').value).toFixed(2)) || 0;
             const desc = document.getElementById('item-desc').value.trim();
             const img = document.getElementById('item-img').value.trim();
-            const price = Number(parseFloat(rawPrice).toFixed(2)) || 0;
-
+            if(!category) { alert("Escolha uma categoria válida."); return; }
             try {
                 await addDoc(collection(db, "menu"), { category, name, price, desc, img });
                 document.getElementById('add-item-form').reset();
             } catch(e) { console.error(e); }
         }
 
-        window.deleteItem = async function(id) {
-            if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
-        }
+        window.deleteItem = async function(id) { if(confirm("Excluir item?")) await deleteDoc(doc(db, "menu", id)); }
 
-        // ENVIO DE PEDIDOS E FUNÇÕES COMPLEMENTARES (MANTIDOS)
         window.sendOrderDirect = async function() {
             if (!currentTable) return;
-            let orderItemsText = '', orderTotal = 0, itemsCount = 0, currentItems = [];
-
+            let orderTotal = 0, itemsCount = 0, currentItems = [];
             menuItems.forEach(item => {
                 if (cart[item.id]) {
-                    const parsedPrice = Number(item.price) || 0;
-                    const subtotal = parsedPrice * cart[item.id];
-                    orderItemsText += `• ${cart[item.id]}x ${item.name} (R$ ${subtotal.toFixed(2)})\n`;
-                    orderTotal += subtotal;
-                    itemsCount += cart[item.id];
-                    currentItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
+                    orderTotal += Number(item.price) * cart[item.id]; itemsCount += cart[item.id];
+                    currentItems.push({ name: item.name, qty: cart[item.id], price: Number(item.price) });
                 }
             });
-
-            if (orderTotal === 0) { alert('Seu carrinho está vazio!'); return; }
-            if (!confirm(`--- CONFIRME SEU PEDIDO ---\n\n${orderItemsText}\nTotal Geral: R$ ${orderTotal.toFixed(2)}`)) return; 
-
+            if (orderTotal === 0) return;
             try {
                 await addOrderToKitchen(`Mesa ${currentTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
-                await setDoc(doc(db, "reports", "sales"), {
-                    totalRevenue: salesReport.totalRevenue + orderTotal,
-                    totalOrders: salesReport.totalOrders + 1,
-                    totalItemsSold: salesReport.totalItemsSold + itemsCount
-                });
-
-                const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
-                const mesaSnapshot = await getDoc(mesaDocRef);
-                let currentTableHistory = [];
-                if(mesaSnapshot.exists()) currentTableHistory = mesaSnapshot.data().orders || [];
-                currentTableHistory = currentTableHistory.concat(currentItems);
-                await setDoc(mesaDocRef, { orders: currentTableHistory });
-
-                alert(`🎉 Pedido enviado para a cozinha!`);
-                cart = {};
-                renderClientMenu();
+                await setDoc(doc(db, "reports", "sales"), { totalRevenue: salesReport.totalRevenue + orderTotal, totalOrders: salesReport.totalOrders + 1, totalItemsSold: salesReport.totalItemsSold + itemsCount });
+                const docRef = doc(db, "tables", `mesa_${currentTable}`);
+                const snap = await getDoc(docRef);
+                await setDoc(docRef, { orders: (snap.exists() ? snap.data().orders || [] : []).concat(currentItems) });
+                alert(`Pedido Enviado!`); cart = {}; renderClientMenu();
             } catch (error) { console.error(error); }
         }
 
-        window.updateWaiterTable = function() {
-            waiterActiveTable = document.getElementById('waiter-table-number').value || null;
-        }
+        window.updateWaiterTable = function() { waiterActiveTable = document.getElementById('waiter-table-number').value || null; }
 
         window.submitWaiterOrder = async function() {
-            if (!waiterActiveTable) { alert("Informe o número da mesa."); return; }
-            let orderTotal = 0, itemsCount = 0, currentItemsToSave = [], kitchenItems = [];
-
+            if (!waiterActiveTable) return;
+            let orderTotal = 0, itemsCount = 0, currentItems = [];
             menuItems.forEach(item => {
                 if (waiterCart[item.id]) {
-                    const parsedPrice = Number(item.price) || 0;
-                    orderTotal += parsedPrice * waiterCart[item.id];
-                    itemsCount += waiterCart[item.id];
-                    currentItemsToSave.push({ name: item.name, qty: waiterCart[item.id], price: parsedPrice });
-                    kitchenItems.push({ name: item.name, qty: waiterCart[item.id] });
+                    orderTotal += Number(item.price) * waiterCart[item.id]; itemsCount += waiterCart[item.id];
+                    currentItems.push({ name: item.name, qty: waiterCart[item.id], price: Number(item.price) });
                 }
             });
-
-            if (orderTotal === 0) { alert("Adicione pelo menos um item."); return; }
-
+            if (orderTotal === 0) return;
             try {
-                await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
-                const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
-                const mesaSnapshot = await getDoc(mesaDocRef);
-                let tableHistory = [];
-                if(mesaSnapshot.exists()) tableHistory = mesaSnapshot.data().orders || [];
-                tableHistory = tableHistory.concat(currentItemsToSave);
-                await setDoc(mesaDocRef, { orders: tableHistory });
-
-                await setDoc(doc(db, "reports", "sales"), {
-                    totalRevenue: salesReport.totalRevenue + orderTotal,
-                    totalOrders: salesReport.totalOrders + 1,
-                    totalItemsSold: salesReport.totalItemsSold + itemsCount
-                });
-
-                alert(`Pedido lançado na Mesa ${waiterActiveTable}!`);
-                waiterCart = {};
-                renderWaiterMenu();
+                await addOrderToKitchen(`Mesa ${waiterActiveTable}`, currentItems.map(i => ({name: i.name, qty: i.qty})));
+                const docRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
+                const snap = await getDoc(docRef);
+                await setDoc(docRef, { orders: (snap.exists() ? snap.data().orders || [] : []).concat(currentItems) });
+                await setDoc(doc(db, "reports", "sales"), { totalRevenue: salesReport.totalRevenue + orderTotal, totalOrders: salesReport.totalOrders + 1, totalItemsSold: salesReport.totalItemsSold + itemsCount });
+                alert("Lançado com sucesso!"); waiterCart = {}; renderWaiterMenu();
             } catch(e) { console.error(e); }
         }
 
@@ -592,101 +509,64 @@
 
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
-            if(!container) return;
-            container.innerHTML = '';
-            if(kitchenOrders.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido pendente.</div>`;
-                return;
-            }
+            if(!container) return; container.innerHTML = '';
             kitchenOrders.forEach(order => {
-                let itemsListHTML = '';
-                order.items.forEach(item => { itemsListHTML += `<li class="text-gray-700 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
-                container.innerHTML += `
-                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-white flex flex-col justify-between border-amber-400 bg-amber-50/40">
-                        <div>
-                            <div class="flex justify-between items-start border-b pb-2 mb-3">
-                                <div><h4 class="font-black text-xl text-gray-800">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
-                            </div>
-                            <ul class="space-y-1.5">${itemsListHTML}</ul>
-                        </div>
-                        <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-50 text-red-600 py-1 rounded text-xs">Remover</button>
-                    </div>`;
+                let list = ''; order.items.forEach(i => { list += `<li>▪️ ${i.qty}x ${i.name}</li>`; });
+                container.innerHTML += `<div class="p-3 rounded bg-white shadow border-t-2 border-amber-400"><b>${order.origin}</b><ul class="text-xs space-y-1 mt-2">${list}</ul><button onclick="window.deleteKitchenOrder('${order.id}')" class="text-red-500 text-[10px] mt-2 block cursor-pointer">Concluir</button></div>`;
             });
         }
-
-        window.deleteKitchenOrder = async function(id) { if (confirm("Remover do monitor?")) await deleteDoc(doc(db, "kitchen", id)); }
+        window.deleteKitchenOrder = async function(id) { await deleteDoc(doc(db, "kitchen", id)); }
+        
         function updateSalesReportView() {
-            document.getElementById('sales-total-money').innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
+            document.getElementById('sales-total-money').innerText = (salesReport.totalRevenue || 0).toFixed(2);
             document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
             document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
         }
-        window.clearSalesReport = async function() { if(confirm("Zerar relatório?")) await setDoc(doc(db, "reports", "sales"), { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 }); }
 
         window.prepareInvoice = async function() {
-            const tableNum = document.getElementById('print-table-number').value;
-            const previewContainer = document.getElementById('invoice-preview');
-            const printSection = document.getElementById('invoice-print-section');
-            if(!tableNum) return;
-
-            try {
-                const snapshot = await getDoc(doc(db, "tables", `mesa_${tableNum}`));
-                if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
-                    previewContainer.innerHTML = `<span class="text-red-500 font-bold">Mesa vazia.</span>`;
-                    activeInvoiceText = ""; printSection.innerHTML = ""; return;
-                }
-                const tableOrders = snapshot.data().orders;
-                let textCupom = `========================================\n          *** EXTRATO DE CONTA *** \n========================================\nMESA: ${tableNum.padStart(2, '0')}\n----------------------------------------\n`;
-                let totalGeral = 0;
-                tableOrders.forEach(item => {
-                    const totalItem = item.qty * (Number(item.price) || 0); totalGeral += totalItem;
-                    textCupom += `${item.name.substring(0, 18).padEnd(18, ' ')}${item.qty.toString().padStart(4, ' ')}${totalItem.toFixed(2).padStart(14, ' ')}\n`;
-                });
-                textCupom += `----------------------------------------\nTOTAL DA CONTA:            R$ ${totalGeral.toFixed(2).padStart(12, ' ')}\n========================================`;
-                activeInvoiceText = textCupom;
-                previewContainer.innerHTML = `<pre class="whitespace-pre-wrap font-mono">${textCupom}</pre>`;
-                printSection.innerHTML = `<pre style="font-family: monospace; font-size: 12px;">${textCupom}</pre>`;
-            } catch(e) { console.error(e); }
+            const tableNum = document.getElementById('print-table-number').value; if(!tableNum) return;
+            const snap = await getDoc(doc(db, "tables", `mesa_${tableNum}`));
+            if (!snap.exists() || !snap.data().orders) { alert("Nenhum pedido ativo nesta mesa."); return; }
+            let txt = `EXTRATO MESA ${tableNum}\n------------------\n`; let tot = 0;
+            snap.data().orders.forEach(i => { const sub = i.qty * i.price; tot += sub; txt += `${i.name} x${i.qty} R$${sub.toFixed(2)}\n`; });
+            txt += `------------------\nTOTAL: R$ ${tot.toFixed(2)}`;
+            activeInvoiceText = txt; document.getElementById('invoice-preview').innerText = txt;
+            document.getElementById('invoice-print-section').innerHTML = `<pre>${txt}</pre>`;
         }
-
+        
         window.printInvoice = function() { if(activeInvoiceText) window.print(); }
-        window.downloadInvoiceTXT = function() {
-            const tableNum = document.getElementById('print-table-number').value;
-            if(!activeInvoiceText) return;
-            const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
-            const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
-            link.download = `cupom_mesa_${tableNum}.txt`; link.click();
-        }
-
+        
         window.confirmPayment = async function() {
-            const tableNum = document.getElementById('print-table-number').value;
-            if(!tableNum || !confirm(`Fechar Mesa ${tableNum}?`)) return;
-            try {
-                await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
-                kitchenOrders.filter(o => o.origin === `Mesa ${tableNum}`).forEach(async o => await deleteDoc(doc(db, "kitchen", o.id)));
-                document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa.";
-                activeInvoiceText = "";
-                renderClientMenu(); renderWaiterMenu(); alert("Mesa liberada!");
-            } catch(e) { console.error(e); }
+            const tableNum = document.getElementById('print-table-number').value; if(!tableNum) return;
+            await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
+            document.getElementById('invoice-preview').innerText = ''; activeInvoiceText = ''; alert("Mesa Pronta!");
         }
 
         window.generateTableQRCode = function() {
-            const tableNum = document.getElementById('qr-table-number').value;
-            const qrContainer = document.getElementById('qrcode-container');
-            if(!tableNum) return; qrContainer.innerHTML = "";
-            new QRCode(qrContainer, { text: `${window.location.href.split('?')[0]}?mesa=${tableNum}`, width: 180, height: 180 });
-            document.getElementById('download-btn-container').classList.remove('hidden');
+            const num = document.getElementById('qr-table-number').value;
+            const container = document.getElementById('qrcode-container'); if(!num) return; container.innerHTML = '';
+            new QRCode(container, { text: `${window.location.href.split('?')[0]}?mesa=${num}`, width: 140, height: 140 });
         }
 
-        window.downloadQRCode = function() {
-            const canvas = document.getElementById('qrcode-container').querySelector('canvas');
-            if(canvas) {
-                const link = document.createElement('a'); link.href = canvas.toDataURL("image/png");
-                link.download = `qrcode_mesa.png`; link.click();
-            }
+        window.printQRCode = function() {
+            const num = document.getElementById('qr-table-number').value;
+            const qrCanvas = document.getElementById('qrcode-container').querySelector('canvas');
+            if(!num || !qrCanvas) { alert("Gere o QR Code de uma mesa primeiro!"); return; }
+            
+            const printSection = document.getElementById('invoice-print-section');
+            printSection.innerHTML = `
+                <div style="text-align: center; font-family: monospace; padding: 10mm 0;">
+                    <h2>MESA ${num}</h2>
+                    <p>Escaneie para fazer seu pedido:</p>
+                    <img src="${qrCanvas.toDataURL()}" style="width: 50mm; height: 50mm; margin: 5mm auto;" />
+                    <p>-------------------------</p>
+                </div>
+            `;
+            window.print();
         }
 
         window.switchView = function(viewId) {
-            document.querySelectorAll('.view-section').forEach(section => section.classList.add('hidden'));
+            document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
             document.getElementById(viewId)?.classList.remove('hidden');
             if (viewId === 'client-view') renderClientMenu();
             else if (viewId === 'waiter-view') renderWaiterMenu();
