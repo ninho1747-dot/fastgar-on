@@ -39,7 +39,30 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen">
 
-    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só ativa para a equipe) -->
+    <!-- ================= TELA DE LOGIN (PROTEÇÃO INTERNA VIA FIREBASE) ================= -->
+    <section id="login-view" class="view-section hidden fixed inset-0 bg-gray-900 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-200">
+            <div class="text-center mb-6">
+                <span class="text-4xl">🔐</span>
+                <h3 class="text-2xl font-bold text-gray-800 mt-2">Acesso Restrito</h3>
+                <p class="text-gray-500 text-sm mt-1">Autenticação obrigatória para a equipe</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700">E-mail cadastrado</label>
+                    <input type="email" id="login-username" placeholder="seu@email.com" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700">Senha</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="login-error-msg" class="text-red-600 text-xs font-semibold hidden text-center"></div>
+                <button type="submit" id="login-btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition shadow cursor-pointer">Entrar no Sistema</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só ativa para a equipe após login) -->
     <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
@@ -128,7 +151,13 @@
 
         <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 border-gray-300">Painel do Administrador</h2>
+            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300">
+                <h2 class="text-3xl font-bold text-gray-800">Painel do Administrador</h2>
+                <!-- Botão de Sair do Sistema -->
+                <button onclick="window.logoutSystem()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg shadow text-sm transition flex items-center gap-2 cursor-pointer">
+                    🚪 Sair do Sistema
+                </button>
+            </div>
             
             <!-- Relatório de Vendas -->
             <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-blue-500">
@@ -155,7 +184,7 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cadastro de Itens com Input de Imagem Convertida localmente -->
+                <!-- Cadastro de Itens -->
                 <div class="bg-white p-6 rounded-lg shadow-md h-fit">
                     <h3 class="text-lg font-bold text-gray-700 mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
@@ -260,6 +289,8 @@
         import { 
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // Importação nativa do Firebase Auth
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
@@ -272,6 +303,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app); // Instanciando o Firebase Auth
 
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
@@ -320,10 +352,70 @@
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
                 window.switchView('client-view');
             } else {
-                document.getElementById('main-navigation').classList.remove('hidden'); 
-                document.getElementById('client-blocked-state').classList.remove('hidden');
-                document.getElementById('client-allowed-state').classList.add('hidden');
-                window.switchView('admin-view'); 
+                // Se for acesso da equipe, verifica se existe uma sessão válida ativa no Firebase Auth
+                if (auth.currentUser || sessionStorage.getItem('isStaffLogged') === 'true') {
+                    showStaffPanels();
+                } else {
+                    document.getElementById('main-navigation').classList.add('hidden');
+                    document.getElementById('login-view').classList.remove('hidden');
+                }
+            }
+        }
+
+        // FUNÇÃO DE SUBMISSÃO DO LOGIN INTEGRADA AO FIREBASE AUTH
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const emailIn = document.getElementById('login-username').value.trim();
+            const passIn = document.getElementById('login-password').value;
+            const errorMsg = document.getElementById('login-error-msg');
+            const submitBtn = document.getElementById('login-btn-submit');
+
+            errorMsg.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Autenticando...";
+
+            try {
+                // Comunicação direta com a autenticação em nuvem do Firebase
+                await signInWithEmailAndPassword(auth, emailIn, passIn);
+                
+                sessionStorage.setItem('isStaffLogged', 'true');
+                document.getElementById('login-view').classList.add('hidden');
+                showStaffPanels();
+            } catch (error) {
+                console.error("Erro na autenticação:", error.code);
+                errorMsg.classList.remove('hidden');
+                
+                // Mensagens amigáveis dependendo do erro retornado
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    errorMsg.innerText = "❌ E-mail ou senha incorretos!";
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMsg.innerText = "❌ Formato de e-mail inválido!";
+                } else {
+                    errorMsg.innerText = "❌ Falha ao conectar: Verifique as credenciais.";
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Entrar no Sistema";
+            }
+        });
+
+        // Exibe os painéis internos após a autenticação com sucesso
+        function showStaffPanels() {
+            document.getElementById('main-navigation').classList.remove('hidden'); 
+            document.getElementById('client-blocked-state').classList.remove('hidden');
+            document.getElementById('client-allowed-state').classList.add('hidden');
+            window.switchView('admin-view'); 
+        }
+
+        // FUNÇÃO DE SAÍDA DO SISTEMA
+        window.logoutSystem = function() {
+            if(confirm("Deseja realmente sair do painel administrativo?")) {
+                auth.signOut().then(() => {
+                    sessionStorage.removeItem('isStaffLogged');
+                    window.location.href = window.location.pathname;
+                }).catch(err => {
+                    console.error("Erro ao deslogar:", err);
+                });
             }
         }
 
@@ -567,7 +659,6 @@
             let imageUrlString = ""; 
 
             try {
-                // Se o usuário anexou um arquivo JPG/PNG, converte localmente sem gastar banda de servidor
                 if (file) {
                     imageUrlString = await convertImageToBase64(file);
                 }
@@ -575,7 +666,6 @@
                 const price = Number(parseFloat(rawPrice).toFixed(2)) || 0;
                 const category = rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
 
-                // Grava no Firestore o texto gerado na conversão
                 await addDoc(collection(db, "menu"), { 
                     category: category, 
                     name: name, 
@@ -789,7 +879,10 @@
             else if (viewId === 'admin-view') renderAdminMenu();
         }
 
-        checkTableFromURL();
+        // Monitorea se há alteração de status de autenticação da sessão ativa
+        auth.onAuthStateChanged((user) => {
+            checkTableFromURL();
+        });
     </script>
 </body>
 </html>
