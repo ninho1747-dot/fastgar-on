@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Pedidos - Restaurante</title>
-    <!-- Tailwind CSS para um design moderno e responsivo -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
@@ -37,39 +35,37 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen">
+<body class="bg-gray-100 dark:bg-gray-900 font-sans min-h-screen transition-colors duration-200">
 
-    <!-- ================= TELA DE LOGIN (PROTEÇÃO INTERNA VIA FIREBASE) ================= -->
-    <section id="login-view" class="view-section hidden fixed inset-0 bg-gray-900 flex items-center justify-center z-50 p-4">
-        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-200">
+    <section id="login-view" class="view-section hidden fixed inset-0 bg-gray-900/90 dark:bg-black/90 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-200 dark:border-gray-700">
             <div class="text-center mb-6">
                 <span class="text-4xl">🔐</span>
-                <h3 class="text-2xl font-bold text-gray-800 mt-2">Acesso Restrito</h3>
-                <p class="text-gray-500 text-sm mt-1">Autenticação obrigatória para a equipe</p>
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-2">Acesso Restrito</h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Autenticação obrigatória para a equipe</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700">E-mail cadastrado</label>
-                    <input type="email" id="login-username" placeholder="seu@email.com" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">E-mail cadastrado</label>
+                    <input type="email" id="login-username" placeholder="seu@email.com" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700">Senha</label>
-                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Senha</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
                 </div>
-                <div id="login-error-msg" class="text-red-600 text-xs font-semibold hidden text-center"></div>
+                <div id="login-error-msg" class="text-red-600 dark:text-red-400 text-xs font-semibold hidden text-center"></div>
                 <button type="submit" id="login-btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition shadow cursor-pointer">Entrar no Sistema</button>
             </form>
         </div>
     </section>
 
-    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só ativa para a equipe após login) -->
-    <nav id="main-navigation" class="bg-blue-600 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
+    <nav id="main-navigation" class="bg-blue-600 dark:bg-blue-800 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
-            <span id="nav-user-badge" class="bg-blue-800 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
+            <span id="nav-user-badge" class="bg-blue-800 dark:bg-blue-900 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
             <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
             <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
         </div>
@@ -77,34 +73,30 @@
 
     <div class="max-w-6xl mx-auto p-4">
         
-        <!-- ================= CARDÁPIO DO CLIENTE ================= -->
         <section id="client-view" class="view-section hidden">
-            <!-- Mensagem de bloqueio de segurança -->
-            <div id="client-blocked-state" class="bg-white p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200">
+            <div id="client-blocked-state" class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-200 dark:border-gray-700">
                 <div class="text-6xl mb-4">📸</div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Acesso Restrito ao Cardápio</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">Acesso Restrito ao Cardápio</h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                     Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa.
                 </p>
             </div>
 
-            <!-- Área do Cardápio Categorizado Dinamicamente -->
             <div id="client-allowed-state" class="hidden space-y-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Nosso Cardápio</h2>
-                    <div class="flex items-center space-x-2 bg-yellow-50 p-3 rounded border border-yellow-200 inline-block">
-                        <span class="font-semibold text-yellow-800">Sua Mesa:</span>
-                        <span id="current-table-label" class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded font-bold">Mesa --</span>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Nosso Cardápio</h2>
+                    <div class="flex items-center space-x-2 bg-yellow-50 dark:bg-yellow-950/40 p-3 rounded border border-yellow-200 dark:border-yellow-900 inline-block">
+                        <span class="font-semibold text-yellow-800 dark:text-yellow-400">Sua Mesa:</span>
+                        <span id="current-table-label" class="bg-yellow-200 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100 px-3 py-1 rounded font-bold">Mesa --</span>
                     </div>
                 </div>
 
-                <!-- Container dinâmico para as categorias flexíveis -->
                 <div id="client-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
-                <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-gray-200 p-4 z-40">
+                <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-xl border-t border-gray-200 dark:border-gray-700 p-4 z-40">
                     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="text-xl font-bold text-gray-800">
-                            Total do Pedido: <span class="text-green-600 text-2xl">R$ <span id="client-total-price">0.00</span></span>
+                        <div class="text-xl font-bold text-gray-800 dark:text-gray-200">
+                            Total do Pedido: <span class="text-green-600 dark:text-green-400 text-2xl">R$ <span id="client-total-price">0.00</span></span>
                         </div>
                         <button onclick="window.sendOrderDirect()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
                             🟢 Confirmar e Enviar Pedido
@@ -114,25 +106,23 @@
             </div>
         </section>
 
-        <!-- ================= VISÃO DO GARÇOM ================= -->
         <section id="waiter-view" class="view-section hidden space-y-8">
-            <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Painel de Atendimento do Garçom</h2>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-50 p-4 rounded border border-orange-200">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-gray-100 dark:border-gray-700 border-l-4 border-l-orange-500 dark:border-l-orange-500">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Painel de Atendimento do Garçom</h2>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-50 dark:bg-orange-950/20 p-4 rounded border border-orange-200 dark:border-orange-900">
                     <div>
-                        <label class="block text-sm font-bold text-orange-800 mb-1">Selecione a Mesa do Cliente:</label>
-                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 bg-white text-gray-800 font-bold outline-none text-center">
+                        <label class="block text-sm font-bold text-orange-800 dark:text-orange-400 mb-1">Selecione a Mesa do Cliente:</label>
+                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border border-orange-300 dark:border-orange-700 rounded focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-bold outline-none text-center">
                     </div>
                 </div>
             </div>
 
-            <!-- Container dinâmico para o garçom -->
             <div id="waiter-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
-            <div class="fixed bottom-0 left-0 right-0 bg-white shadow-xl border-t border-orange-200 p-4 z-40">
+            <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-xl border-t border-orange-200 dark:border-orange-800 p-4 z-40">
                 <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="text-xl font-bold text-gray-800">
-                        Total do Atendimento: <span class="text-orange-600 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
+                    <div class="text-xl font-bold text-gray-800 dark:text-gray-200">
+                        Total do Atendimento: <span class="text-orange-600 dark:text-orange-400 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
                     </div>
                     <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
                         📝 Lançar Pedido na Mesa
@@ -141,88 +131,88 @@
             </div>
         </section>
 
-        <!-- ================= PAINEL DA COZINHA ================= -->
         <section id="kitchen-view" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300">
-                <h2 class="text-3xl font-bold text-gray-800">👨‍🍳 Monitor da Cozinha</h2>
+            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300 dark:border-gray-700">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">👨‍🍳 Monitor da Cozinha</h2>
             </div>
             <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </section>
 
-        <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300">
-                <h2 class="text-3xl font-bold text-gray-800">Painel do Administrador</h2>
-                <!-- Botão de Sair do Sistema -->
+            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-300 dark:border-gray-700">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Painel do Administrador</h2>
                 <button onclick="window.logoutSystem()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg shadow text-sm transition flex items-center gap-2 cursor-pointer">
                     🚪 Sair do Sistema
                 </button>
             </div>
             
-            <!-- Relatório de Vendas -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-6 border-l-4 border-blue-500">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-100 dark:border-gray-700 border-l-4 border-l-blue-500 dark:border-l-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-800">📊 Relatório de Vendas do Dia</h3>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">📊 Relatório de Vendas do Dia</h3>
                     </div>
-                    <button onclick="window.clearSalesReport()" class="bg-red-100 text-red-600 hover:bg-red-200 font-semibold px-4 py-2 rounded transition text-sm">🔄 Zerar Relatório</button>
+                    <button onclick="window.clearSalesReport()" class="bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm">🔄 Zerar Relatório</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <p class="text-sm text-green-700 font-semibold uppercase">Total Faturado</p>
-                        <p class="text-3xl font-black text-green-600 mt-1">R$ <span id="sales-total-money">0.00</span></p>
+                    <div class="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg border border-green-200 dark:border-green-900">
+                        <p class="text-sm text-green-700 dark:text-green-400 font-semibold uppercase">Total Faturado</p>
+                        <p class="text-3xl font-black text-green-600 dark:text-green-400 mt-1">R$ <span id="sales-total-money">0.00</span></p>
                     </div>
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <p class="text-sm text-blue-700 font-semibold uppercase">Pedidos Realizados</p>
-                        <p class="text-3xl font-black text-blue-600 mt-1"><span id="sales-total-orders">0</span></p>
+                    <div class="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+                        <p class="text-sm text-blue-700 dark:text-blue-400 font-semibold uppercase">Pedidos Realizados</p>
+                        <p class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1"><span id="sales-total-orders">0</span></p>
                     </div>
-                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                        <p class="text-sm text-purple-700 font-semibold uppercase">Itens Vendidos</p>
-                        <p class="text-3xl font-black text-purple-600 mt-1"><span id="sales-total-items">0</span></p>
+                    <div class="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg border border-purple-200 dark:border-purple-900">
+                        <p class="text-sm text-purple-700 dark:text-purple-400 font-semibold uppercase">Itens Vendidos</p>
+                        <p class="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1"><span id="sales-total-items">0</span></p>
                     </div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cadastro de Itens -->
-                <div class="bg-white p-6 rounded-lg shadow-md h-fit">
-                    <h3 class="text-lg font-bold text-gray-700 mb-4">Adicionar Item ao Cardápio</h3>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-fit border border-gray-100 dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-600">Categoria (Digite uma nova ou selecione na lista)</label>
-                            <input type="text" id="item-category" list="categories-list" required placeholder="Ex: Bebidas, Pizzas, Pasteis" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800 font-medium" autocomplete="off">
-                            <datalist id="categories-list">
-                                <!-- Preenchido dinamicamente pelo banco de dados -->
-                            </datalist>
+                            <div class="flex justify-between items-center">
+                                <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Categoria</label>
+                                <button type="button" id="toggle-cat-mode-btn" onclick="window.toggleCategoryMode()" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                                    ➕ Nova Categoria
+                                </button>
+                            </div>
+                            
+                            <div class="mt-1" id="category-field-container">
+                                <select id="item-category-select" required class="w-full p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 font-medium">
+                                    </select>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600">Nome do Item</label>
-                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
+                            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Nome do Item</label>
+                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600">Preço (R$)</label>
-                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800">
+                            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Preço (R$)</label>
+                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600">Descrição</label>
-                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800"></textarea>
+                            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Descrição</label>
+                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600">Foto do Item (.jpg, .png)</label>
-                            <input type="file" id="item-file" accept="image/*" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 text-gray-800 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <label class="block text-sm font-medium text-gray-600 dark:text-gray-400">Foto do Item (.jpg, .png)</label>
+                            <input type="file" id="item-file" accept="image/*" class="w-full mt-1 p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100">
                         </div>
-                        <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition shadow">Adicionar ao Cardápio</button>
+                        <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition shadow cursor-pointer">Adicionar ao Cardápio</button>
                     </form>
                 </div>
 
-                <!-- Gerência do Cardápio Visual / Admin -->
-                <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2 space-y-6">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md lg:col-span-2 space-y-6 border border-gray-100 dark:border-gray-700">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-700 mb-4">Cardápio Cadastrado</h3>
+                        <h3 class="text-lg font-bold text-gray-700 dark:text-gray-200 mb-4">Cardápio Cadastrado</h3>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase">
+                                    <tr class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm uppercase">
                                         <th class="p-3">Foto</th>
                                         <th class="p-3">Item / Categoria</th>
                                         <th class="p-3">Preço</th>
@@ -234,44 +224,42 @@
                         </div>
                     </div>
 
-                    <hr class="border-gray-200">
+                    <hr class="border-gray-200 dark:border-gray-700">
 
-                    <!-- QR Code e Caixa Faturamento -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-700 mb-3">Gerador de QR Code por Mesa</h4>
+                                <h4 class="font-bold text-gray-700 dark:text-gray-200 mb-3">Gerador de QR Code por Mesa</h4>
                                 <div class="flex gap-2 mb-3">
-                                    <input type="number" id="qr-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none">
-                                    <button onclick="window.generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition">Gerar</button>
+                                    <input type="number" id="qr-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
+                                    <button onclick="window.generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition cursor-pointer">Gerar</button>
                                 </div>
                                 <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[180px]">
                                     <p class="text-gray-400 text-sm text-center">QR Code aparecerá aqui</p>
                                 </div>
                             </div>
                             <div id="download-btn-container" class="mt-3 hidden">
-                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2">📥 Baixar QR Code</button>
+                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2 cursor-pointer">📥 Baixar QR Code</button>
                             </div>
                         </div>
 
-                        <!-- SEÇÃO DO CAIXA -->
-                        <div class="bg-gray-50 p-4 rounded border flex flex-col justify-between">
+                        <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-700 mb-3">Fechar Conta da Mesa</h4>
+                                <h4 class="font-bold text-gray-700 dark:text-gray-200 mb-3">Fechar Conta da Mesa</h4>
                                 <div class="flex gap-2 mb-3">
-                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition">Buscar</button>
+                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition cursor-pointer">Buscar</button>
                                 </div>
                             </div>
-                            <div id="invoice-preview" class="text-xs font-mono bg-white p-4 border rounded border-gray-300 text-gray-800 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
+                            <div id="invoice-preview" class="text-xs font-mono bg-white dark:bg-gray-800 p-4 border rounded border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
                                 Insira o número da mesa acima.
                             </div>
                             <div class="flex flex-col gap-2">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition">🖨️ Imprimir</button>
-                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-800 hover:bg-gray-900 text-white py-2.5 rounded font-bold text-sm transition">📥 Baixar</button>
+                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">🖨️ Imprimir</button>
+                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">📥 Baixar</button>
                                 </div>
-                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition">💰 Liberar Mesa</button>
+                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">💰 Liberar Mesa</button>
                             </div>
                         </div>
                     </div>
@@ -283,13 +271,11 @@
 
     <div id="invoice-print-section" style="display: none;"></div>
 
-    <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        // Importação nativa do Firebase Auth
         import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -303,7 +289,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app); // Instanciando o Firebase Auth
+        const auth = getAuth(app); 
 
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
@@ -315,6 +301,9 @@
         let currentTable = null;      
         let waiterActiveTable = null;
 
+        // Estado do controle do modo de input de categorias
+        let isCreatingNewCategory = false;
+
         // OUVINTES DO BANCO DE DADOS
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
@@ -324,7 +313,7 @@
             renderClientMenu();
             renderWaiterMenu();
             renderAdminMenu();
-            updateDatalistCategories();
+            updateSelectCategories();
         });
 
         onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
@@ -352,7 +341,6 @@
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
                 window.switchView('client-view');
             } else {
-                // Se for acesso da equipe, verifica se existe uma sessão válida ativa no Firebase Auth
                 if (auth.currentUser || sessionStorage.getItem('isStaffLogged') === 'true') {
                     showStaffPanels();
                 } else {
@@ -375,17 +363,13 @@
             submitBtn.innerText = "Autenticando...";
 
             try {
-                // Comunicação direta com a autenticação em nuvem do Firebase
                 await signInWithEmailAndPassword(auth, emailIn, passIn);
-                
                 sessionStorage.setItem('isStaffLogged', 'true');
                 document.getElementById('login-view').classList.add('hidden');
                 showStaffPanels();
             } catch (error) {
                 console.error("Erro na autenticação:", error.code);
                 errorMsg.classList.remove('hidden');
-                
-                // Mensagens amigáveis dependendo do erro retornado
                 if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
                     errorMsg.innerText = "❌ E-mail ou senha incorretos!";
                 } else if (error.code === 'auth/invalid-email') {
@@ -399,7 +383,6 @@
             }
         });
 
-        // Exibe os painéis internos após a autenticação com sucesso
         function showStaffPanels() {
             document.getElementById('main-navigation').classList.remove('hidden'); 
             document.getElementById('client-blocked-state').classList.remove('hidden');
@@ -407,7 +390,6 @@
             window.switchView('admin-view'); 
         }
 
-        // FUNÇÃO DE SAÍDA DO SISTEMA
         window.logoutSystem = function() {
             if(confirm("Deseja realmente sair do painel administrativo?")) {
                 auth.signOut().then(() => {
@@ -419,33 +401,31 @@
             }
         }
 
-        // AUXILIAR DE REDUÇÃO HTML PARA CARDS DO CARDÁPIO
         function createItemCardHTML(item, qty, isWaiter = false) {
             const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
             const parsedPrice = Number(item.price) || 0;
             const updateFn = isWaiter ? 'window.updateWaiterQuantity' : 'window.updateQuantity';
-            const borderCol = isWaiter ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50';
-            const textCol = isWaiter ? 'text-orange-700' : 'text-gray-600';
+            const borderCol = isWaiter ? 'border-orange-200 dark:border-orange-950 bg-orange-50 dark:bg-orange-950/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50';
+            const textCol = isWaiter ? 'text-orange-700 dark:text-orange-400' : 'text-gray-600 dark:text-gray-400';
 
             return `
-                <div class="bg-white rounded-lg shadow p-4 flex gap-4 border border-gray-100 items-center">
-                    <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md flex-shrink-0 bg-gray-200">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex gap-4 border border-gray-100 dark:border-gray-700 items-center">
+                    <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-lg font-bold text-gray-800 truncate">${item.name}</h4>
-                        <p class="text-sm text-gray-500 line-clamp-2 mt-1">${item.desc || 'Sem descrição.'}</p>
+                        <h4 class="text-lg font-bold text-gray-800 dark:text-gray-100 truncate">${item.name}</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">${item.desc || 'Sem descrição.'}</p>
                         <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
-                            <span class="text-green-600 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
+                            <span class="text-green-600 dark:text-green-400 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
                             <div class="flex items-center border rounded-lg ${borderCol}">
-                                <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 rounded-l-lg">-</button>
-                                <span class="px-3 font-semibold text-gray-800 min-w-[24px] text-center">${qty}</span>
-                                <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 rounded-r-lg">+</button>
+                                <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 dark:hover:bg-gray-600 rounded-l-lg">-</button>
+                                <span class="px-3 font-semibold text-gray-800 dark:text-gray-100 min-w-[24px] text-center">${qty}</span>
+                                <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-200 dark:hover:bg-gray-600 rounded-r-lg">+</button>
                             </div>
                         </div>
                     </div>
                 </div>`;
         }
 
-        // AGRUPAMENTO DINÂMICO DE SEÇÕES COM BASE NA STRING SALVA
         function groupItemsByCategory(items) {
             const groups = {};
             items.forEach(item => {
@@ -460,7 +440,6 @@
             return groups;
         }
 
-        // RENDERIZAR CARDÁPIO DO CLIENTE DINAMICAMENTE
         function renderClientMenu() {
             const container = document.getElementById('client-dynamic-menu-container');
             if(!container) return;
@@ -480,7 +459,7 @@
                 categorySection.className = "space-y-4";
                 
                 categorySection.innerHTML = `
-                    <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300 uppercase">🏷️ ${categoryName}</h3>
+                    <h3 class="text-xl font-black text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300 dark:border-gray-700 uppercase">🏷️ ${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 `;
                 
@@ -508,7 +487,6 @@
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
-        // RENDERIZAR CARDÁPIO DO GARÇOM DINAMICAMENTE
         function renderWaiterMenu() {
             const container = document.getElementById('waiter-dynamic-menu-container');
             if(!container) return;
@@ -528,7 +506,7 @@
                 categorySection.className = "space-y-4";
                 
                 categorySection.innerHTML = `
-                    <h3 class="text-xl font-black text-gray-700 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300 uppercase">🏷️ ${categoryName}</h3>
+                    <h3 class="text-xl font-black text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-300 dark:border-gray-700 uppercase">🏷️ ${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 `;
                 
@@ -556,10 +534,10 @@
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
         }
 
-        // ATUALIZA AS SUGESTÕES DO DATALIST COLETANDO DO BANCO DE DADOS
-        function updateDatalistCategories() {
-            const datalist = document.getElementById('categories-list');
-            if(!datalist) return;
+        // ATUALIZA A LISTA SELETORA DE CATEGORIAS (SELECT)
+        function updateSelectCategories() {
+            const container = document.getElementById('category-field-container');
+            if(!container || isCreatingNewCategory) return; // Não mexe se estiver digitando uma nova
             
             const categories = new Set();
             menuItems.forEach(item => {
@@ -569,17 +547,38 @@
                 }
             });
 
+            // Fallbacks padrão caso o banco esteja limpo
             if(categories.size === 0) {
                 ['Bebidas', 'Pizzas', 'Pasteis', 'Refeições', 'Lanches'].forEach(c => categories.add(c));
             }
 
-            datalist.innerHTML = '';
+            let selectHTML = `<select id="item-category-select" required class="w-full p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 font-medium">`;
             Array.from(categories).sort().forEach(cat => {
-                datalist.innerHTML += `<option value="${cat}">`;
+                selectHTML += `<option value="${cat}">${cat}</option>`;
             });
+            selectHTML += `</select>`;
+            
+            container.innerHTML = selectHTML;
         }
 
-        // EXIBIÇÃO ORGANIZADA DO CARDÁPIO NA PÁGINA DO ADMIN
+        // INTERRUPTOR ENTRE LISTA SUSPENSA (SELECT) E DIGITAÇÃO (INPUT)
+        window.toggleCategoryMode = function() {
+            const container = document.getElementById('category-field-container');
+            const btn = document.getElementById('toggle-cat-mode-btn');
+            
+            if (!isCreatingNewCategory) {
+                // Muda para modo de digitação de texto
+                container.innerHTML = `<input type="text" id="item-category-input" required placeholder="Ex: Sobremesas, Porções" class="w-full p-2 border rounded outline-none bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 font-medium" autocomplete="off">`;
+                btn.innerText = "↩️ Ver Lista";
+                isCreatingNewCategory = true;
+            } else {
+                // Volta para modo de seleção
+                isCreatingNewCategory = false;
+                btn.innerText = "➕ Nova Categoria";
+                updateSelectCategories();
+            }
+        }
+
         function renderAdminMenu() {
             const tableBody = document.getElementById('admin-menu-table');
             if(!tableBody) return;
@@ -607,21 +606,20 @@
                 }
 
                 tableBody.innerHTML += `
-                    <tr class="border-b text-gray-700 bg-white hover:bg-gray-50 transition">
-                        <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded-md border shadow-sm"></td>
+                    <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded-md border dark:border-gray-600 shadow-sm"></td>
                         <td class="p-3">
-                            <div class="font-bold text-gray-800">${item.name}</div>
-                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-100 text-blue-800">${catLabel}</span>
+                            <div class="font-bold text-gray-800 dark:text-gray-100">${item.name}</div>
+                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-400">${catLabel}</span>
                         </td>
-                        <td class="p-3 text-green-600 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
+                        <td class="p-3 text-green-600 dark:text-green-400 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
                         <td class="p-3 text-center">
-                            <button onclick="window.deleteItem('${item.id}')" class="text-red-600 font-semibold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg cursor-pointer transition text-xs">🗑️ Remover</button>
+                            <button onclick="window.deleteItem('${item.id}')" class="text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950 px-3 py-1.5 rounded-lg cursor-pointer transition text-xs">🗑️ Remover</button>
                         </td>
                     </tr>`;
             });
         }
 
-        // FUNÇÃO DE CONVERSÃO LOCAL E GRATUITA: Converte o arquivo selecionado para uma String Base64 leve
         function convertImageToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -631,25 +629,30 @@
             });
         }
 
-        // SALVA O ITEM NO FIRESTORE SEM PRECISAR DE STORAGE PAGO
         window.handleAddItem = async function(event) {
             event.preventDefault();
             
             const submitBtn = document.getElementById('submit-btn');
-            const categoryInput = document.getElementById('item-category');
             const nameInput = document.getElementById('item-name');
             const priceInput = document.getElementById('item-price');
             const descInput = document.getElementById('item-desc');
             const fileInput = document.getElementById('item-file');
 
-            const rawCategory = categoryInput.value.trim();
+            // Captura o valor dependendo de qual campo está ativo na tela
+            let rawCategory = "";
+            if (isCreatingNewCategory) {
+                rawCategory = document.getElementById('item-category-input').value.trim();
+            } else {
+                rawCategory = document.getElementById('item-category-select').value;
+            }
+
             const name = nameInput.value.trim();
             const rawPrice = priceInput.value;
             const desc = descInput.value.trim();
             const file = fileInput.files[0];
             
             if (!rawCategory) {
-                alert("Por favor, digite ou selecione uma categoria!");
+                alert("Por favor, selecione ou digite uma categoria válida!");
                 return;
             }
 
@@ -675,11 +678,18 @@
                 });
                 
                 document.getElementById('add-item-form').reset();
-                updateDatalistCategories();
-                alert("Item cadastrado com sucesso de forma 100% gratuita!");
+                
+                // Se o usuário adicionou uma categoria nova de texto, reseta para o modo de lista padrão
+                if (isCreatingNewCategory) {
+                    window.toggleCategoryMode();
+                } else {
+                    updateSelectCategories();
+                }
+
+                alert("Item cadastrado com sucesso!");
             } catch(e) { 
-                console.error("Erro ao salvar no banco:", e); 
-                alert("Erro ao salvar dados no banco.");
+                console.error(e); 
+                alert("Erro ao salvar dados.");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Adicionar ao Cardápio";
@@ -690,7 +700,6 @@
             if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
         }
 
-        // ENVIO DE PEDIDOS E FUNÇÕES COMPLEMENTARES
         window.sendOrderDirect = async function() {
             if (!currentTable) return;
             let orderItemsText = '', orderTotal = 0, itemsCount = 0, currentItems = [];
@@ -786,16 +795,16 @@
             }
             kitchenOrders.forEach(order => {
                 let itemsListHTML = '';
-                order.items.forEach(item => { itemsListHTML += `<li class="text-gray-700 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
+                order.items.forEach(item => { itemsListHTML += `<li class="text-gray-700 dark:text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
                 container.innerHTML += `
-                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-white flex flex-col justify-between border-amber-400 bg-amber-50/40">
+                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-white dark:bg-gray-800 flex flex-col justify-between border-amber-400 bg-amber-50/40 dark:bg-amber-950/20">
                         <div>
-                            <div class="flex justify-between items-start border-b pb-2 mb-3">
-                                <div><h4 class="font-black text-xl text-gray-800">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
+                            <div class="flex justify-between items-start border-b dark:border-gray-700 pb-2 mb-3">
+                                <div><h4 class="font-black text-xl text-gray-800 dark:text-gray-100">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
                             </div>
                             <ul class="space-y-1.5">${itemsListHTML}</ul>
                         </div>
-                        <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-50 text-red-600 py-1 rounded text-xs">Remover</button>
+                        <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 py-1 rounded text-xs cursor-pointer hover:bg-red-100 dark:hover:bg-red-900 transition">Remover</button>
                     </div>`;
             });
         }
@@ -879,7 +888,6 @@
             else if (viewId === 'admin-view') renderAdminMenu();
         }
 
-        // Monitorea se há alteração de status de autenticação da sessão ativa
         auth.onAuthStateChanged((user) => {
             checkTableFromURL();
         });
