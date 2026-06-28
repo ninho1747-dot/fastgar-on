@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Pedidos - Restaurante</title>
+    <!-- Tailwind CSS para um design moderno e responsivo -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
@@ -37,6 +39,7 @@
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen transition-colors duration-200">
 
+    <!-- ================= TELA DE LOGIN (PROTEÇÃO INTERNA VIA FIREBASE) ================= -->
     <section id="login-view" class="view-section hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700">
             <div class="text-center mb-6">
@@ -59,6 +62,7 @@
         </div>
     </section>
 
+    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só activa para a equipe após login) -->
     <nav id="main-navigation" class="bg-blue-800 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
@@ -73,7 +77,9 @@
 
     <div class="max-w-6xl mx-auto p-4">
         
+        <!-- ================= CARDÁPIO DO CLIENTE ================= -->
         <section id="client-view" class="view-section hidden">
+            <!-- Mensagem de bloqueio de segurança -->
             <div id="client-blocked-state" class="bg-gray-800 p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-700">
                 <div class="text-6xl mb-4">📸</div>
                 <h3 class="text-xl font-bold text-gray-100 mb-2">Acesso Restrito ao Cardápio</h3>
@@ -82,6 +88,7 @@
                 </p>
             </div>
 
+            <!-- Área do Cardápio Categorizado Dinamicamente -->
             <div id="client-allowed-state" class="hidden space-y-8">
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
                     <h2 class="text-2xl font-bold text-gray-100 mb-2">Nosso Cardápio</h2>
@@ -91,6 +98,7 @@
                     </div>
                 </div>
 
+                <!-- Container dinâmico para as categorias flexíveis -->
                 <div id="client-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
                 <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-gray-700 p-4 z-40">
@@ -98,7 +106,7 @@
                         <div class="text-xl font-bold text-gray-200">
                             Total do Pedido: <span class="text-green-400 text-2xl">R$ <span id="client-total-price">0.00</span></span>
                         </div>
-                        <button onclick="window.sendOrderDirect()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                        <button onclick="window.showOrderReviewModal()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer">
                             🟢 Confirmar e Enviar Pedido
                         </button>
                     </div>
@@ -106,32 +114,55 @@
             </div>
         </section>
 
-        <div id="order-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100">
-                <div class="bg-green-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-800">
-                    <span class="text-3xl">🧑‍🍳</span>
+        <!-- ================= MODAL NOVO: REVISÃO DO PEDIDO (PRÉ-CONFIRMAÇÃO) ================= -->
+        <div id="order-review-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col">
+                <div class="text-center mb-4">
+                    <span class="text-3xl">📋</span>
+                    <h3 class="text-xl font-bold text-gray-100 mt-1">Confirme seu Pedido</h3>
+                    <p class="text-gray-400 text-xs">Dê uma última olhada antes de enviar para a cozinha</p>
                 </div>
                 
-                <h3 class="text-xl font-bold text-gray-100 mb-1">Pedido Confirmado! 🎉</h3>
-                <hr class="border-gray-700 my-3" />
+                <!-- Lista de itens dinâmicos com scroll se for muito grande -->
+                <div id="review-modal-items" class="space-y-2 max-h-60 overflow-y-auto mb-4 pr-1 scrollbar-thin">
+                    <!-- Inserido dinamicamente via JS -->
+                </div>
+
+                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex justify-between items-center mb-6">
+                    <span class="text-gray-300 font-medium">Valor Total:</span>
+                    <span class="text-green-400 font-black text-xl">R$ <span id="review-modal-total">0.00</span></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="document.getElementById('order-review-modal').classList.add('hidden')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-bold text-sm transition cursor-pointer">
+                        Voltar
+                    </button>
+                    <button onclick="window.sendOrderDirect()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-sm shadow transition flex items-center justify-center gap-1 cursor-pointer">
+                        Enviar Pedido 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= CAIXA DE CONFIRMAÇÃO DE PEDIDO (SUCESSO COMPACTA) ================= -->
+        <div id="order-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+                <div class="bg-green-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-800">
+                    <span class="text-3xl">🎉</span>
+                </div>
                 
-                <p class="text-green-400 font-semibold text-base mb-2">Muito obrigado pela preferência!</p>
-                <p class="text-gray-400 text-sm leading-relaxed mb-4">
-                    O seu pedido já foi enviado para a cozinha e nossos chefs já estão preparando tudo com muito carinho.
+                <h3 class="text-xl font-bold text-gray-100 mb-2">Pedido confirmado!</h3>
+                <p class="text-green-400 font-medium text-base leading-relaxed mb-6">
+                    Seu pedido já está sendo preparado.
                 </p>
                 
-                <div class="bg-gray-900 p-3 rounded-xl border-l-4 border-green-500 text-left mb-5">
-                    <p class="text-sm text-gray-300">
-                        ⏱️ <strong class="text-gray-100">Falta pouco:</strong> Logo, logo ele chegará quentinho até você!
-                    </p>
-                </div>
-                
                 <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-sm shadow transition cursor-pointer">
-                    Entendido
+                    Excelente
                 </button>
             </div>
         </div>
 
+        <!-- ================= VISÃO DO GARÇOM ================= -->
         <section id="waiter-view" class="view-section hidden space-y-8">
             <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 border-l-4 border-l-orange-500">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Painel de Atendimento do Garçom</h2>
@@ -143,6 +174,7 @@
                 </div>
             </div>
 
+            <!-- Container dinâmico para o garçom -->
             <div id="waiter-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
             <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-orange-800 p-4 z-40">
@@ -157,6 +189,7 @@
             </div>
         </section>
 
+        <!-- ================= PAINEL DA COZINHA ================= -->
         <section id="kitchen-view" class="view-section hidden">
             <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-700">
                 <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor da Cozinha</h2>
@@ -164,6 +197,7 @@
             <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </section>
 
+        <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
             <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-700">
                 <h2 class="text-3xl font-bold text-gray-100">Painel do Administrador</h2>
@@ -172,6 +206,7 @@
                 </button>
             </div>
             
+            <!-- Relatório de Vendas -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-700 border-l-4 border-l-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
@@ -188,7 +223,7 @@
                         <p class="text-sm text-blue-400 font-semibold uppercase">Pedidos Realizados</p>
                         <p class="text-3xl font-black text-blue-400 mt-1"><span id="sales-total-orders">0</span></p>
                     </div>
-                    <div class="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg border border-purple-900">
+                    <div class="bg-purple-950/30 p-4 rounded-lg border border-purple-900">
                         <p class="text-sm text-purple-400 font-semibold uppercase">Itens Vendidos</p>
                         <p class="text-3xl font-black text-purple-400 mt-1"><span id="sales-total-items">0</span></p>
                     </div>
@@ -196,6 +231,7 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Cadastro de Itens -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md h-fit border border-gray-700">
                     <h3 class="text-lg font-bold text-gray-200 mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
@@ -209,7 +245,7 @@
                             
                             <div class="mt-1" id="category-field-container">
                                 <select id="item-category-select" required class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium">
-                                    </select>
+                                </select>
                             </div>
                         </div>
                         <div>
@@ -232,6 +268,7 @@
                     </form>
                 </div>
 
+                <!-- Gerência do Cardápio Visual / Admin -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md lg:col-span-2 space-y-6 border border-gray-700">
                     <div>
                         <h3 class="text-lg font-bold text-gray-200 mb-4">Cardápio Cadastrado</h3>
@@ -252,6 +289,7 @@
 
                     <hr class="border-gray-700">
 
+                    <!-- QR Code e Caixa Faturamento -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
                             <div>
@@ -269,12 +307,13 @@
                             </div>
                         </div>
 
+                        <!-- SEÇÃO DO CAIXA -->
                         <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
                             <div>
                                 <h4 class="font-bold text-gray-200 mb-3">Fechar Conta da Mesa</h4>
                                 <div class="flex gap-2 mb-3">
                                     <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold bg-gray-700 border-gray-600 text-gray-100">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition cursor-pointer">Buscar</button>
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition pointer-events-auto">Buscar</button>
                                 </div>
                             </div>
                             <div id="invoice-preview" class="text-xs font-mono bg-gray-800 p-4 border rounded border-gray-600 text-gray-200 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
@@ -283,7 +322,7 @@
                             <div class="flex flex-col gap-2">
                                 <div class="grid grid-cols-2 gap-2">
                                     <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">🖨️ Imprimir</button>
-                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-700 dark:hover:bg-gray-600 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">📥 Baixar</button>
+                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">📥 Baixar</button>
                                 </div>
                                 <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">💰 Liberar Mesa</button>
                             </div>
@@ -297,6 +336,7 @@
 
     <div id="invoice-print-section" style="display: none;"></div>
 
+    <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
@@ -326,9 +366,8 @@
         let waiterCart = {};    
         let currentTable = null;      
         let waiterActiveTable = null;
-
-        // Estado do controle do modo de input de categorias
         let isCreatingNewCategory = false;
+        let pendingOrderItems = []; // Guarda temporariamente os itens que serão enviados
 
         // OUVINTES DO BANCO DE DADOS
         onSnapshot(collection(db, "menu"), (snapshot) => {
@@ -356,7 +395,6 @@
             renderKitchenOrders();
         });
 
-        // TRAVA E RECONHECIMENTO DE ACESSO URL
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
@@ -376,7 +414,6 @@
             }
         }
 
-        // FUNÇÃO DE SUBMISSÃO DO LOGIN INTEGRADA AO FIREBASE AUTH
         document.getElementById('login-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             const emailIn = document.getElementById('login-username').value.trim();
@@ -394,15 +431,8 @@
                 document.getElementById('login-view').classList.add('hidden');
                 showStaffPanels();
             } catch (error) {
-                console.error("Erro na autenticação:", error.code);
                 errorMsg.classList.remove('hidden');
-                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-                    errorMsg.innerText = "❌ E-mail ou senha incorretos!";
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMsg.innerText = "❌ Formato de e-mail inválido!";
-                } else {
-                    errorMsg.innerText = "❌ Falha ao conectar: Verifique as credenciais.";
-                }
+                errorMsg.innerText = "❌ Credenciais inválidas!";
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Entrar no Sistema";
@@ -417,12 +447,10 @@
         }
 
         window.logoutSystem = function() {
-            if(confirm("Deseja realmente sair do painel administrativo?")) {
+            if(confirm("Deseja realmente sair?")) {
                 auth.signOut().then(() => {
                     sessionStorage.removeItem('isStaffLogged');
                     window.location.href = window.location.pathname;
-                }).catch(err => {
-                    console.error("Erro ao deslogar:", err);
                 });
             }
         }
@@ -472,31 +500,26 @@
             container.innerHTML = '';
 
             if (menuItems.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível no cardápio.</p>';
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível.</p>';
                 updateTotal();
                 return;
             }
 
             const grouped = groupItemsByCategory(menuItems);
-            
             Object.keys(grouped).sort().forEach(categoryName => {
                 const items = grouped[categoryName];
                 const categorySection = document.createElement('div');
                 categorySection.className = "space-y-4";
-                
                 categorySection.innerHTML = `
                     <h3 class="text-xl font-black text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-700 uppercase">🏷️ ${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 `;
-                
                 const grid = categorySection.querySelector('.grid');
                 items.forEach(item => {
                     grid.innerHTML += createItemCardHTML(item, cart[item.id] || 0, false);
                 });
-                
                 container.appendChild(categorySection);
             });
-
             updateTotal();
         }
 
@@ -513,37 +536,124 @@
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
+        /* ================= NOVA LÓGICA: MODAL DE REVISÃO DO PEDIDO ================= */
+        window.showOrderReviewModal = function() {
+            if (!currentTable) {
+                alert('Mesa não identificada.');
+                return;
+            }
+
+            pendingOrderItems = [];
+            let orderTotal = 0;
+            const itemsContainer = document.getElementById('review-modal-items');
+            itemsContainer.innerHTML = '';
+
+            menuItems.forEach(item => {
+                if (cart[item.id]) {
+                    const parsedPrice = Number(item.price) || 0;
+                    const subtotal = parsedPrice * cart[item.id];
+                    orderTotal += subtotal;
+                    
+                    pendingOrderItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
+
+                    // Renderiza a linha estilizada para cada item dentro do modal
+                    itemsContainer.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-900/60 border border-gray-700/50 p-3 rounded-xl">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-blue-950 text-blue-400 font-bold px-2 py-0.5 rounded text-xs">${cart[item.id]}x</span>
+                                <span class="text-sm font-semibold text-gray-200 truncate max-w-[180px]">${item.name}</span>
+                            </div>
+                            <span class="text-sm text-green-400 font-bold">R$ ${subtotal.toFixed(2)}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            if (pendingOrderItems.length === 0) { 
+                alert('Seu carrinho está vazio!'); 
+                return; 
+            }
+
+            document.getElementById('review-modal-total').innerText = orderTotal.toFixed(2);
+            document.getElementById('order-review-modal').classList.remove('hidden');
+        }
+
+        /* ================= ENVIO DIRETO COMPACTADO E CORRIGIDO ================= */
+        window.sendOrderDirect = async function() {
+            // Fecha o modal de revisão imediatamente
+            document.getElementById('order-review-modal').classList.add('hidden');
+
+            let orderTotal = 0;
+            let itemsCount = 0;
+
+            pendingOrderItems.forEach(item => {
+                orderTotal += item.price * item.qty;
+                itemsCount += item.qty;
+            });
+
+            try {
+                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const kitchenItems = pendingOrderItems.map(i => ({ name: i.name, qty: i.qty }));
+                
+                await addDoc(collection(db, "kitchen"), { 
+                    origin: `Mesa ${currentTable}`, 
+                    time: time, 
+                    items: kitchenItems, 
+                    status: 'pending', 
+                    timestamp: Date.now() 
+                });
+
+                await setDoc(doc(db, "reports", "sales"), {
+                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
+                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
+                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
+                });
+
+                const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
+                const mesaSnapshot = await getDoc(mesaDocRef);
+                let currentTableHistory = [];
+                
+                if(mesaSnapshot.exists() && mesaSnapshot.data().orders) {
+                    currentTableHistory = mesaSnapshot.data().orders;
+                }
+                
+                currentTableHistory = currentTableHistory.concat(pendingOrderItems);
+                await setDoc(mesaDocRef, { orders: currentTableHistory });
+
+                // Dispara o modal de sucesso simplificado e limpo
+                document.getElementById('order-success-modal').classList.remove('hidden');
+                
+                cart = {};
+                pendingOrderItems = [];
+                renderClientMenu();
+            } catch (error) { 
+                console.error("Erro:", error); 
+                alert("Falha de conexão.");
+            }
+        }
+
         function renderWaiterMenu() {
             const container = document.getElementById('waiter-dynamic-menu-container');
             if(!container) return;
             container.innerHTML = '';
 
-            if (menuItems.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível no cardápio.</p>';
-                updateWaiterTotal();
-                return;
-            }
+            if (menuItems.length === 0) return;
 
             const grouped = groupItemsByCategory(menuItems);
-            
             Object.keys(grouped).sort().forEach(categoryName => {
                 const items = grouped[categoryName];
                 const categorySection = document.createElement('div');
                 categorySection.className = "space-y-4";
-                
                 categorySection.innerHTML = `
                     <h3 class="text-xl font-black text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-700 uppercase">🏷️ ${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 `;
-                
                 const grid = categorySection.querySelector('.grid');
                 items.forEach(item => {
                     grid.innerHTML += createItemCardHTML(item, waiterCart[item.id] || 0, true);
                 });
-                
                 container.appendChild(categorySection);
             });
-
             updateWaiterTotal();
         }
 
@@ -560,14 +670,13 @@
             document.getElementById('waiter-total-price').innerText = total.toFixed(2);
         }
 
-        // ATUALIZA A LISTA SELETORA DE CATEGORIAS (SELECT)
         function updateSelectCategories() {
             const container = document.getElementById('category-field-container');
             if(!container || isCreatingNewCategory) return; 
             
             const categories = new Set();
             menuItems.forEach(item => {
-                if(item.category && item.category.toString().trim() !== "") {
+                if(item.category) {
                     let cat = item.category.toString().trim();
                     categories.add(cat.charAt(0).toUpperCase() + cat.slice(1));
                 }
@@ -582,17 +691,15 @@
                 selectHTML += `<option value="${cat}">${cat}</option>`;
             });
             selectHTML += `</select>`;
-            
             container.innerHTML = selectHTML;
         }
 
-        // INTERRUPTOR ENTRE LISTA SUSPENSA (SELECT) E DIGITAÇÃO (INPUT)
         window.toggleCategoryMode = function() {
             const container = document.getElementById('category-field-container');
             const btn = document.getElementById('toggle-cat-mode-btn');
             
             if (!isCreatingNewCategory) {
-                container.innerHTML = `<input type="text" id="item-category-input" required placeholder="Ex: Sobremesas, Porções" class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium" autocomplete="off">`;
+                container.innerHTML = `<input type="text" id="item-category-input" required placeholder="Ex: Sobremesas" class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium" autocomplete="off">`;
                 btn.innerText = "↩️ Ver Lista";
                 isCreatingNewCategory = true;
             } else {
@@ -612,30 +719,17 @@
                 return;
             }
 
-            const sortedItems = [...menuItems].sort((a, b) => {
-                const catA = (a.category || "📂 Geral").toString().toLowerCase();
-                const catB = (b.category || "📂 Geral").toString().toLowerCase();
-                if (catA !== catB) return catA.localeCompare(catB);
-                return (a.name || "").toString().toLowerCase().localeCompare((b.name || "").toString().toLowerCase());
-            });
-
+            const sortedItems = [...menuItems].sort((a, b) => (a.category || "").localeCompare(b.category || ""));
             sortedItems.forEach(item => {
                 const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
-                const parsedPrice = Number(item.price) || 0;
-                
-                let catLabel = item.category ? item.category.toString().trim() : '📂 Geral';
-                if(catLabel !== '📂 Geral') {
-                    catLabel = catLabel.charAt(0).toUpperCase() + catLabel.slice(1);
-                }
-
                 tableBody.innerHTML += `
                     <tr class="border-b border-gray-700 text-gray-300 bg-gray-800 hover:bg-gray-700/50 transition">
                         <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded-md border border-gray-600 shadow-sm"></td>
                         <td class="p-3">
                             <div class="font-bold text-gray-100">${item.name}</div>
-                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-950 text-blue-400">${catLabel}</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-950 text-blue-400">${item.category || 'Geral'}</span>
                         </td>
-                        <td class="p-3 text-green-400 font-bold">R$ ${parsedPrice.toFixed(2)}</td>
+                        <td class="p-3 text-green-400 font-bold">R$ ${(Number(item.price) || 0).toFixed(2)}</td>
                         <td class="p-3 text-center">
                             <button onclick="window.deleteItem('${item.id}')" class="text-red-400 font-semibold bg-red-950/40 hover:bg-red-950 px-3 py-1.5 rounded-lg cursor-pointer transition text-xs">🗑️ Remover</button>
                         </td>
@@ -654,140 +748,32 @@
 
         window.handleAddItem = async function(event) {
             event.preventDefault();
-            
             const submitBtn = document.getElementById('submit-btn');
-            const nameInput = document.getElementById('item-name');
-            const priceInput = document.getElementById('item-price');
-            const descInput = document.getElementById('item-desc');
-            const fileInput = document.getElementById('item-file');
-
-            let rawCategory = "";
-            if (isCreatingNewCategory) {
-                rawCategory = document.getElementById('item-category-input').value.trim();
-            } else {
-                rawCategory = document.getElementById('item-category-select').value;
-            }
-
-            const name = nameInput.value.trim();
-            const rawPrice = priceInput.value;
-            const desc = descInput.value.trim();
-            const file = fileInput.files[0];
-            
-            if (!rawCategory) {
-                alert("Por favor, selecione ou digite uma categoria válida!");
-                return;
-            }
+            let rawCategory = isCreatingNewCategory ? document.getElementById('item-category-input').value.trim() : document.getElementById('item-category-select').value;
 
             submitBtn.disabled = true;
-            submitBtn.innerText = "Processando Imagem...";
-
-            let imageUrlString = ""; 
-
             try {
-                if (file) {
-                    imageUrlString = await convertImageToBase64(file);
-                }
-
-                const price = Number(parseFloat(rawPrice).toFixed(2)) || 0;
-                const category = rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
+                let imageUrlString = ""; 
+                const file = document.getElementById('item-file').files[0];
+                if (file) imageUrlString = await convertImageToBase64(file);
 
                 await addDoc(collection(db, "menu"), { 
-                    category: category, 
-                    name: name, 
-                    price: price, 
-                    desc: desc, 
+                    category: rawCategory, 
+                    name: document.getElementById('item-name').value.trim(), 
+                    price: Number(parseFloat(document.getElementById('item-price').value).toFixed(2)) || 0, 
+                    desc: document.getElementById('item-desc').value.trim(), 
                     img: imageUrlString 
                 });
-                
                 document.getElementById('add-item-form').reset();
-                
-                if (isCreatingNewCategory) {
-                    window.toggleCategoryMode();
-                } else {
-                    updateSelectCategories();
-                }
-
-                alert("Item cadastrado com sucesso!");
-            } catch(e) { 
-                console.error(e); 
-                alert("Erro ao salvar dados.");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Adicionar ao Cardápio";
-            }
+                if(isCreatingNewCategory) window.toggleCategoryMode();
+                else updateSelectCategories();
+                alert("Cadastrado com sucesso!");
+            } catch(e) { alert("Erro ao salvar."); }
+            finally { submitBtn.disabled = false; submitBtn.innerText = "Adicionar ao Cardápio"; }
         }
 
         window.deleteItem = async function(id) {
-            if(confirm("Excluir item definitivamente?")) await deleteDoc(doc(db, "menu", id));
-        }
-
-        /* ================= ENVIO DIRETO DO CLIENTE CORRIGIDO COM MODAL MODERNO ================= */
-        window.sendOrderDirect = async function() {
-            if (!currentTable) {
-                alert('Mesa não identificada. Escaneie o QR Code novamente.');
-                return;
-            }
-            let orderItemsText = '', orderTotal = 0, itemsCount = 0, currentItems = [];
-
-            menuItems.forEach(item => {
-                if (cart[item.id]) {
-                    const parsedPrice = Number(item.price) || 0;
-                    const subtotal = parsedPrice * cart[item.id];
-                    orderItemsText += `• ${cart[item.id]}x ${item.name} (R$ ${subtotal.toFixed(2)})\n`;
-                    orderTotal += subtotal;
-                    itemsCount += cart[item.id];
-                    currentItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
-                }
-            });
-
-            if (orderTotal === 0) { 
-                alert('Seu carrinho está vazio!'); 
-                return; 
-            }
-            
-            if (!confirm(`--- CONFIRME SEU PEDIDO ---\n\n${orderItemsText}\nTotal Geral: R$ ${orderTotal.toFixed(2)}`)) return; 
-
-            try {
-                // 1. Envia o pedido para o monitor da Cozinha
-                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const kitchenItems = currentItems.map(i => ({ name: i.name, qty: i.qty }));
-                
-                await addDoc(collection(db, "kitchen"), { 
-                    origin: `Mesa ${currentTable}`, 
-                    time: time, 
-                    items: kitchenItems, 
-                    status: 'pending', 
-                    timestamp: Date.now() 
-                });
-
-                // 2. Atualiza o Relatório Geral de Faturamento Diário
-                await setDoc(doc(db, "reports", "sales"), {
-                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
-                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
-                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
-                });
-
-                // 3. Adiciona os itens ao histórico acumulado da Mesa para fechamento posterior
-                const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
-                const mesaSnapshot = await getDoc(mesaDocRef);
-                let currentTableHistory = [];
-                
-                if(mesaSnapshot.exists() && mesaSnapshot.data().orders) {
-                    currentTableHistory = mesaSnapshot.data().orders;
-                }
-                
-                currentTableHistory = currentTableHistory.concat(currentItems);
-                await setDoc(mesaDocRef, { orders: currentTableHistory });
-
-                // 4. Apresenta o Modal de Sucesso Customizado (substituindo o alert nativo)
-                document.getElementById('order-success-modal').classList.remove('hidden');
-                
-                cart = {};
-                renderClientMenu();
-            } catch (error) { 
-                console.error("Erro ao enviar pedido:", error); 
-                alert("Falha de conexão ao enviar o pedido. Verifique sua internet ou tente novamente.");
-            }
+            if(confirm("Excluir item?")) await deleteDoc(doc(db, "menu", id));
         }
 
         window.updateWaiterTable = function() {
@@ -808,10 +794,12 @@
                 }
             });
 
-            if (orderTotal === 0) { alert("Adicione pelo menos um item."); return; }
+            if (orderTotal === 0) { alert("Adicione itens."); return; }
 
             try {
-                await addOrderToKitchen(`Mesa ${waiterActiveTable}`, kitchenItems);
+                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                await addDoc(collection(db, "kitchen"), { origin: `Mesa ${waiterActiveTable}`, time, items: kitchenItems, status: 'pending', timestamp: Date.now() });
+                
                 const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
                 const mesaSnapshot = await getDoc(mesaDocRef);
                 let tableHistory = [];
@@ -831,15 +819,9 @@
             } catch(e) { console.error(e); }
         }
 
-        async function addOrderToKitchen(origin, items) {
-            const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            await addDoc(collection(db, "kitchen"), { origin, time, items, status: 'pending', timestamp: Date.now() });
-        }
-
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
-            if(!container) return;
-            container.innerHTML = '';
+            if(!container) return; container.innerHTML = '';
             if(kitchenOrders.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido pendente.</div>`;
                 return;
@@ -939,9 +921,7 @@
             else if (viewId === 'admin-view') renderAdminMenu();
         }
 
-        auth.onAuthStateChanged((user) => {
-            checkTableFromURL();
-        });
+        auth.onAuthStateChanged((user) => { checkTableFromURL(); });
     </script>
 </body>
 </html>
