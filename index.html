@@ -121,15 +121,9 @@
                 <div id="delivery-address-fields" class="hidden space-y-3 mb-4 bg-gray-900/60 p-3 rounded-xl border border-gray-700">
                     <p class="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">🛵 Dados para Entrega</p>
                     
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Nome *</label>
-                            <input type="text" id="dev-name" placeholder="Ex: João Silva" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">WhatsApp / Celular *</label>
-                            <input type="tel" id="dev-phone" placeholder="Ex: (83) 99999-9999" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
-                        </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Telefone / WhatsApp *</label>
+                        <input type="tel" id="dev-phone" placeholder="Ex: (11) 99999-9999" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
@@ -182,12 +176,12 @@
                 </div>
                 
                 <h3 class="text-xl font-bold text-gray-100 mb-2">Pedido confirmado!</h3>
-                <p id="success-modal-message" class="text-gray-300 font-medium text-sm leading-relaxed mb-6">
+                <p id="success-modal-message" class="text-green-400 font-medium text-base leading-relaxed mb-6">
                     Seu pedido já está sendo preparado.
                 </p>
                 
                 <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-sm shadow transition cursor-pointer">
-                    Excelente, vou aguardar!
+                    Excelente
                 </button>
             </div>
         </div>
@@ -360,7 +354,7 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">🖨️ Imprimir</button>
                                     <button onclick="window.downloadInvoiceTXT()" class="bg-gray-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">📥 Baixar</button>
-                                end</div>
+                                </div>
                                 <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">💰 Liberar Mesa</button>
                             </div>
                         </div>
@@ -441,7 +435,7 @@
                 currentTable = "Delivery";
                 document.getElementById('main-navigation').classList.add('hidden'); 
                 document.getElementById('client-blocked-state').classList.add('hidden');
-                document.getElementById('client-allowed-state').remove('hidden');
+                document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `🛵 Modo Delivery (Rua)`;
                 document.getElementById('delivery-address-fields').classList.remove('hidden');
                 window.switchView('client-view');
@@ -631,18 +625,17 @@
             
             let deliveryAddress = null;
             if (isDeliveryMode) {
-                const name = document.getElementById('dev-name').value.trim();
                 const phone = document.getElementById('dev-phone').value.trim();
                 const bairro = document.getElementById('dev-bairro').value.trim();
                 const rua = document.getElementById('dev-rua').value.trim();
                 const numero = document.getElementById('dev-numero').value.trim();
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
-                if (!name || !phone || !bairro || !rua || !numero || !referencia) {
-                    alert("Por favor, preencha todos os campos obrigatórios do endereço e contato!");
+                if (!phone || !bairro || !rua || !numero || !referencia) {
+                    alert("Por favor, preencha todos os campos obrigatórios do endereço e o telefone!");
                     return;
                 }
-                deliveryAddress = { name, phone, bairro, rua, numero, referencia };
+                deliveryAddress = { phone, bairro, rua, numero, referencia };
             }
 
             document.getElementById('order-review-modal').classList.add('hidden');
@@ -679,12 +672,9 @@
                 });
 
                 if (isDeliveryMode) {
-                    document.getElementById('success-modal-message').innerHTML = `
-                        Seu pedido de Delivery foi enviado e já está na fila da cozinha!<br><br>
-                        <strong class="text-yellow-400">🚨 Importante:</strong> Iremos entrar em contato pelo WhatsApp informado assim que o pedido estiver saindo do restaurante. Por favor, fique no aguardo!
-                    `;
+                    document.getElementById('success-modal-message').innerText = "Seu pedido de Delivery foi enviado e já está na fila da cozinha!";
                 } else {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa foi enviado e já está sendo preparado.";
+                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já está sendo preparado.";
                     
                     const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
                     const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
@@ -702,7 +692,6 @@
                 cart = {};
                 pendingOrderItems = [];
                 if(isDeliveryMode) {
-                    document.getElementById('dev-name').value = '';
                     document.getElementById('dev-phone').value = '';
                     document.getElementById('dev-bairro').value = '';
                     document.getElementById('dev-rua').value = '';
@@ -945,6 +934,7 @@
             } catch(e) { console.error(e); }
         }
 
+        /* ================= NOVAS FUNÇÕES PARA GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
         window.markAsDelivered = async function(id) {
             try {
                 const orderRef = doc(db, "kitchen", id);
@@ -960,6 +950,7 @@
             }
         }
 
+        /* ================= MONITOR DA COZINHA EXIBINDO OBSERVAÇÃO, CONTATO E STATUS DE ENTREGA ================= */
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
             if(!container) return; container.innerHTML = '';
@@ -992,7 +983,6 @@
                     addressHTML = `
                         <div class="mt-3 p-2 bg-slate-900/80 border border-gray-700 rounded-lg text-xs">
                             <p class="font-black text-blue-400 uppercase mb-1">🛵 Dados de Entrega:</p>
-                            <p class="mb-1 text-sm text-gray-100 font-bold"><strong>👤 Cliente:</strong> ${order.address.name || 'Não informado'}</p>
                             <p class="mb-1 text-sm text-emerald-400 font-bold"><strong>📞 Whats:</strong> ${order.address.phone}</p>
                             <p><strong>Bairro:</strong> ${order.address.bairro}</p>
                             <p><strong>Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
