@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Pedidos - Restaurante</title>
-    <!-- Tailwind CSS para um design moderno e responsivo -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Biblioteca para geração de QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
@@ -39,7 +37,6 @@
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen transition-colors duration-200">
 
-    <!-- ================= TELA DE LOGIN (PROTEÇÃO INTERNA VIA FIREBASE) ================= -->
     <section id="login-view" class="view-section hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700">
             <div class="text-center mb-6">
@@ -62,24 +59,21 @@
         </div>
     </section>
 
-    <!-- Navegação de Telas -->
     <nav id="main-navigation" class="bg-blue-800 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
             <span id="nav-user-badge" class="bg-blue-900 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
         </div>
         <div class="flex flex-wrap gap-2">
-            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition">⚙️ Admin</button>
-            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition">💼 Garçom</button>
-            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition">👨‍🍳 Cozinha</button>
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">⚙️ Admin</button>
+            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">💼 Garçom</button>
+            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">👨‍🍳 Monitor Pedidos</button>
         </div>
     </nav>
 
     <div class="max-w-6xl mx-auto p-4">
         
-        <!-- ================= CARDÁPIO DO CLIENTE ================= -->
         <section id="client-view" class="view-section hidden">
-            <!-- Mensagem de bloqueio de segurança -->
             <div id="client-blocked-state" class="bg-gray-800 p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-700">
                 <div class="text-6xl mb-4">📸</div>
                 <h3 class="text-xl font-bold text-gray-100 mb-2">Acesso Restrito ao Cardápio</h3>
@@ -88,7 +82,6 @@
                 </p>
             </div>
 
-            <!-- Área do Cardápio Categorizado Dinamicamente -->
             <div id="client-allowed-state" class="hidden space-y-8">
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -100,7 +93,6 @@
                     </div>
                 </div>
 
-                <!-- Container dinâmico para as categorias flexíveis -->
                 <div id="client-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
                 <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-gray-700 p-4 z-40">
@@ -116,7 +108,6 @@
             </div>
         </section>
 
-        <!-- ================= MODAL: REVISÃO DO PEDIDO + INFORMAÇÕES DE ENTREGA ================= -->
         <div id="order-review-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col my-8">
                 <div class="text-center mb-4">
@@ -125,12 +116,16 @@
                     <p class="text-gray-400 text-xs">Dê uma última olhada antes de enviar</p>
                 </div>
                 
-                <!-- Lista de itens dinâmicos -->
                 <div id="review-modal-items" class="space-y-2 max-h-40 overflow-y-auto mb-4 pr-1 scrollbar-thin"></div>
 
-                <!-- FORMULÁRIO DE ENTREGA EXCLUSIVO PARA DELIVERY -->
                 <div id="delivery-address-fields" class="hidden space-y-3 mb-4 bg-gray-900/60 p-3 rounded-xl border border-gray-700">
                     <p class="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">🛵 Dados para Entrega</p>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Telefone / WhatsApp *</label>
+                        <input type="tel" id="dev-phone" placeholder="Ex: (11) 99999-9999" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                    </div>
+
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[11px] font-bold text-gray-400 uppercase">Bairro *</label>
@@ -153,7 +148,6 @@
                     </div>
                 </div>
 
-                <!-- CAMPO DE OBSERVAÇÃO DO PEDIDO -->
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1">✍️ Observações do Pedido:</label>
                     <textarea id="client-order-observation" rows="2" placeholder="Ex: Sem cebola, retirar talheres..." class="w-full p-2.5 text-sm border rounded-xl outline-none bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-green-500 resize-none"></textarea>
@@ -175,7 +169,6 @@
             </div>
         </div>
 
-        <!-- ================= CAIXA DE CONFIRMAÇÃO DE PEDIDO (SUCESSO COMPACTA) ================= -->
         <div id="order-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
                 <div class="bg-green-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-800">
@@ -193,7 +186,6 @@
             </div>
         </div>
 
-        <!-- ================= VISÃO DO GARÇOM ================= -->
         <section id="waiter-view" class="view-section hidden space-y-8">
             <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 border-l-4 border-l-orange-500">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Painel de Atendimento do Garçom</h2>
@@ -205,7 +197,6 @@
                 </div>
             </div>
 
-            <!-- Container dinâmico para o garçom -->
             <div id="waiter-dynamic-menu-container" class="space-y-8 pb-24"></div>
 
             <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-orange-800 p-4 z-40">
@@ -213,22 +204,20 @@
                     <div class="text-xl font-bold text-gray-200">
                         Total do Atendimento: <span class="text-orange-400 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
                     </div>
-                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer">
                         📝 Lançar Pedido na Mesa
                     </button>
                 </div>
             </div>
         </section>
 
-        <!-- ================= PAINEL DA COZINHA ================= -->
         <section id="kitchen-view" class="view-section hidden">
             <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-700">
-                <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor da Cozinha</h2>
+                <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor de Pedidos / Cozinha</h2>
             </div>
             <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </section>
 
-        <!-- ================= PAINEL DO ADMINISTRADOR ================= -->
         <section id="admin-view" class="view-section hidden">
             <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-700">
                 <h2 class="text-3xl font-bold text-gray-100">Painel do Administrador</h2>
@@ -237,13 +226,12 @@
                 </button>
             </div>
             
-            <!-- Relatório de Vendas -->
             <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-700 border-l-4 border-l-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
                         <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Dia</h3>
                     </div>
-                    <button onclick="window.clearSalesReport()" class="bg-red-950 text-red-400 hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm">🔄 Zerar Relatório</button>
+                    <button onclick="window.clearSalesReport()" class="bg-red-950 text-red-400 hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm cursor-pointer">🔄 Zerar Relatório</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-green-950/30 p-4 rounded-lg border border-green-900">
@@ -262,7 +250,6 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Cadastro de Itens -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md h-fit border border-gray-700">
                     <h3 class="text-lg font-bold text-gray-200 mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
@@ -299,7 +286,6 @@
                     </form>
                 </div>
 
-                <!-- Gerência do Cardápio Visual / Admin -->
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md lg:col-span-2 space-y-6 border border-gray-700">
                     <div>
                         <h3 class="text-lg font-bold text-gray-200 mb-4">Cardápio Cadastrado</h3>
@@ -320,9 +306,7 @@
 
                     <hr class="border-gray-700">
 
-                    <!-- SEÇÃO DE GERAR CONFIGURAÇÃO DE ACESSO (MESA E DELIVERY DE RUA) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- GERADOR DE ACESSOS -->
                         <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
                             <div>
                                 <h4 class="font-bold text-gray-200 mb-1">📢 Gerador de QR Code / Links</h4>
@@ -348,7 +332,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Ações para WhatsApp e Compartilhamento -->
                             <div id="download-btn-container" class="mt-3 hidden space-y-2">
                                 <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">📥 Baixar Imagem QR Code</button>
                                 <button onclick="window.shareOnWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">💬 Compartilhar Link no WhatsApp</button>
@@ -356,13 +339,12 @@
                             </div>
                         </div>
 
-                        <!-- SEÇÃO DO CAIXA -->
                         <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
                             <div>
                                 <h4 class="font-bold text-gray-200 mb-3">Fechar Conta da Mesa</h4>
                                 <div class="flex gap-2 mb-3">
                                     <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold bg-gray-700 border-gray-600 text-gray-100">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition pointer-events-auto">Buscar</button>
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition cursor-pointer">Buscar</button>
                                 </div>
                             </div>
                             <div id="invoice-preview" class="text-xs font-mono bg-gray-800 p-4 border rounded border-gray-600 text-gray-200 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
@@ -385,13 +367,12 @@
 
     <div id="invoice-print-section" style="display: none;"></div>
 
-    <!-- ================= CONEXÃO FIREBASE E LÓGICA DO APP ================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { 
-            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, updateDoc 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBvYnq_kBSgG5WomfwiE7NOCxNF0Oqf4Rw",
@@ -534,9 +515,9 @@
                         <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
                             <span class="text-green-400 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
                             <div class="flex items-center border rounded-lg ${borderCol}">
-                                <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-l-lg">-</button>
+                                <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-l-lg cursor-pointer">-</button>
                                 <span class="px-3 font-semibold text-gray-100 min-w-[24px] text-center">${qty}</span>
-                                <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-r-lg">+</button>
+                                <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-r-lg cursor-pointer">+</button>
                             </div>
                         </div>
                     </div>
@@ -599,7 +580,6 @@
             document.getElementById('client-total-price').innerText = total.toFixed(2);
         }
 
-        /* ================= MODAL DE REVISÃO DO PEDIDO COM OBSERVAÇÃO ================= */
         window.showOrderReviewModal = function() {
             if (!currentTable) {
                 alert('Modalidade de acesso não identificada.');
@@ -640,22 +620,22 @@
             document.getElementById('order-review-modal').classList.remove('hidden');
         }
 
-        /* ================= ENVIO DIRETO COM TRATAMENTO DE OBSERVAÇÃO E DELIVERY ================= */
         window.sendOrderDirect = async function() {
             const obsText = document.getElementById('client-order-observation').value.trim();
             
             let deliveryAddress = null;
             if (isDeliveryMode) {
+                const phone = document.getElementById('dev-phone').value.trim();
                 const bairro = document.getElementById('dev-bairro').value.trim();
                 const rua = document.getElementById('dev-rua').value.trim();
                 const numero = document.getElementById('dev-numero').value.trim();
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
-                if (!bairro || !rua || !numero || !referencia) {
-                    alert("Por favor, preencha todos os campos obrigatórios do endereço de entrega!");
+                if (!phone || !bairro || !rua || !numero || !referencia) {
+                    alert("Por favor, preencha todos os campos obrigatórios do endereço e o telefone!");
                     return;
                 }
-                deliveryAddress = { bairro, rua, numero, referencia };
+                deliveryAddress = { phone, bairro, rua, numero, referencia };
             }
 
             document.getElementById('order-review-modal').classList.add('hidden');
@@ -712,6 +692,7 @@
                 cart = {};
                 pendingOrderItems = [];
                 if(isDeliveryMode) {
+                    document.getElementById('dev-phone').value = '';
                     document.getElementById('dev-bairro').value = '';
                     document.getElementById('dev-rua').value = '';
                     document.getElementById('dev-numero').value = '';
@@ -724,7 +705,6 @@
             }
         }
 
-        // CONTROLADORES DO GERADOR DE QR CODE E LINKS DE COMPARTILHAMENTO
         window.toggleLinkTypeSelector = function() {
             const type = document.getElementById('qr-link-type').value;
             const container = document.getElementById('qr-table-input-container');
@@ -954,12 +934,28 @@
             } catch(e) { console.error(e); }
         }
 
-        /* ================= MONITOR DA COZINHA EXIBINDO OBSERVAÇÃO E ENDEREÇO DE DELIVERY ================= */
+        /* ================= NOVAS FUNÇÕES PARA GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
+        window.markAsDelivered = async function(id) {
+            try {
+                const orderRef = doc(db, "kitchen", id);
+                await updateDoc(orderRef, { status: 'delivered' });
+            } catch(e) { console.error(e); }
+        }
+
+        window.finishDeliveryOrder = async function(id) {
+            if (confirm("Deseja marcar este pedido como finalizado e arquivá-lo por completo?")) {
+                try {
+                    await deleteDoc(doc(db, "kitchen", id));
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        /* ================= MONITOR DA COZINHA EXIBINDO OBSERVAÇÃO, CONTATO E STATUS DE ENTREGA ================= */
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
             if(!container) return; container.innerHTML = '';
             if(kitchenOrders.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido pendente.</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido ativo.</div>`;
                 return;
             }
             kitchenOrders.forEach(order => {
@@ -977,19 +973,44 @@
                 }
 
                 let addressHTML = '';
+                let actionButtonsHTML = `<button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-2 rounded text-xs font-bold cursor-pointer hover:bg-red-900 transition">Remover do Monitor</button>`;
+                let cardBorder = "border-amber-400 bg-amber-950/10";
+
                 if(order.address) {
+                    const statusText = order.status === 'delivered' ? '✅ Entregue' : '🛵 Pendente/Em Rota';
+                    cardBorder = order.status === 'delivered' ? "border-green-500 bg-green-950/10" : "border-blue-500 bg-blue-950/10";
+                    
                     addressHTML = `
-                        <div class="mt-3 p-2 bg-blue-950/70 border border-blue-800 rounded-lg text-xs text-blue-200">
-                            <p class="font-black text-blue-400 uppercase mb-0.5">🛵 Destino do Delivery:</p>
+                        <div class="mt-3 p-2 bg-slate-900/80 border border-gray-700 rounded-lg text-xs">
+                            <p class="font-black text-blue-400 uppercase mb-1">🛵 Dados de Entrega:</p>
+                            <p class="mb-1 text-sm text-emerald-400 font-bold"><strong>📞 Whats:</strong> ${order.address.phone}</p>
                             <p><strong>Bairro:</strong> ${order.address.bairro}</p>
                             <p><strong>Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
                             <p class="text-amber-400 mt-1"><strong>Ref:</strong> ${order.address.referencia}</p>
+                            <div class="mt-2 pt-1 border-t border-gray-700 flex justify-between font-bold">
+                                <span>Status:</span>
+                                <span class="${order.status === 'delivered' ? 'text-green-400' : 'text-blue-400'}">${statusText}</span>
+                            </div>
                         </div>
                     `;
+
+                    if (order.status !== 'delivered') {
+                        actionButtonsHTML = `
+                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-xs font-bold transition cursor-pointer">
+                                📍 Marcar como Entregue
+                            </button>
+                        `;
+                    } else {
+                        actionButtonsHTML = `
+                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2 rounded text-xs font-black tracking-wide shadow transition cursor-pointer">
+                                ✓ Finalizar Pedido (Arquivar)
+                            </button>
+                        `;
+                    }
                 }
 
                 container.innerHTML += `
-                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-gray-800 flex flex-col justify-between border-amber-400 bg-amber-950/20">
+                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-gray-800 flex flex-col justify-between ${cardBorder}">
                         <div>
                             <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
                                 <div><h4 class="font-black text-xl text-gray-100">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
@@ -998,7 +1019,7 @@
                             ${obsHTML}
                             ${addressHTML}
                         </div>
-                        <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-1 rounded text-xs cursor-pointer hover:bg-red-900 transition">Remover</button>
+                        ${actionButtonsHTML}
                     </div>`;
             });
         }
