@@ -122,6 +122,11 @@
                     <p class="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">🛵 Dados para Entrega</p>
                     
                     <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Nome / Solicitante *</label>
+                        <input type="text" id="dev-nome" placeholder="Ex: João Silva" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Telefone / WhatsApp *</label>
                         <input type="tel" id="dev-phone" placeholder="Ex: (11) 99999-9999" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
                     </div>
@@ -229,7 +234,7 @@
             <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-700 border-l-4 border-l-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Dia</h3>
+                        <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Day</h3>
                     </div>
                     <button onclick="window.clearSalesReport()" class="bg-red-950 text-red-400 hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm cursor-pointer">🔄 Zerar Relatório</button>
                 </div>
@@ -625,17 +630,18 @@
             
             let deliveryAddress = null;
             if (isDeliveryMode) {
+                const nome = document.getElementById('dev-nome').value.trim();
                 const phone = document.getElementById('dev-phone').value.trim();
                 const bairro = document.getElementById('dev-bairro').value.trim();
                 const rua = document.getElementById('dev-rua').value.trim();
                 const numero = document.getElementById('dev-numero').value.trim();
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
-                if (!phone || !bairro || !rua || !numero || !referencia) {
-                    alert("Por favor, preencha todos os campos obrigatórios do endereço e o telefone!");
+                if (!nome || !phone || !bairro || !rua || !numero || !referencia) {
+                    alert("Por favor, preencha todos os campos obrigatórios do endereço e o nome completo!");
                     return;
                 }
-                deliveryAddress = { phone, bairro, rua, numero, referencia };
+                deliveryAddress = { nome, phone, bairro, rua, numero, referencia };
             }
 
             document.getElementById('order-review-modal').classList.add('hidden');
@@ -692,6 +698,7 @@
                 cart = {};
                 pendingOrderItems = [];
                 if(isDeliveryMode) {
+                    document.getElementById('dev-nome').value = '';
                     document.getElementById('dev-phone').value = '';
                     document.getElementById('dev-bairro').value = '';
                     document.getElementById('dev-rua').value = '';
@@ -934,7 +941,7 @@
             } catch(e) { console.error(e); }
         }
 
-        /* ================= NOVAS FUNÇÕES PARA GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
+        /* ================= GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
         window.markAsDelivered = async function(id) {
             try {
                 const orderRef = doc(db, "kitchen", id);
@@ -983,6 +990,7 @@
                     addressHTML = `
                         <div class="mt-3 p-2 bg-slate-900/80 border border-gray-700 rounded-lg text-xs">
                             <p class="font-black text-blue-400 uppercase mb-1">🛵 Dados de Entrega:</p>
+                            <p class="mb-1 text-sm text-gray-100 font-bold"><strong>👤 Solicitante:</strong> ${order.address.nome || 'Não informado'}</p>
                             <p class="mb-1 text-sm text-emerald-400 font-bold"><strong>📞 Whats:</strong> ${order.address.phone}</p>
                             <p><strong>Bairro:</strong> ${order.address.bairro}</p>
                             <p><strong>Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
