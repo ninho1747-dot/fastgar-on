@@ -62,7 +62,7 @@
         </div>
     </section>
 
-    <!-- Navegação de Telas (Segurança: Inicia OCULTA. Só activa para a equipe após login) -->
+    <!-- Navegação de Telas -->
     <nav id="main-navigation" class="bg-blue-800 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
@@ -84,17 +84,19 @@
                 <div class="text-6xl mb-4">📸</div>
                 <h3 class="text-xl font-bold text-gray-100 mb-2">Acesso Restrito ao Cardápio</h3>
                 <p class="text-gray-400 text-sm leading-relaxed">
-                    Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa.
+                    Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa ou use um link válido de **Delivery**.
                 </p>
             </div>
 
             <!-- Área do Cardápio Categorizado Dinamicamente -->
             <div id="client-allowed-state" class="hidden space-y-8">
-                <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
-                    <h2 class="text-2xl font-bold text-gray-100 mb-2">Nosso Cardápio</h2>
-                    <div class="flex items-center space-x-2 bg-yellow-950/40 p-3 rounded border border-yellow-900 inline-block">
-                        <span class="font-semibold text-yellow-400">Sua Mesa:</span>
-                        <span id="current-table-label" class="bg-yellow-900 text-yellow-100 px-3 py-1 rounded font-bold">Mesa --</span>
+                <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-100 mb-2">Nosso Cardápio</h2>
+                        <div class="flex items-center space-x-2 bg-yellow-950/40 p-3 rounded border border-yellow-900 inline-block">
+                            <span class="font-semibold text-yellow-400">Modalidade:</span>
+                            <span id="current-table-label" class="bg-yellow-900 text-yellow-100 px-3 py-1 rounded font-bold">Mesa --</span>
+                        </div>
                     </div>
                 </div>
 
@@ -114,24 +116,47 @@
             </div>
         </section>
 
-        <!-- ================= MODAL: REVISÃO DO PEDIDO + CAMPO DE OBSERVAÇÃO ================= -->
-        <div id="order-review-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col">
+        <!-- ================= MODAL: REVISÃO DO PEDIDO + INFORMAÇÕES DE ENTREGA ================= -->
+        <div id="order-review-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col my-8">
                 <div class="text-center mb-4">
                     <span class="text-3xl">📋</span>
                     <h3 class="text-xl font-bold text-gray-100 mt-1">Confirme seu Pedido</h3>
-                    <p class="text-gray-400 text-xs">Dê uma última olhada antes de enviar para a cozinha</p>
+                    <p class="text-gray-400 text-xs">Dê uma última olhada antes de enviar</p>
                 </div>
                 
                 <!-- Lista de itens dinâmicos -->
-                <div id="review-modal-items" class="space-y-2 max-h-48 overflow-y-auto mb-4 pr-1 scrollbar-thin">
-                    <!-- Inserido dinamicamente via JS -->
+                <div id="review-modal-items" class="space-y-2 max-h-40 overflow-y-auto mb-4 pr-1 scrollbar-thin"></div>
+
+                <!-- FORMULÁRIO DE ENTREGA EXCLUSIVO PARA DELIVERY -->
+                <div id="delivery-address-fields" class="hidden space-y-3 mb-4 bg-gray-900/60 p-3 rounded-xl border border-gray-700">
+                    <p class="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">🛵 Dados para Entrega</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Bairro *</label>
+                            <input type="text" id="dev-bairro" placeholder="Ex: Centro" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Rua *</label>
+                            <input type="text" id="dev-rua" placeholder="Ex: Rua Nova" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-1">
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Nº / Apto *</label>
+                            <input type="text" id="dev-numero" placeholder="Ex: 12B" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Ponto de Referência *</label>
+                            <input type="text" id="dev-referencia" placeholder="Ex: Próximo à praça" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- CAMPO DE OBSERVAÇÃO DO PEDIDO -->
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1">✍️ Observações do Pedido:</label>
-                    <textarea id="client-order-observation" rows="2" placeholder="Ex: Não adicionar cebola na pizza, gelo e limão na coca..." class="w-full p-2.5 text-sm border rounded-xl outline-none bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-green-500 resize-none"></textarea>
+                    <textarea id="client-order-observation" rows="2" placeholder="Ex: Sem cebola, retirar talheres..." class="w-full p-2.5 text-sm border rounded-xl outline-none bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-green-500 resize-none"></textarea>
                 </div>
 
                 <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex justify-between items-center mb-6">
@@ -158,7 +183,7 @@
                 </div>
                 
                 <h3 class="text-xl font-bold text-gray-100 mb-2">Pedido confirmado!</h3>
-                <p class="text-green-400 font-medium text-base leading-relaxed mb-6">
+                <p id="success-modal-message" class="text-green-400 font-medium text-base leading-relaxed mb-6">
                     Seu pedido já está sendo preparado.
                 </p>
                 
@@ -295,21 +320,39 @@
 
                     <hr class="border-gray-700">
 
-                    <!-- QR Code e Caixa Faturamento -->
+                    <!-- SEÇÃO DE GERAR CONFIGURAÇÃO DE ACESSO (MESA E DELIVERY DE RUA) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- GERADOR DE ACESSOS -->
                         <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-200 mb-3">Gerador de QR Code por Mesa</h4>
-                                <div class="flex gap-2 mb-3">
-                                    <input type="number" id="qr-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100">
-                                    <button onclick="window.generateTableQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-semibold transition cursor-pointer">Gerar</button>
+                                <h4 class="font-bold text-gray-200 mb-1">📢 Gerador de QR Code / Links</h4>
+                                <p class="text-[11px] text-gray-400 mb-3">Crie links para mesas locais ou campanhas de Delivery na rua.</p>
+                                
+                                <div class="space-y-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs text-gray-400 font-bold mb-1">Tipo de Link:</label>
+                                        <select id="qr-link-type" onchange="window.toggleLinkTypeSelector()" class="w-full p-2 border rounded outline-none bg-gray-800 border-gray-600 text-gray-100 text-sm">
+                                            <option value="mesa">Atendimento em Mesa Local</option>
+                                            <option value="delivery">Campanha Delivery (Rua / Panfleto)</option>
+                                        </select>
+                                    </div>
+                                    <div id="qr-table-input-container">
+                                        <label class="block text-xs text-gray-400 font-bold mb-1">Nº da Mesa:</label>
+                                        <input type="number" id="qr-table-number" placeholder="Ex: 5" min="1" class="w-full p-2 border rounded outline-none bg-gray-800 border-gray-600 text-gray-100 text-sm">
+                                    </div>
+                                    <button onclick="window.generateAccessCode()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold transition cursor-pointer text-sm">Gerar Estrutura de Acesso</button>
                                 </div>
-                                <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[180px]">
-                                    <p class="text-gray-400 text-sm text-center">QR Code aparecerá aqui</p>
+
+                                <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[160px]">
+                                    <p class="text-gray-400 text-xs text-center">O QR Code aparecerá aqui</p>
                                 </div>
                             </div>
-                            <div id="download-btn-container" class="mt-3 hidden">
-                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold transition flex items-center justify-center gap-2 cursor-pointer">📥 Baixar QR Code</button>
+                            
+                            <!-- Ações para WhatsApp e Compartilhamento -->
+                            <div id="download-btn-container" class="mt-3 hidden space-y-2">
+                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">📥 Baixar Imagem QR Code</button>
+                                <button onclick="window.shareOnWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">💬 Compartilhar Link no WhatsApp</button>
+                                <div class="p-2 bg-gray-900 rounded border border-gray-600 overflow-x-auto text-[10px] font-mono text-gray-300" id="generated-pure-link"></div>
                             </div>
                         </div>
 
@@ -374,6 +417,8 @@
         let waiterActiveTable = null;
         let isCreatingNewCategory = false;
         let pendingOrderItems = []; 
+        let globalGeneratedLink = ""; 
+        let isDeliveryMode = false;
 
         // OUVINTES DO BANCO DE DADOS
         onSnapshot(collection(db, "menu"), (snapshot) => {
@@ -403,12 +448,24 @@
 
         function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
+            
+            if (urlParams.has('delivery')) {
+                isDeliveryMode = true;
+                currentTable = "Delivery";
+                document.getElementById('main-navigation').classList.add('hidden'); 
+                document.getElementById('client-blocked-state').classList.add('hidden');
+                document.getElementById('client-allowed-state').classList.remove('hidden');
+                document.getElementById('current-table-label').innerText = `🛵 Modo Delivery (Rua)`;
+                document.getElementById('delivery-address-fields').classList.remove('hidden');
+                window.switchView('client-view');
+            } else if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
+                isDeliveryMode = false;
                 currentTable = urlParams.get('mesa');
                 document.getElementById('main-navigation').classList.add('hidden'); 
                 document.getElementById('client-blocked-state').classList.add('hidden');
                 document.getElementById('client-allowed-state').classList.remove('hidden');
                 document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+                document.getElementById('delivery-address-fields').classList.add('hidden');
                 window.switchView('client-view');
             } else {
                 if (auth.currentUser || sessionStorage.getItem('isStaffLogged') === 'true') {
@@ -545,7 +602,7 @@
         /* ================= MODAL DE REVISÃO DO PEDIDO COM OBSERVAÇÃO ================= */
         window.showOrderReviewModal = function() {
             if (!currentTable) {
-                alert('Mesa não identificada.');
+                alert('Modalidade de acesso não identificada.');
                 return;
             }
 
@@ -553,9 +610,6 @@
             let orderTotal = 0;
             const itemsContainer = document.getElementById('review-modal-items');
             itemsContainer.innerHTML = '';
-            
-            // Reseta o campo de observações sempre que abre a revisão
-            document.getElementById('client-order-observation').value = '';
 
             menuItems.forEach(item => {
                 if (cart[item.id]) {
@@ -586,9 +640,24 @@
             document.getElementById('order-review-modal').classList.remove('hidden');
         }
 
-        /* ================= ENVIO DIRETO COM TRATAMENTO DE OBSERVAÇÃO ================= */
+        /* ================= ENVIO DIRETO COM TRATAMENTO DE OBSERVAÇÃO E DELIVERY ================= */
         window.sendOrderDirect = async function() {
             const obsText = document.getElementById('client-order-observation').value.trim();
+            
+            let deliveryAddress = null;
+            if (isDeliveryMode) {
+                const bairro = document.getElementById('dev-bairro').value.trim();
+                const rua = document.getElementById('dev-rua').value.trim();
+                const numero = document.getElementById('dev-numero').value.trim();
+                const referencia = document.getElementById('dev-referencia').value.trim();
+
+                if (!bairro || !rua || !numero || !referencia) {
+                    alert("Por favor, preencha todos os campos obrigatórios do endereço de entrega!");
+                    return;
+                }
+                deliveryAddress = { bairro, rua, numero, referencia };
+            }
+
             document.getElementById('order-review-modal').classList.add('hidden');
 
             let orderTotal = 0;
@@ -603,17 +672,16 @@
                 const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 const kitchenItems = pendingOrderItems.map(i => ({ name: i.name, qty: i.qty }));
                 
-                // Constrói o payload estruturado incluindo o campo observação (se houver)
                 const kitchenOrderPayload = { 
-                    origin: `Mesa ${currentTable}`, 
+                    origin: isDeliveryMode ? "🛵 DELIVERY" : `Mesa ${currentTable}`, 
                     time: time, 
                     items: kitchenItems, 
                     status: 'pending', 
                     timestamp: Date.now() 
                 };
-                if (obsText !== "") {
-                    kitchenOrderPayload.observation = obsText;
-                }
+
+                if (obsText !== "") kitchenOrderPayload.observation = obsText;
+                if (deliveryAddress) kitchenOrderPayload.address = deliveryAddress;
 
                 await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
 
@@ -623,32 +691,84 @@
                     totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
                 });
 
-                // Incorpora observações no registro histórico da mesa também
-                const orderWithObs = pendingOrderItems.map(item => ({
-                    ...item,
-                    ...(obsText !== "" ? { observation: obsText } : {})
-                }));
-
-                const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
-                const mesaSnapshot = await getDoc(mesaDocRef);
-                let currentTableHistory = [];
-                
-                if(mesaSnapshot.exists() && mesaSnapshot.data().orders) {
-                    currentTableHistory = mesaSnapshot.data().orders;
+                if (isDeliveryMode) {
+                    document.getElementById('success-modal-message').innerText = "Seu pedido de Delivery foi enviado e já está na fila da cozinha!";
+                } else {
+                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já está sendo preparado.";
+                    
+                    const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
+                    const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
+                    const mesaSnapshot = await getDoc(mesaDocRef);
+                    let currentTableHistory = [];
+                    if(mesaSnapshot.exists() && mesaSnapshot.data().orders) {
+                        currentTableHistory = mesaSnapshot.data().orders;
+                    }
+                    currentTableHistory = currentTableHistory.concat(orderWithObs);
+                    await setDoc(mesaDocRef, { orders: currentTableHistory });
                 }
-                
-                currentTableHistory = currentTableHistory.concat(orderWithObs);
-                await setDoc(mesaDocRef, { orders: currentTableHistory });
 
                 document.getElementById('order-success-modal').classList.remove('hidden');
                 
                 cart = {};
                 pendingOrderItems = [];
+                if(isDeliveryMode) {
+                    document.getElementById('dev-bairro').value = '';
+                    document.getElementById('dev-rua').value = '';
+                    document.getElementById('dev-numero').value = '';
+                    document.getElementById('dev-referencia').value = '';
+                }
                 renderClientMenu();
             } catch (error) { 
                 console.error("Erro:", error); 
                 alert("Falha de conexão.");
             }
+        }
+
+        // CONTROLADORES DO GERADOR DE QR CODE E LINKS DE COMPARTILHAMENTO
+        window.toggleLinkTypeSelector = function() {
+            const type = document.getElementById('qr-link-type').value;
+            const container = document.getElementById('qr-table-input-container');
+            if (type === 'delivery') {
+                container.classList.add('hidden');
+            } else {
+                container.classList.remove('hidden');
+            }
+        }
+
+        window.generateAccessCode = function() {
+            const type = document.getElementById('qr-link-type').value;
+            const qrContainer = document.getElementById('qrcode-container');
+            const baseUrl = window.location.href.split('?')[0];
+            
+            qrContainer.innerHTML = "";
+            
+            if (type === 'delivery') {
+                globalGeneratedLink = `${baseUrl}?delivery=true`;
+            } else {
+                const tableNum = document.getElementById('qr-table-number').value;
+                if(!tableNum) { alert("Informe o número da mesa!"); return; }
+                globalGeneratedLink = `${baseUrl}?mesa=${tableNum}`;
+            }
+
+            new QRCode(qrContainer, { text: globalGeneratedLink, width: 160, height: 160 });
+            document.getElementById('generated-pure-link').innerText = globalGeneratedLink;
+            document.getElementById('download-btn-container').classList.remove('hidden');
+        }
+
+        window.downloadQRCode = function() {
+            const canvas = document.getElementById('qrcode-container').querySelector('canvas');
+            if(canvas) {
+                const link = document.createElement('a'); 
+                link.href = canvas.toDataURL("image/png");
+                link.download = `qrcode_fastorder.png`; 
+                link.click();
+            }
+        }
+
+        window.shareOnWhatsApp = function() {
+            if(!globalGeneratedLink) return;
+            const text = encodeURIComponent(`Olá! Acesse nosso cardápio virtual e faça seu pedido direto pelo link: ${globalGeneratedLink}`);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
 
         function renderWaiterMenu() {
@@ -834,7 +954,7 @@
             } catch(e) { console.error(e); }
         }
 
-        /* ================= MONITOR DA COZINHA ATUALIZADO PARA EXIBIR A OBSERVAÇÃO ================= */
+        /* ================= MONITOR DA COZINHA EXIBINDO OBSERVAÇÃO E ENDEREÇO DE DELIVERY ================= */
         function renderKitchenOrders() {
             const container = document.getElementById('kitchen-orders-container');
             if(!container) return; container.innerHTML = '';
@@ -846,13 +966,24 @@
                 let itemsListHTML = '';
                 order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
                 
-                // Se o pedido tiver observações, exibe um bloco destacado em amarelo/laranja para os cozinheiros verem
                 let obsHTML = '';
                 if(order.observation && order.observation.trim() !== "") {
                     obsHTML = `
                         <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
                             <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
                             <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
+                        </div>
+                    `;
+                }
+
+                let addressHTML = '';
+                if(order.address) {
+                    addressHTML = `
+                        <div class="mt-3 p-2 bg-blue-950/70 border border-blue-800 rounded-lg text-xs text-blue-200">
+                            <p class="font-black text-blue-400 uppercase mb-0.5">🛵 Destino do Delivery:</p>
+                            <p><strong>Bairro:</strong> ${order.address.bairro}</p>
+                            <p><strong>Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
+                            <p class="text-amber-400 mt-1"><strong>Ref:</strong> ${order.address.referencia}</p>
                         </div>
                     `;
                 }
@@ -865,6 +996,7 @@
                             </div>
                             <ul class="space-y-1.5">${itemsListHTML}</ul>
                             ${obsHTML}
+                            ${addressHTML}
                         </div>
                         <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-1 rounded text-xs cursor-pointer hover:bg-red-900 transition">Remover</button>
                     </div>`;
@@ -924,22 +1056,6 @@
                 activeInvoiceText = "";
                 renderClientMenu(); renderWaiterMenu(); alert("Mesa liberada!");
             } catch(e) { console.error(e); }
-        }
-
-        window.generateTableQRCode = function() {
-            const tableNum = document.getElementById('qr-table-number').value;
-            const qrContainer = document.getElementById('qrcode-container');
-            if(!tableNum) return; qrContainer.innerHTML = "";
-            new QRCode(qrContainer, { text: `${window.location.href.split('?')[0]}?mesa=${tableNum}`, width: 180, height: 180 });
-            document.getElementById('download-btn-container').classList.remove('hidden');
-        }
-
-        window.downloadQRCode = function() {
-            const canvas = document.getElementById('qrcode-container').querySelector('canvas');
-            if(canvas) {
-                const link = document.createElement('a'); link.href = canvas.toDataURL("image/png");
-                link.download = `qrcode_mesa.png`; link.click();
-            }
         }
 
         window.switchView = function(viewId) {
