@@ -6,33 +6,22 @@
     <title>Sistema de Pedidos - Restaurante</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- Leaflet JS & CSS (Mapa de Acompanhamento) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        /* Estilização fidedigna para Impressoras Térmicas de Cupom (80mm/58mm) */
         @media print {
-            body * { 
-                display: none !important; 
-            }
-            #invoice-print-section, #invoice-print-section * { 
-                display: block !important; 
-            }
+            body * { display: none !important; }
+            #invoice-print-section, #invoice-print-section * { display: block !important; }
             #invoice-print-section { 
-                position: absolute; 
-                left: 0; 
-                top: 0; 
-                width: 100%; 
-                max-width: 80mm; 
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                color: #000;
-                line-height: 1.2;
-                padding: 4mm;
-                background: #fff;
+                position: absolute; left: 0; top: 0; width: 100%; max-width: 80mm; 
+                font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000; padding: 4mm; background: #fff; 
             }
-            @page {
-                size: auto;
-                margin: 0mm;
-            }
+            @page { size: auto; margin: 0mm; }
         }
+        #tracking-map { height: 280px; width: 100%; border-radius: 12px; z-index: 10; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen transition-colors duration-200">
@@ -80,6 +69,32 @@
                 <p class="text-gray-400 text-sm leading-relaxed">
                     Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa ou use um link válido de **Delivery**.
                 </p>
+            </div>
+
+            <!-- PAINEL DE ACOMPANHAMENTO DE MAPA DE DELIVERY EM TEMPO REAL -->
+            <div id="client-delivery-tracker" class="hidden mb-6 bg-gray-800 p-5 rounded-2xl border border-blue-500/50 shadow-xl space-y-4 scroll-mt-6">
+                <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                    <div>
+                        <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Acompanhamento Ao Vivo</span>
+                        <h3 class="text-lg font-black text-gray-100">🛵 Status da Sua Entrega</h3>
+                    </div>
+                    <span id="tracker-status-badge" class="px-3 py-1 text-xs font-bold rounded-full bg-amber-950 text-amber-400 border border-amber-800">
+                        ⏳ Preparando Pedido
+                    </span>
+                </div>
+
+                <div id="tracking-map" class="shadow-inner border border-gray-700"></div>
+
+                <div class="grid grid-cols-2 gap-3 text-xs bg-gray-900 p-3 rounded-xl border border-gray-700">
+                    <div>
+                        <span class="text-gray-400 block font-semibold">Previsão de Chegada:</span>
+                        <span id="tracker-eta" class="text-green-400 font-bold text-sm">25-35 min</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block font-semibold">Entregador:</span>
+                        <span id="tracker-driver-label" class="text-gray-200 font-bold text-sm">Aguardando Saída 🛵</span>
+                    </div>
+                </div>
             </div>
 
             <div id="client-allowed-state" class="hidden space-y-8">
@@ -174,6 +189,7 @@
             </div>
         </div>
 
+        <!-- MODAL DE CONFIRMAÇÃO COM BOTÃO PARA O ACOMPANHAMENTO DO PEDIDO -->
         <div id="order-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
                 <div class="bg-green-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-800">
@@ -184,10 +200,16 @@
                 <p id="success-modal-message" class="text-green-400 font-medium text-base leading-relaxed mb-6">
                     Seu pedido já está sendo preparado.
                 </p>
-                
-                <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-sm shadow transition cursor-pointer">
-                    Excelente
-                </button>
+
+                <div class="space-y-3">
+                    <button id="btn-track-order-redirect" onclick="window.redirectToTrackingPage()" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm shadow transition cursor-pointer flex items-center justify-center gap-2">
+                        🛵 Acompanhar Pedido ao Vivo
+                    </button>
+                    
+                    <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer">
+                        Fechar
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -221,7 +243,6 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-gray-700">
                 <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor de Pedidos</h2>
                 
-                <!-- NAVEGAÇÃO ENTRE ABAS -->
                 <div class="flex bg-gray-800 p-1 rounded-xl border border-gray-700 w-full md:w-auto">
                     <button id="tab-btn-tables" onclick="window.switchKitchenTab('tables')" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white cursor-pointer flex items-center justify-center gap-2">
                         🍽️ Pedidos de Mesas
@@ -232,10 +253,7 @@
                 </div>
             </div>
 
-            <!-- CONTAINER MESAS -->
             <div id="kitchen-tables-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-
-            <!-- CONTAINER DELIVERY -->
             <div id="kitchen-delivery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
         </section>
 
@@ -250,7 +268,7 @@
             <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-700 border-l-4 border-l-blue-500">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Day</h3>
+                        <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Dia</h3>
                     </div>
                     <button onclick="window.clearSalesReport()" class="bg-red-950 text-red-400 hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm cursor-pointer">🔄 Zerar Relatório</button>
                 </div>
@@ -421,14 +439,18 @@
         let pendingOrderItems = []; 
         let globalGeneratedLink = ""; 
         let isDeliveryMode = false;
-        let activeKitchenTab = 'tables'; // 'tables' ou 'delivery'
+        let activeKitchenTab = 'tables'; 
 
-        // OUVINTES DO BANCO DE DADOS
+        // VARIÁVEIS DE MAPEAMENTO E GEOLOCALIZAÇÃO
+        let mapInstance = null;
+        let deliveryMarker = null;
+        let destMarker = null;
+        let currentActiveOrderId = localStorage.getItem('lastDeliveryOrderId') || null;
+        let driverWatchId = null; 
+
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
-            snapshot.forEach(doc => {
-                menuItems.push({ id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => { menuItems.push({ id: doc.id, ...doc.data() }); });
             renderClientMenu();
             renderWaiterMenu();
             renderAdminMenu();
@@ -442,11 +464,10 @@
 
         onSnapshot(collection(db, "kitchen"), (snapshot) => {
             kitchenOrders = [];
-            snapshot.forEach(doc => {
-                kitchenOrders.push({ id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => { kitchenOrders.push({ id: doc.id, ...doc.data() }); });
             kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             renderKitchenOrders();
+            checkClientDeliveryTracker();
         });
 
         function checkTableFromURL() {
@@ -603,10 +624,7 @@
         }
 
         window.showOrderReviewModal = function() {
-            if (!currentTable) {
-                alert('Modalidade de acesso não identificada.');
-                return;
-            }
+            if (!currentTable) { alert('Modalidade de acesso não identificada.'); return; }
 
             pendingOrderItems = [];
             let orderTotal = 0;
@@ -618,7 +636,6 @@
                     const parsedPrice = Number(item.price) || 0;
                     const subtotal = parsedPrice * cart[item.id];
                     orderTotal += subtotal;
-                    
                     pendingOrderItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
 
                     itemsContainer.innerHTML += `
@@ -633,13 +650,77 @@
                 }
             });
 
-            if (pendingOrderItems.length === 0) { 
-                alert('Seu carrinho está vazio!'); 
-                return; 
-            }
+            if (pendingOrderItems.length === 0) { alert('Seu carrinho está vazio!'); return; }
 
             document.getElementById('review-modal-total').innerText = orderTotal.toFixed(2);
             document.getElementById('order-review-modal').classList.remove('hidden');
+        }
+
+        /* ================= MAPA E GEOLOCALIZAÇÃO EM TEMPO REAL ================= */
+        function initTrackingMap(initialLat = -23.55052, initialLng = -46.633308) {
+            if (!mapInstance) {
+                mapInstance = L.map('tracking-map').setView([initialLat, initialLng], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
+                }).addTo(mapInstance);
+
+                const restIcon = L.divIcon({ html: '🏪', className: 'text-2xl', iconSize: [30, 30] });
+                L.marker([initialLat, initialLng], { icon: restIcon }).addTo(mapInstance).bindPopup("Restaurante");
+
+                const devIcon = L.divIcon({ html: '🛵', className: 'text-2xl', iconSize: [30, 30] });
+                deliveryMarker = L.marker([initialLat, initialLng], { icon: devIcon }).addTo(mapInstance).bindPopup("Entregador");
+            }
+        }
+
+        function checkClientDeliveryTracker() {
+            if (!isDeliveryMode) return;
+            
+            const activeOrder = kitchenOrders.find(o => o.id === currentActiveOrderId || (o.address && o.status !== 'archived'));
+            const trackerContainer = document.getElementById('client-delivery-tracker');
+            
+            if (activeOrder) {
+                currentActiveOrderId = activeOrder.id;
+                localStorage.setItem('lastDeliveryOrderId', activeOrder.id);
+                trackerContainer.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    initTrackingMap();
+                    if (mapInstance) mapInstance.invalidateSize();
+                }, 300);
+
+                const badge = document.getElementById('tracker-status-badge');
+                const eta = document.getElementById('tracker-eta');
+                const driverLabel = document.getElementById('tracker-driver-label');
+
+                if (activeOrder.status === 'delivered') {
+                    badge.innerText = "📍 Em Rota de Entrega";
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-blue-950 text-blue-400 border border-blue-800 animate-pulse";
+                    eta.innerText = "Chegando em breve...";
+                    driverLabel.innerText = "Entregador a caminho GPS 🛰️";
+
+                    // Se houver coordenadas atualizadas pelo entregador via GPS
+                    if (activeOrder.driverCoords && deliveryMarker) {
+                        const newPos = [activeOrder.driverCoords.lat, activeOrder.driverCoords.lng];
+                        deliveryMarker.setLatLng(newPos);
+                        if (mapInstance) mapInstance.panTo(newPos);
+                    }
+                } else {
+                    badge.innerText = "⏳ Na Cozinha / Em Preparo";
+                    badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-950 text-amber-400 border border-amber-800";
+                    eta.innerText = "20-30 min";
+                    driverLabel.innerText = "Aguardando Saída 🛵";
+                }
+            } else {
+                trackerContainer.classList.add('hidden');
+            }
+        }
+
+        // REDIRECIONA O CLIENTE PARA O MAPA DE ACOMPANHAMENTO
+        window.redirectToTrackingPage = function() {
+            document.getElementById('order-success-modal').classList.add('hidden');
+            const trackerElement = document.getElementById('client-delivery-tracker');
+            trackerElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         window.sendOrderDirect = async function() {
@@ -655,7 +736,7 @@
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
                 if (!nome || !phone || !bairro || !rua || !numero || !referencia) {
-                    alert("Por favor, preencha todos os campos obrigatórios do endereço e o nome completo!");
+                    alert("Por favor, preencha todos os campos do endereço!");
                     return;
                 }
                 deliveryAddress = { nome, phone, bairro, rua, numero, referencia };
@@ -687,7 +768,9 @@
                 if (obsText !== "") kitchenOrderPayload.observation = obsText;
                 if (deliveryAddress) kitchenOrderPayload.address = deliveryAddress;
 
-                await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
+                const docRef = await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
+                currentActiveOrderId = docRef.id;
+                localStorage.setItem('lastDeliveryOrderId', docRef.id);
 
                 await setDoc(doc(db, "reports", "sales"), {
                     totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
@@ -695,10 +778,14 @@
                     totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
                 });
 
+                const trackBtn = document.getElementById('btn-track-order-redirect');
+
                 if (isDeliveryMode) {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido de Delivery foi enviado e já está na fila da cozinha!";
+                    document.getElementById('success-modal-message').innerText = "Seu pedido foi enviado! Você pode acompanhar a entrega pelo mapa ao vivo.";
+                    trackBtn.classList.remove('hidden');
                 } else {
                     document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já está sendo preparado.";
+                    trackBtn.classList.add('hidden');
                     
                     const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
                     const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
@@ -715,29 +802,49 @@
                 
                 cart = {};
                 pendingOrderItems = [];
-                if(isDeliveryMode) {
-                    document.getElementById('dev-nome').value = '';
-                    document.getElementById('dev-phone').value = '';
-                    document.getElementById('dev-bairro').value = '';
-                    document.getElementById('dev-rua').value = '';
-                    document.getElementById('dev-numero').value = '';
-                    document.getElementById('dev-referencia').value = '';
-                }
                 renderClientMenu();
             } catch (error) { 
                 console.error("Erro:", error); 
-                alert("Falha de conexão.");
+                alert("Falha de conexão ao enviar pedido.");
             }
+        }
+
+        // COMPARTILHAMENTO DE GPS EM TEMPO REAL PELO ENTREGADOR
+        window.startDriverGPS = function(orderId) {
+            if (!navigator.geolocation) {
+                alert("Seu navegador não suporta compartilhamento de geolocalização.");
+                return;
+            }
+
+            if (driverWatchId !== null) {
+                navigator.geolocation.clearWatch(driverWatchId);
+            }
+
+            alert("GPS Ativado! Sua localização agora está sendo transmitida em tempo real para o cliente.");
+
+            driverWatchId = navigator.geolocation.watchPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    try {
+                        const orderRef = doc(db, "kitchen", orderId);
+                        await updateDoc(orderRef, {
+                            status: 'delivered',
+                            driverCoords: { lat: latitude, lng: longitude }
+                        });
+                    } catch(e) { console.error("Erro ao transmitir GPS:", e); }
+                },
+                (error) => {
+                    alert("Erro ao obter geolocalização. Certifique-se de dar permissão ao GPS.");
+                },
+                { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+            );
         }
 
         window.toggleLinkTypeSelector = function() {
             const type = document.getElementById('qr-link-type').value;
             const container = document.getElementById('qr-table-input-container');
-            if (type === 'delivery') {
-                container.classList.add('hidden');
-            } else {
-                container.classList.remove('hidden');
-            }
+            if (type === 'delivery') container.classList.add('hidden');
+            else container.classList.remove('hidden');
         }
 
         window.generateAccessCode = function() {
@@ -959,7 +1066,6 @@
             } catch(e) { console.error(e); }
         }
 
-        /* ================= CONTROLE DE ABAS DA COZINHA ================= */
         window.switchKitchenTab = function(tab) {
             activeKitchenTab = tab;
             const btnTables = document.getElementById('tab-btn-tables');
@@ -980,7 +1086,6 @@
             }
         }
 
-        /* ================= GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
         window.markAsDelivered = async function(id) {
             try {
                 const orderRef = doc(db, "kitchen", id);
@@ -991,12 +1096,15 @@
         window.finishDeliveryOrder = async function(id) {
             if (confirm("Deseja marcar este pedido como finalizado e arquivá-lo por completo?")) {
                 try {
+                    if (driverWatchId !== null) {
+                        navigator.geolocation.clearWatch(driverWatchId);
+                        driverWatchId = null;
+                    }
                     await deleteDoc(doc(db, "kitchen", id));
                 } catch(e) { console.error(e); }
             }
         }
 
-        /* ================= RENDERIZADOR SEPARADO DO MONITOR ================= */
         function renderKitchenOrders() {
             const tablesContainer = document.getElementById('kitchen-tables-container');
             const deliveryContainer = document.getElementById('kitchen-delivery-container');
@@ -1008,7 +1116,7 @@
             const tableOrders = kitchenOrders.filter(o => !o.address);
             const deliveryOrders = kitchenOrders.filter(o => o.address);
 
-            // 1. RENDERIZAR PEDIDOS DE MESAS
+            // 1. MESAS
             if(tableOrders.length === 0) {
                 tablesContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de mesa no momento.</div>`;
             } else {
@@ -1040,7 +1148,7 @@
                 });
             }
 
-            // 2. RENDERIZAR PEDIDOS DE DELIVERY
+            // 2. DELIVERY
             if(deliveryOrders.length === 0) {
                 deliveryContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de delivery no momento.</div>`;
             } else {
@@ -1060,19 +1168,25 @@
 
                     const formattedTotal = (Number(order.totalPrice) || 0).toFixed(2);
                     const isDelivered = order.status === 'delivered';
-                    const statusText = isDelivered ? '✅ Entregue' : '🛵 Pendente/Em Rota';
+                    const statusText = isDelivered ? '🛵 Saiu p/ Entrega' : '⏳ Preparando';
                     const cardBorder = isDelivered ? "border-green-500 bg-green-950/10" : "border-blue-500 bg-blue-950/10";
 
                     let actionButtonsHTML = '';
                     if (!isDelivered) {
                         actionButtonsHTML = `
-                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
-                                📍 Marcar como Entregue
+                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
+                                📍 Marcar Em Rota de Entrega
+                            </button>
+                            <button onclick="window.startDriverGPS('${order.id}')" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
+                                🛰️ Iniciar Transmissão de GPS (Entregador)
                             </button>
                         `;
                     } else {
                         actionButtonsHTML = `
-                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-xs font-black tracking-wide shadow transition cursor-pointer flex items-center justify-center gap-1">
+                            <button onclick="window.startDriverGPS('${order.id}')" class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
+                                🛰️ Transmitir/Atualizar GPS
+                            </button>
+                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-xs font-black tracking-wide shadow transition cursor-pointer flex items-center justify-center gap-1">
                                 ✓ Finalizar Pedido (Arquivar)
                             </button>
                         `;
