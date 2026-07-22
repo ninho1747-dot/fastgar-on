@@ -216,11 +216,27 @@
             </div>
         </section>
 
-        <section id="kitchen-view" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6 border-b pb-2 border-gray-700">
-                <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor de Pedidos / Cozinha</h2>
+        <!-- MONITOR DE PEDIDOS COM ABAS SEPARADAS -->
+        <section id="kitchen-view" class="view-section hidden space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-gray-700">
+                <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor de Pedidos</h2>
+                
+                <!-- NAVEGAÇÃO ENTRE ABAS -->
+                <div class="flex bg-gray-800 p-1 rounded-xl border border-gray-700 w-full md:w-auto">
+                    <button id="tab-btn-tables" onclick="window.switchKitchenTab('tables')" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white cursor-pointer flex items-center justify-center gap-2">
+                        🍽️ Pedidos de Mesas
+                    </button>
+                    <button id="tab-btn-delivery" onclick="window.switchKitchenTab('delivery')" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2">
+                        🛵 Pedidos de Delivery
+                    </button>
+                </div>
             </div>
-            <div id="kitchen-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+            <!-- CONTAINER MESAS -->
+            <div id="kitchen-tables-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+            <!-- CONTAINER DELIVERY -->
+            <div id="kitchen-delivery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
         </section>
 
         <section id="admin-view" class="view-section hidden">
@@ -405,6 +421,7 @@
         let pendingOrderItems = []; 
         let globalGeneratedLink = ""; 
         let isDeliveryMode = false;
+        let activeKitchenTab = 'tables'; // 'tables' ou 'delivery'
 
         // OUVINTES DO BANCO DE DADOS
         onSnapshot(collection(db, "menu"), (snapshot) => {
@@ -663,7 +680,8 @@
                     time: time, 
                     items: kitchenItems, 
                     status: 'pending', 
-                    timestamp: Date.now() 
+                    timestamp: Date.now(),
+                    totalPrice: orderTotal
                 };
 
                 if (obsText !== "") kitchenOrderPayload.observation = obsText;
@@ -920,7 +938,7 @@
 
             try {
                 const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                await addDoc(collection(db, "kitchen"), { origin: `Mesa ${waiterActiveTable}`, time, items: kitchenItems, status: 'pending', timestamp: Date.now() });
+                await addDoc(collection(db, "kitchen"), { origin: `Mesa ${waiterActiveTable}`, time, items: kitchenItems, status: 'pending', timestamp: Date.now(), totalPrice: orderTotal });
                 
                 const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
                 const mesaSnapshot = await getDoc(mesaDocRef);
@@ -941,6 +959,27 @@
             } catch(e) { console.error(e); }
         }
 
+        /* ================= CONTROLE DE ABAS DA COZINHA ================= */
+        window.switchKitchenTab = function(tab) {
+            activeKitchenTab = tab;
+            const btnTables = document.getElementById('tab-btn-tables');
+            const btnDelivery = document.getElementById('tab-btn-delivery');
+            const containerTables = document.getElementById('kitchen-tables-container');
+            const containerDelivery = document.getElementById('kitchen-delivery-container');
+
+            if (tab === 'tables') {
+                btnTables.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                containerTables.classList.remove('hidden');
+                containerDelivery.classList.add('hidden');
+            } else {
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-emerald-600 text-white cursor-pointer flex items-center justify-center gap-2";
+                btnTables.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                containerDelivery.classList.remove('hidden');
+                containerTables.classList.add('hidden');
+            }
+        }
+
         /* ================= GESTÃO DE STATUS DO MONITOR DE DELIVERY ================= */
         window.markAsDelivered = async function(id) {
             try {
@@ -957,79 +996,121 @@
             }
         }
 
-        /* ================= MONITOR DA COZINHA EXIBINDO OBSERVAÇÃO, CONTATO E STATUS DE ENTREGA ================= */
+        /* ================= RENDERIZADOR SEPARADO DO MONITOR ================= */
         function renderKitchenOrders() {
-            const container = document.getElementById('kitchen-orders-container');
-            if(!container) return; container.innerHTML = '';
-            if(kitchenOrders.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido ativo.</div>`;
-                return;
-            }
-            kitchenOrders.forEach(order => {
-                let itemsListHTML = '';
-                order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
-                
-                let obsHTML = '';
-                if(order.observation && order.observation.trim() !== "") {
-                    obsHTML = `
-                        <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
-                            <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
-                            <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
-                        </div>
-                    `;
-                }
+            const tablesContainer = document.getElementById('kitchen-tables-container');
+            const deliveryContainer = document.getElementById('kitchen-delivery-container');
+            if(!tablesContainer || !deliveryContainer) return;
+            
+            tablesContainer.innerHTML = '';
+            deliveryContainer.innerHTML = '';
 
-                let addressHTML = '';
-                let actionButtonsHTML = `<button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-2 rounded text-xs font-bold cursor-pointer hover:bg-red-900 transition">Remover do Monitor</button>`;
-                let cardBorder = "border-amber-400 bg-amber-950/10";
+            const tableOrders = kitchenOrders.filter(o => !o.address);
+            const deliveryOrders = kitchenOrders.filter(o => o.address);
 
-                if(order.address) {
-                    const statusText = order.status === 'delivered' ? '✅ Entregue' : '🛵 Pendente/Em Rota';
-                    cardBorder = order.status === 'delivered' ? "border-green-500 bg-green-950/10" : "border-blue-500 bg-blue-950/10";
+            // 1. RENDERIZAR PEDIDOS DE MESAS
+            if(tableOrders.length === 0) {
+                tablesContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de mesa no momento.</div>`;
+            } else {
+                tableOrders.forEach(order => {
+                    let itemsListHTML = '';
+                    order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
                     
-                    addressHTML = `
-                        <div class="mt-3 p-2 bg-slate-900/80 border border-gray-700 rounded-lg text-xs">
-                            <p class="font-black text-blue-400 uppercase mb-1">🛵 Dados de Entrega:</p>
-                            <p class="mb-1 text-sm text-gray-100 font-bold"><strong>👤 Solicitante:</strong> ${order.address.nome || 'Não informado'}</p>
-                            <p class="mb-1 text-sm text-emerald-400 font-bold"><strong>📞 Whats:</strong> ${order.address.phone}</p>
-                            <p><strong>Bairro:</strong> ${order.address.bairro}</p>
-                            <p><strong>Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
-                            <p class="text-amber-400 mt-1"><strong>Ref:</strong> ${order.address.referencia}</p>
-                            <div class="mt-2 pt-1 border-t border-gray-700 flex justify-between font-bold">
-                                <span>Status:</span>
-                                <span class="${order.status === 'delivered' ? 'text-green-400' : 'text-blue-400'}">${statusText}</span>
+                    let obsHTML = '';
+                    if(order.observation && order.observation.trim() !== "") {
+                        obsHTML = `
+                            <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
+                                <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
+                                <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
 
-                    if (order.status !== 'delivered') {
+                    tablesContainer.innerHTML += `
+                        <div class="p-5 rounded-xl shadow-md border-t-4 border-amber-400 bg-amber-950/10 bg-gray-800 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
+                                    <div><h4 class="font-black text-xl text-gray-100">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
+                                </div>
+                                <ul class="space-y-1.5">${itemsListHTML}</ul>
+                                ${obsHTML}
+                            </div>
+                            <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-2 rounded text-xs font-bold cursor-pointer hover:bg-red-900 transition">Remover do Monitor</button>
+                        </div>`;
+                });
+            }
+
+            // 2. RENDERIZAR PEDIDOS DE DELIVERY
+            if(deliveryOrders.length === 0) {
+                deliveryContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de delivery no momento.</div>`;
+            } else {
+                deliveryOrders.forEach(order => {
+                    let itemsListHTML = '';
+                    order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
+                    
+                    let obsHTML = '';
+                    if(order.observation && order.observation.trim() !== "") {
+                        obsHTML = `
+                            <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
+                                <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
+                                <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
+                            </div>
+                        `;
+                    }
+
+                    const formattedTotal = (Number(order.totalPrice) || 0).toFixed(2);
+                    const isDelivered = order.status === 'delivered';
+                    const statusText = isDelivered ? '✅ Entregue' : '🛵 Pendente/Em Rota';
+                    const cardBorder = isDelivered ? "border-green-500 bg-green-950/10" : "border-blue-500 bg-blue-950/10";
+
+                    let actionButtonsHTML = '';
+                    if (!isDelivered) {
                         actionButtonsHTML = `
-                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-xs font-bold transition cursor-pointer">
+                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
                                 📍 Marcar como Entregue
                             </button>
                         `;
                     } else {
                         actionButtonsHTML = `
-                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2 rounded text-xs font-black tracking-wide shadow transition cursor-pointer">
+                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-xs font-black tracking-wide shadow transition cursor-pointer flex items-center justify-center gap-1">
                                 ✓ Finalizar Pedido (Arquivar)
                             </button>
                         `;
                     }
-                }
 
-                container.innerHTML += `
-                    <div class="p-5 rounded-xl shadow-md border-t-4 bg-gray-800 flex flex-col justify-between ${cardBorder}">
-                        <div>
-                            <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
-                                <div><h4 class="font-black text-xl text-gray-100">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
+                    deliveryContainer.innerHTML += `
+                        <div class="p-5 rounded-xl shadow-md border-t-4 bg-gray-800 flex flex-col justify-between ${cardBorder}">
+                            <div>
+                                <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
+                                    <div>
+                                        <h4 class="font-black text-xl text-gray-100">${order.origin}</h4>
+                                        <span class="text-xs text-gray-400">Hora: ${order.time}</span>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-1 rounded ${isDelivered ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-blue-950 text-blue-400 border border-blue-800'}">
+                                        ${statusText}
+                                    </span>
+                                </div>
+                                <ul class="space-y-1.5">${itemsListHTML}</ul>
+                                ${obsHTML}
+
+                                <div class="mt-4 p-3 bg-slate-900/80 border border-gray-700 rounded-xl text-xs space-y-1">
+                                    <p class="font-black text-blue-400 uppercase tracking-wider mb-2">🛵 Dados do Destinatário</p>
+                                    <p class="text-sm text-gray-100 font-bold">👤 Solicitante: <span class="font-normal text-gray-300">${order.address.nome || 'Não informado'}</span></p>
+                                    <p class="text-sm text-emerald-400 font-bold">📞 Whats: <span class="font-normal text-emerald-300">${order.address.phone}</span></p>
+                                    <p class="text-gray-300"><strong>📍 Bairro:</strong> ${order.address.bairro}</p>
+                                    <p class="text-gray-300"><strong>🏠 Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
+                                    <p class="text-amber-400"><strong>🎯 Ref:</strong> ${order.address.referencia}</p>
+                                    
+                                    <div class="mt-3 pt-2 border-t border-gray-700/80 flex justify-between items-center">
+                                        <span class="font-bold text-gray-300">💰 Valor Total:</span>
+                                        <span class="text-green-400 font-black text-lg">R$ ${formattedTotal}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <ul class="space-y-1.5">${itemsListHTML}</ul>
-                            ${obsHTML}
-                            ${addressHTML}
-                        </div>
-                        ${actionButtonsHTML}
-                    </div>`;
-            });
+                            ${actionButtonsHTML}
+                        </div>`;
+                });
+            }
         }
 
         window.deleteKitchenOrder = async function(id) { if (confirm("Remover do monitor?")) await deleteDoc(doc(db, "kitchen", id)); }
@@ -1093,6 +1174,7 @@
             if (viewId === 'client-view') renderClientMenu();
             else if (viewId === 'waiter-view') renderWaiterMenu();
             else if (viewId === 'admin-view') renderAdminMenu();
+            else if (viewId === 'kitchen-view') window.switchKitchenTab(activeKitchenTab);
         }
 
         auth.onAuthStateChanged((user) => { checkTableFromURL(); });
