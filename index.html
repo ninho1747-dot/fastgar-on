@@ -22,6 +22,15 @@
             @page { size: auto; margin: 0mm; }
         }
         #tracking-map { height: 260px; width: 100%; border-radius: 12px; z-index: 10; }
+
+        /* Oculta a barra de rolagem visual, mantendo a rolagem por toque no smartphone */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen transition-colors duration-200">
@@ -121,7 +130,7 @@
                 </div>
             </div>
 
-            <div id="client-allowed-state" class="hidden space-y-8">
+            <div id="client-allowed-state" class="hidden space-y-6">
                 <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-gray-100 mb-2">Nosso Cardápio</h2>
@@ -129,6 +138,13 @@
                             <span class="font-semibold text-yellow-400">Modalidade:</span>
                             <span id="current-table-label" class="bg-yellow-900 text-yellow-100 px-3 py-1 rounded font-bold">Mesa --</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- BARRA DE CATEGORIAS ROLÁVEL (FIXA NO TOPO AO ROLAR) -->
+                <div class="sticky top-0 z-30 bg-gray-900/95 backdrop-blur border-b border-gray-800 py-3 -mx-4 px-4 sm:mx-0 sm:px-0 shadow-md">
+                    <div id="category-tabs-container" class="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap px-2">
+                        <!-- Categorias renderizadas dinamicamente via JS -->
                     </div>
                 </div>
 
@@ -604,8 +620,11 @@
 
         function renderClientMenu() {
             const container = document.getElementById('client-dynamic-menu-container');
+            const tabsContainer = document.getElementById('category-tabs-container');
+            
             if(!container) return;
             container.innerHTML = '';
+            if(tabsContainer) tabsContainer.innerHTML = '';
 
             if (menuItems.length === 0) {
                 container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível.</p>';
@@ -614,20 +633,57 @@
             }
 
             const grouped = groupItemsByCategory(menuItems);
-            Object.keys(grouped).sort().forEach(categoryName => {
-                const items = grouped[categoryName];
+            const categoryKeys = Object.keys(grouped).sort();
+
+            categoryKeys.forEach((categoryName, index) => {
+                const categoryId = `cat-sec-${categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+
+                // 1. Cria o botão tátil na barra rolável
+                if (tabsContainer) {
+                    const tabBtn = document.createElement('button');
+                    const isActive = index === 0;
+                    
+                    tabBtn.className = `text-sm font-bold transition-all whitespace-nowrap pb-1 border-b-2 cursor-pointer ${
+                        isActive 
+                        ? 'text-yellow-400 border-yellow-400' 
+                        : 'text-gray-300 border-transparent hover:text-white'
+                    }`;
+                    tabBtn.innerText = categoryName;
+                    
+                    tabBtn.onclick = (e) => {
+                        tabsContainer.querySelectorAll('button').forEach(btn => {
+                            btn.classList.remove('text-yellow-400', 'border-yellow-400');
+                            btn.classList.add('text-gray-300', 'border-transparent');
+                        });
+                        tabBtn.classList.remove('text-gray-300', 'border-transparent');
+                        tabBtn.classList.add('text-yellow-400', 'border-yellow-400');
+
+                        const sectionTarget = document.getElementById(categoryId);
+                        if (sectionTarget) {
+                            sectionTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    };
+
+                    tabsContainer.appendChild(tabBtn);
+                }
+
+                // 2. Renderiza a seção de produtos
                 const categorySection = document.createElement('div');
-                categorySection.className = "space-y-4";
+                categorySection.id = categoryId;
+                categorySection.className = "space-y-4 scroll-mt-20";
                 categorySection.innerHTML = `
-                    <h3 class="text-xl font-black text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-700 uppercase">🏷️ ${categoryName}</h3>
+                    <h3 class="text-xl font-black text-gray-100 mb-4 flex items-center gap-2 border-b pb-2 border-gray-800 uppercase">${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 `;
+
                 const grid = categorySection.querySelector('.grid');
-                items.forEach(item => {
+                grouped[categoryName].forEach(item => {
                     grid.innerHTML += createItemCardHTML(item, cart[item.id] || 0, false);
                 });
+
                 container.appendChild(categorySection);
             });
+
             updateTotal();
         }
 
