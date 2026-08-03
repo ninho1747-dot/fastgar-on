@@ -21,7 +21,7 @@
             }
             @page { size: auto; margin: 0mm; }
         }
-        #tracking-map { height: 260px; width: 100%; border-radius: 12px; z-index: 10; }
+        #tracking-map { height: 280px; width: 100%; border-radius: 12px; z-index: 10; }
 
         .no-scrollbar::-webkit-scrollbar {
             display: none;
@@ -29,6 +29,11 @@
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+
+        /* Suavização de transição do ícone no mapa */
+        .leaflet-marker-icon {
+            transition: transform 0.3s ease-out;
         }
     </style>
 </head>
@@ -82,8 +87,10 @@
             <div id="client-delivery-tracker" class="hidden mb-6 bg-gray-800 p-5 rounded-2xl border border-blue-500/50 shadow-xl space-y-4 scroll-mt-6">
                 <div class="flex justify-between items-center border-b border-gray-700 pb-3">
                     <div>
-                        <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Acompanhamento Ao Vivo</span>
-                        <h3 class="text-lg font-black text-gray-100">🛵 Status da Sua Entrega</h3>
+                        <span class="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span> GPS Ao Vivo
+                        </span>
+                        <h3 class="text-lg font-black text-gray-100">🛵 Deslocamento do Entregador</h3>
                     </div>
                     <span id="tracker-status-badge" class="px-3 py-1 text-xs font-bold rounded-full bg-amber-950 text-amber-400 border border-amber-800">
                         ⏳ Preparando Pedido
@@ -98,7 +105,7 @@
                         <span id="tracker-eta" class="text-green-400 font-bold text-sm">25-35 min</span>
                     </div>
                     <div>
-                        <span class="text-gray-400 block font-semibold">Entregador:</span>
+                        <span class="text-gray-400 block font-semibold">Status do Sinal:</span>
                         <span id="tracker-driver-label" class="text-gray-200 font-bold text-sm">Aguardando Saída 🛵</span>
                     </div>
                 </div>
@@ -477,7 +484,11 @@
         let deliveryMarker = null;
         let currentActiveOrderId = localStorage.getItem('lastDeliveryOrderId') || null;
         let driverWatchId = null; 
+        let driverIntervalId = null;
         let unsubscribeActiveOrder = null;
+
+        let currentDriverLat = null;
+        let currentDriverLng = null;
 
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
@@ -725,28 +736,57 @@
             document.getElementById('order-review-modal').classList.remove('hidden');
         }
 
+        // Animação e Inicialização do Mapa
         function initTrackingMap(initialLat = null, initialLng = null) {
             const lat = initialLat !== null ? initialLat : (parseFloat(localStorage.getItem('lastDriverLat')) || -23.55052);
             const lng = initialLng !== null ? initialLng : (parseFloat(localStorage.getItem('lastDriverLng')) || -46.633308);
 
             if (!mapInstance) {
-                mapInstance = L.map('tracking-map').setView([lat, lng], 15);
+                mapInstance = L.map('tracking-map').setView([lat, lng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: '© OpenStreetMap'
                 }).addTo(mapInstance);
 
-                const restIcon = L.divIcon({ html: '🏪', className: 'text-2xl', iconSize: [30, 30] });
-                L.marker([lat, lng], { icon: restIcon }).addTo(mapInstance).bindPopup("Restaurante / Origem");
-
-                const devIcon = L.divIcon({ html: '🛵', className: 'text-2xl', iconSize: [30, 30] });
+                const devIcon = L.divIcon({ html: '<div style="font-size: 28px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5));">🛵</div>', className: 'custom-driver-icon', iconSize: [32, 32], iconAnchor: [16, 16] });
                 deliveryMarker = L.marker([lat, lng], { icon: devIcon }).addTo(mapInstance).bindPopup("Entregador");
+                
+                currentDriverLat = lat;
+                currentDriverLng = lng;
             } else {
-                if (deliveryMarker) {
-                    deliveryMarker.setLatLng([lat, lng]);
-                }
-                mapInstance.setView([lat, lng]);
+                smoothMoveMarker(lat, lng);
             }
+        }
+
+        // Movimento suave estilo Uber
+        function smoothMoveMarker(targetLat, targetLng) {
+            if (!deliveryMarker || !mapInstance) return;
+            if (currentDriverLat === targetLat && currentDriverLng === targetLng) return;
+
+            const startLat = currentDriverLat || targetLat;
+            const startLng = currentDriverLng || targetLng;
+            const startTime = performance.now();
+            const duration = 2000; // 2 segundos de deslizamento suave
+
+            function animate(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                const lat = startLat + (targetLat - startLat) * progress;
+                const lng = startLng + (targetLng - startLng) * progress;
+
+                deliveryMarker.setLatLng([lat, lng]);
+                mapInstance.panTo([lat, lng], { animate: true, duration: 0.5 });
+
+                currentDriverLat = lat;
+                currentDriverLng = lng;
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+
+            requestAnimationFrame(animate);
         }
 
         function setupClientRealtimeTracking() {
@@ -783,12 +823,10 @@
                         badge.innerText = "📍 Em Rota de Entrega";
                         badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-blue-950 text-blue-400 border border-blue-800 animate-pulse";
                         eta.innerText = "Chegando em breve...";
-                        driverLabel.innerText = "Entregador a caminho GPS 🛰️";
+                        driverLabel.innerText = "Transmissão GPS Ativa 🛰️";
 
-                        if (activeOrder.driverCoords && deliveryMarker) {
-                            const newPos = [activeOrder.driverCoords.lat, activeOrder.driverCoords.lng];
-                            deliveryMarker.setLatLng(newPos);
-                            if (mapInstance) mapInstance.panTo(newPos);
+                        if (driverLat && driverLng) {
+                            smoothMoveMarker(driverLat, driverLng);
                         }
                     } else {
                         badge.innerText = "⏳ Na Cozinha / Em Preparo";
@@ -924,50 +962,47 @@
             }
         }
 
+        // Transmissão contínua em tempo real (GPS Entregador)
         window.startDriverGPS = function(orderId) {
             if (!navigator.geolocation) {
-                alert("Seu navegador não suporta compartilhamento de geolocalização.");
+                alert("Seu celular/navegador não suporta compartilhamento de GPS.");
                 return;
             }
 
-            if (driverWatchId !== null) {
-                navigator.geolocation.clearWatch(driverWatchId);
-            }
+            if (driverWatchId !== null) navigator.geolocation.clearWatch(driverWatchId);
+            if (driverIntervalId !== null) clearInterval(driverIntervalId);
 
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const { latitude, longitude } = position.coords;
-                    try {
-                        const orderRef = doc(db, "kitchen", orderId);
-                        await updateDoc(orderRef, {
-                            status: 'delivered',
-                            driverCoords: { lat: latitude, lng: longitude }
-                        });
-                        alert("📍 GPS Conectado com sucesso! Transmitindo localização em tempo real.");
-                    } catch(e) { console.error("Erro ao salvar localização inicial:", e); }
-                },
-                (error) => {
-                    alert("Atenção: Por favor, ative a permissão de GPS/Localização no seu celular.");
-                },
-                { enableHighAccuracy: true }
-            );
+            const pushLocationUpdate = (latitude, longitude) => {
+                const orderRef = doc(db, "kitchen", orderId);
+                updateDoc(orderRef, {
+                    status: 'delivered',
+                    driverCoords: { lat: latitude, lng: longitude }
+                }).catch(e => console.error("Erro ao transmitir GPS para Firebase:", e));
+            };
 
+            // Transmissão por variação de posição
             driverWatchId = navigator.geolocation.watchPosition(
-                async (position) => {
+                (position) => {
                     const { latitude, longitude } = position.coords;
-                    try {
-                        const orderRef = doc(db, "kitchen", orderId);
-                        await updateDoc(orderRef, {
-                            status: 'delivered',
-                            driverCoords: { lat: latitude, lng: longitude }
-                        });
-                    } catch(e) { console.error("Erro ao transmitir GPS:", e); }
+                    pushLocationUpdate(latitude, longitude);
                 },
-                (error) => {
-                    console.error("Erro no sensor do GPS:", error);
-                },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                (error) => console.error("Erro no sensor do GPS:", error),
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
             );
+
+            // Transmissão contínua periódica (Força atualização contínua mesmo se o celular suavizar leituras)
+            driverIntervalId = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        pushLocationUpdate(latitude, longitude);
+                    },
+                    (err) => {},
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 4000 }
+                );
+            }, 3000); // Envia coordenadas a cada 3 segundos
+
+            alert("📍 Transmissão GPS em Tempo Real Iniciada! Movimente-se para testar.");
         }
 
         window.markAsDelivered = async function(id) {
@@ -1261,10 +1296,8 @@
         window.finishDeliveryOrder = async function(id) {
             if (confirm("Deseja marcar este pedido como finalizado e arquivá-lo por completo?")) {
                 try {
-                    if (driverWatchId !== null) {
-                        navigator.geolocation.clearWatch(driverWatchId);
-                        driverWatchId = null;
-                    }
+                    if (driverWatchId !== null) navigator.geolocation.clearWatch(driverWatchId);
+                    if (driverIntervalId !== null) clearInterval(driverIntervalId);
                     await deleteDoc(doc(db, "kitchen", id));
                 } catch(e) { console.error(e); }
             }
@@ -1338,13 +1371,13 @@
                     if (!isDelivered) {
                         actionButtonsHTML = `
                             <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
-                                📍 Marcar Em Rota e Iniciar GPS
+                                📍 Iniciar Entrega e Transmitir GPS
                             </button>
                         `;
                     } else {
                         actionButtonsHTML = `
                             <button onclick="window.startDriverGPS('${order.id}')" class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
-                                🛰️ Reconectar / Transmitir GPS
+                                🛰️ Reconectar Sinal de GPS
                             </button>
                             <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-xs font-black tracking-wide shadow transition cursor-pointer flex items-center justify-center gap-1">
                                 ✓ Finalizar Pedido (Arquivar)
