@@ -511,8 +511,7 @@
         let lastGpsTimestamp = 0; 
         let unsubscribeActiveOrder = null;
 
-        // Limite padrão inicial, mas agora se houver/criar mesa maior, expande dinamicamente
-        let MINIMO_MESAS_EXIBICAO = 15;
+        const TOTAL_MESAS_ESTABELECIMENTO = 15;
 
         onSnapshot(collection(db, "menu"), (snapshot) => {
             menuItems = [];
@@ -549,19 +548,9 @@
             const waiterGrid = document.getElementById('waiter-tables-grid');
             const adminGrid = document.getElementById('admin-tables-grid');
 
-            let maxTableNum = MINIMO_MESAS_EXIBICAO;
-
-            // Encontra dinamicamente a maior mesa registrada no banco para expandir o painel
-            Object.keys(activeTables).forEach(tNum => {
-                const parsed = parseInt(tNum, 10);
-                if (!isNaN(parsed) && parsed > maxTableNum) {
-                    maxTableNum = parsed;
-                }
-            });
-
             let gridContent = '';
 
-            for (let i = 1; i <= maxTableNum; i++) {
+            for (let i = 1; i <= TOTAL_MESAS_ESTABELECIMENTO; i++) {
                 const numStr = i.toString();
                 const tableData = activeTables[numStr];
                 const isOccupied = tableData && tableData.orders && tableData.orders.length > 0;
@@ -1131,7 +1120,7 @@
             else container.classList.remove('hidden');
         }
 
-        window.generateAccessCode = async function() {
+        window.generateAccessCode = function() {
             const type = document.getElementById('qr-link-type').value;
             const qrContainer = document.getElementById('qrcode-container');
             const baseUrl = window.location.href.split('?')[0];
@@ -1144,17 +1133,6 @@
                 const tableNum = document.getElementById('qr-table-number').value;
                 if(!tableNum) { alert("Informe o número da mesa!"); return; }
                 globalGeneratedLink = `${baseUrl}?mesa=${tableNum}`;
-
-                // Garante a inserção/registro da nova mesa no Firestore para renderizar instantaneamente no painel
-                try {
-                    const mesaDocRef = doc(db, "tables", `mesa_${tableNum}`);
-                    const snap = await getDoc(mesaDocRef);
-                    if (!snap.exists()) {
-                        await setDoc(mesaDocRef, { orders: [] });
-                    }
-                } catch(e) {
-                    console.error("Erro ao registrar mesa criada via QR Code:", e);
-                }
             }
 
             new QRCode(qrContainer, { text: globalGeneratedLink, width: 160, height: 160 });
