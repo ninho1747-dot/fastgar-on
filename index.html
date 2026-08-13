@@ -1,17 +1,25 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR" class="dark scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Pedidos - Restaurante</title>
+    <title>FastOrder - Sistema Integrado Multi-Tenant</title>
+    
+    <!-- Tailwind CSS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Leaflet JS & CSS (Mapa de Acompanhamento) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         @media print {
             body * { display: none !important; }
             #invoice-print-section, #invoice-print-section * { display: block !important; }
@@ -21,375 +29,425 @@
             }
             @page { size: auto; margin: 0mm; }
         }
-        #tracking-map { height: 260px; width: 100%; border-radius: 12px; z-index: 10; }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        #tracking-map { height: 280px; width: 100%; border-radius: 1rem; z-index: 10; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .glass-nav {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans min-h-screen transition-colors duration-200">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-amber-500 selection:text-slate-950 pb-12">
 
-    <section id="login-view" class="view-section hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700">
-            <div class="text-center mb-6">
-                <span class="text-4xl">🔐</span>
-                <h3 class="text-2xl font-bold text-gray-100 mt-2">Acesso Restrito</h3>
-                <p class="text-gray-400 text-sm mt-1">Autenticação obrigatória para a equipe</p>
+    <!-- LOGIN MODAL / VIEW -->
+    <section id="login-view" class="view-section hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div class="glass-card p-8 rounded-3xl shadow-2xl max-w-sm w-full border border-slate-700/50 transform transition-all">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-black text-2xl mb-3 shadow-lg shadow-amber-500/20">
+                    🔒
+                </div>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Painel SaaS</h3>
+                <p class="text-slate-400 text-xs mt-1">Autenticação do Restaurante</p>
             </div>
             <form id="login-form" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-300">E-mail cadastrado</label>
-                    <input type="email" id="login-username" placeholder="seu@email.com" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-700 border-gray-600 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">E-mail Cadastrado</label>
+                    <input type="email" id="login-username" placeholder="seu@email.com" required class="w-full px-4 py-3 rounded-xl outline-none bg-slate-900/90 border border-slate-700/80 text-slate-100 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition">
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-300">Senha</label>
-                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full mt-1 p-2.5 border rounded-lg outline-none bg-gray-700 border-gray-600 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Senha</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required class="w-full px-4 py-3 rounded-xl outline-none bg-slate-900/90 border border-slate-700/80 text-slate-100 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition">
                 </div>
-                <div id="login-error-msg" class="text-red-400 text-xs font-semibold hidden text-center"></div>
-                <button type="submit" id="login-btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition shadow cursor-pointer">Entrar no Sistema</button>
+                <div id="login-error-msg" class="text-rose-400 text-xs font-semibold hidden text-center bg-rose-950/40 py-2 rounded-lg border border-rose-800/50"></div>
+                <button type="submit" id="login-btn-submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] cursor-pointer text-sm">Entrar no Sistema</button>
             </form>
         </div>
     </section>
 
-    <nav id="main-navigation" class="bg-blue-800 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-3 hidden">
+    <!-- NAVEGAÇÃO PRINCIPAL (STAFF) -->
+    <nav id="main-navigation" class="glass-nav sticky top-0 z-40 px-4 py-3 shadow-lg flex flex-wrap justify-between items-center gap-4 hidden">
         <div class="flex items-center gap-3">
-            <h1 class="text-xl font-bold">🍽️ FastOrder</h1>
-            <span id="nav-user-badge" class="bg-blue-900 text-xs px-2.5 py-1 rounded font-bold uppercase tracking-wider">Painel Geral</span>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🍽️</span>
+                <span class="text-xl font-extrabold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent tracking-tight">FastOrder</span>
+            </div>
+            <span id="nav-user-badge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest">Painel Geral</span>
         </div>
-        <div class="flex flex-wrap gap-2">
-            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">⚙️ Admin</button>
-            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">💼 Garçom</button>
-            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-medium transition cursor-pointer">👨‍🍳 Monitor Pedidos</button>
+        <div class="flex flex-wrap items-center gap-2">
+            <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">⚙️ Admin</button>
+            <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">💼 Garçom</button>
+            <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">👨‍🍳 Monitor Pedidos</button>
         </div>
     </nav>
 
-    <div class="max-w-6xl mx-auto p-4">
+    <div class="max-w-6xl mx-auto p-4 sm:p-6">
         
+        <!-- VISÃO DO CLIENTE -->
         <section id="client-view" class="view-section hidden">
-            <div id="client-blocked-state" class="bg-gray-800 p-8 rounded-xl shadow-md text-center max-w-md mx-auto my-12 border border-gray-700">
-                <div class="text-6xl mb-4">📸</div>
-                <h3 class="text-xl font-bold text-gray-100 mb-2">Acesso Restrito ao Cardápio</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">
-                    Para visualizar nosso cardápio e realizar pedidos, por favor, aponte a câmera do seu celular para o **QR Code físico** fixado na sua mesa ou use um link válido de **Delivery**.
+            <!-- BLOQUEIO DE ACESSO SEM QR -->
+            <div id="client-blocked-state" class="glass-card p-8 rounded-3xl text-center max-w-md mx-auto my-12 border border-slate-800 shadow-2xl">
+                <div class="w-20 h-20 bg-slate-800/80 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-4 border border-slate-700/50 shadow-inner">📸</div>
+                <h3 class="text-xl font-extrabold text-white mb-2">Acesso Restrito ao Cardápio</h3>
+                <p class="text-slate-400 text-xs leading-relaxed">
+                    Para visualizar nosso cardápio e realizar pedidos, aponte a câmera do celular para o **QR Code físico** na sua mesa ou acesse pelo link oficial de **Delivery**.
                 </p>
             </div>
 
-            <div id="client-delivery-tracker" class="hidden mb-6 bg-gray-800 p-5 rounded-2xl border border-blue-500/50 shadow-xl space-y-4 scroll-mt-6">
-                <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+            <!-- MONITORAÇÃO DE DELIVERY AO VIVO -->
+            <div id="client-delivery-tracker" class="hidden mb-8 glass-card p-6 rounded-3xl border border-sky-500/30 shadow-2xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
                     <div>
-                        <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Acompanhamento Ao Vivo</span>
-                        <h3 class="text-lg font-black text-gray-100">🛵 Status da Sua Entrega</h3>
+                        <span class="text-[10px] font-extrabold text-sky-400 uppercase tracking-widest block mb-0.5">Acompanhamento Ao Vivo</span>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">🛵 Status da Sua Entrega</h3>
                     </div>
-                    <span id="tracker-status-badge" class="px-3 py-1 text-xs font-bold rounded-full bg-amber-950 text-amber-400 border border-amber-800">
+                    <span id="tracker-status-badge" class="px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
                         ⏳ Preparando Pedido
                     </span>
                 </div>
 
-                <div id="tracking-map" class="shadow-inner border border-gray-700"></div>
+                <div id="tracking-map" class="shadow-inner border border-slate-800"></div>
 
-                <div class="grid grid-cols-2 gap-3 text-xs bg-gray-900 p-3 rounded-xl border border-gray-700">
+                <div class="grid grid-cols-2 gap-3 text-xs bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
                     <div>
-                        <span class="text-gray-400 block font-semibold">Previsão de Chegada:</span>
-                        <span id="tracker-eta" class="text-green-400 font-bold text-sm">25-35 min</span>
+                        <span class="text-slate-400 block font-medium text-[11px]">Previsão de Chegada</span>
+                        <span id="tracker-eta" class="text-emerald-400 font-bold text-sm">25-35 min</span>
                     </div>
                     <div>
-                        <span class="text-gray-400 block font-semibold">Entregador:</span>
-                        <span id="tracker-driver-label" class="text-gray-200 font-bold text-sm">Aguardando Saída 🛵</span>
+                        <span class="text-slate-400 block font-medium text-[11px]">Entregador</span>
+                        <span id="tracker-driver-label" class="text-slate-200 font-bold text-sm">Aguardando Saída 🛵</span>
                     </div>
                 </div>
 
-                <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-700 space-y-3">
-                    <div class="flex justify-between items-center border-b border-gray-800 pb-2">
-                        <span class="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                            📋 Resumo do Pedido (Conferência)
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            📋 Resumo do Pedido
                         </span>
-                        <span class="text-[11px] text-gray-400">Confira ao receber</span>
+                        <span class="text-[10px] text-slate-500">Confira ao receber</span>
                     </div>
 
-                    <ul id="tracker-order-items" class="space-y-1.5 text-xs text-gray-300 max-h-36 overflow-y-auto pr-1"></ul>
+                    <ul id="tracker-order-items" class="space-y-2 text-xs text-slate-300 max-h-36 overflow-y-auto pr-1"></ul>
 
-                    <div id="tracker-order-obs-container" class="hidden p-2 bg-yellow-950/40 border border-yellow-800/60 rounded-lg text-xs">
-                        <span class="font-bold text-yellow-400 block">⚠️ Sua Observação:</span>
-                        <span id="tracker-order-obs" class="text-yellow-200 font-medium"></span>
+                    <div id="tracker-order-obs-container" class="hidden p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs">
+                        <span class="font-bold text-amber-400 block mb-0.5">⚠️ Sua Observação:</span>
+                        <span id="tracker-order-obs" class="text-amber-200 font-medium"></span>
                     </div>
 
-                    <div class="pt-2 border-t border-gray-800 flex justify-between items-center text-sm">
-                        <span class="font-bold text-gray-300">Valor Total a Pagar / Conferir:</span>
-                        <span class="text-green-400 font-black text-lg">R$ <span id="tracker-order-total">0.00</span></span>
+                    <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-sm">
+                        <span class="font-semibold text-slate-400">Total a Pagar / Conferir:</span>
+                        <span class="text-emerald-400 font-extrabold text-lg">R$ <span id="tracker-order-total">0.00</span></span>
                     </div>
                 </div>
             </div>
 
+            <!-- CONTEÚDO PERMITIDO / CARDÁPIO -->
             <div id="client-allowed-state" class="hidden space-y-6">
-                <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="glass-card p-6 rounded-3xl border border-slate-800 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-100 mb-2">Nosso Cardápio</h2>
-                        <div class="flex items-center space-x-2 bg-yellow-950/40 p-3 rounded border border-yellow-900 inline-block">
-                            <span class="font-semibold text-yellow-400">Modalidade:</span>
-                            <span id="current-table-label" class="bg-yellow-900 text-yellow-100 px-3 py-1 rounded font-bold">Mesa --</span>
-                        </div>
+                        <h2 class="text-2xl font-black text-white">Nosso Cardápio</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Selecione seus itens favoritos abaixo</p>
+                    </div>
+                    <div class="inline-flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-2xl shadow-inner">
+                        <span class="text-xs text-slate-400 font-medium">Modalidade:</span>
+                        <span id="current-table-label" class="text-amber-400 font-extrabold text-xs uppercase tracking-wider">Mesa --</span>
                     </div>
                 </div>
 
-                <div class="sticky top-0 z-30 bg-gray-900/95 backdrop-blur border-b border-gray-800 py-3 -mx-4 px-4 sm:mx-0 sm:px-0 shadow-md">
-                    <div id="category-tabs-container" class="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap px-2"></div>
+                <!-- BARRA DE BUSCA DE ITENS DO CLIENTE -->
+                <div class="glass-card p-3 rounded-2xl border border-slate-800 shadow-md">
+                    <div class="relative flex items-center">
+                        <span class="absolute left-3 text-slate-400 text-sm">🔍</span>
+                        <input type="text" id="client-search-input" oninput="window.handleSearchChange('client')" placeholder="Buscar item por nome ou descrição..." class="w-full pl-9 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
+                    </div>
                 </div>
 
-                <div id="client-dynamic-menu-container" class="space-y-8 pb-24"></div>
+                <!-- TABS DE CATEGORIAS -->
+                <div class="sticky top-[61px] z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 py-3 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <div id="category-tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap px-1"></div>
+                </div>
 
-                <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-gray-700 p-4 z-40">
-                    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="text-xl font-bold text-gray-200">
-                            Total do Pedido: <span class="text-green-400 text-2xl">R$ <span id="client-total-price">0.00</span></span>
+                <!-- DINÂMICO: LISTA DE ITENS POR CATEGORIA -->
+                <div id="client-dynamic-menu-container" class="space-y-8 pb-28"></div>
+
+                <!-- BARRA FLUTUANTE DE FINALIZAÇÃO DO PEDIDO -->
+                <div class="fixed bottom-4 left-4 right-4 max-w-4xl mx-auto z-40">
+                    <div class="glass-card bg-slate-900/95 border border-slate-700/80 shadow-2xl rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3 backdrop-blur-xl">
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total do Pedido:</div>
+                            <div class="text-emerald-400 font-black text-2xl">R$ <span id="client-total-price">0.00</span></div>
                         </div>
-                        <button onclick="window.showOrderReviewModal()" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer">
-                            🟢 Confirmar e Enviar Pedido
+                        <button onclick="window.showOrderReviewModal()" class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer text-sm flex items-center justify-center gap-2 active:scale-95">
+                            <span>🟢 Confirmar e Enviar Pedido</span>
                         </button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <div id="order-review-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-2xl flex flex-col my-8">
-                <div class="text-center mb-4">
-                    <span class="text-3xl">📋</span>
-                    <h3 class="text-xl font-bold text-gray-100 mt-1">Confirme seu Pedido</h3>
-                    <p class="text-gray-400 text-xs">Dê uma última olhada antes de enviar</p>
+        <!-- MODAL CONFERÊNCIA DE PEDIDO -->
+        <div id="order-review-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div class="glass-card border border-slate-700/80 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col my-8">
+                <div class="text-center mb-5">
+                    <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl border border-amber-500/20 flex items-center justify-center text-2xl mx-auto mb-2">📋</div>
+                    <h3 class="text-xl font-bold text-white">Confirme seu Pedido</h3>
+                    <p class="text-slate-400 text-xs mt-0.5">Revise os detalhes antes do envio para a cozinha</p>
                 </div>
                 
-                <div id="review-modal-items" class="space-y-2 max-h-40 overflow-y-auto mb-4 pr-1 scrollbar-thin"></div>
+                <div id="review-modal-items" class="space-y-4 max-h-60 overflow-y-auto mb-4 pr-1"></div>
 
-                <div id="delivery-address-fields" class="hidden space-y-3 mb-4 bg-gray-900/60 p-3 rounded-xl border border-gray-700">
-                    <p class="text-xs font-black text-blue-400 uppercase tracking-wider mb-1">🛵 Dados para Entrega</p>
+                <div id="delivery-address-fields" class="hidden space-y-3 mb-4 bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                    <p class="text-[11px] font-extrabold text-sky-400 uppercase tracking-wider mb-2">🛵 Dados para Entrega</p>
                     
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Nome / Solicitante *</label>
-                        <input type="text" id="dev-nome" placeholder="Ex: João Silva" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Seu Nome / Solicitante *</label>
+                        <input type="text" id="dev-nome" placeholder="Ex: João Silva" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase">Seu Telefone / WhatsApp *</label>
-                        <input type="tel" id="dev-phone" placeholder="Ex: (11) 99999-9999" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Telefone / WhatsApp *</label>
+                        <input type="tel" id="dev-phone" placeholder="Ex: (11) 99999-9999" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Bairro *</label>
-                            <input type="text" id="dev-bairro" placeholder="Ex: Centro" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bairro *</label>
+                            <input type="text" id="dev-bairro" placeholder="Ex: Centro" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Rua *</label>
-                            <input type="text" id="dev-rua" placeholder="Ex: Rua Nova" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Rua *</label>
+                            <input type="text" id="dev-rua" placeholder="Ex: Rua Nova" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
                         <div class="col-span-1">
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Nº / Apto *</label>
-                            <input type="text" id="dev-numero" placeholder="Ex: 12B" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nº / Apto *</label>
+                            <input type="text" id="dev-numero" placeholder="Ex: 12B" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                         <div class="col-span-2">
-                            <label class="block text-[11px] font-bold text-gray-400 uppercase">Ponto de Referência *</label>
-                            <input type="text" id="dev-referencia" placeholder="Ex: Próximo à praça" class="w-full mt-1 p-2 text-xs rounded-lg outline-none bg-gray-800 border border-gray-700 text-gray-100 focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Referência *</label>
+                            <input type="text" id="dev-referencia" placeholder="Ex: Próximo à praça" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">✍️ Observações do Pedido:</label>
-                    <textarea id="client-order-observation" rows="2" placeholder="Ex: Sem cebola, retirar talheres..." class="w-full p-2.5 text-sm border rounded-xl outline-none bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-green-500 resize-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">✍️ Observações do Pedido</label>
+                    <textarea id="client-order-observation" rows="2" placeholder="Ex: Sem cebola, molho à parte..." class="w-full p-3 text-xs rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 focus:border-emerald-500 transition resize-none"></textarea>
                 </div>
 
-                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex justify-between items-center mb-6">
-                    <span class="text-gray-300 font-medium">Valor Total:</span>
-                    <span class="text-green-400 font-black text-xl">R$ <span id="review-modal-total">0.00</span></span>
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex justify-between items-center mb-6">
+                    <span class="text-slate-400 font-medium text-xs">Valor Total do Pedido:</span>
+                    <span class="text-emerald-400 font-black text-xl">R$ <span id="review-modal-total">0.00</span></span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="document.getElementById('order-review-modal').classList.add('hidden')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 py-3 rounded-xl font-bold text-sm transition cursor-pointer">
+                    <button onclick="document.getElementById('order-review-modal').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-xs transition cursor-pointer">
                         Voltar
                     </button>
-                    <button onclick="window.sendOrderDirect()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-sm shadow transition flex items-center justify-center gap-1 cursor-pointer">
+                    <button onclick="window.sendOrderDirect()" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 py-3 rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1">
                         Enviar Pedido 🚀
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="order-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
-                <div class="bg-green-950/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-800">
-                    <span class="text-3xl">🎉</span>
-                </div>
-                
-                <h3 class="text-xl font-bold text-gray-100 mb-2">Pedido confirmado!</h3>
-                <p id="success-modal-message" class="text-green-400 font-medium text-base leading-relaxed mb-6">
-                    Seu pedido já está sendo preparado.
+        <!-- MODAL SUCESSO -->
+        <div id="order-success-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+            <div class="glass-card border border-slate-700 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl">
+                <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🎉</div>
+                <h3 class="text-xl font-bold text-white mb-2">Pedido Confirmado!</h3>
+                <p id="success-modal-message" class="text-slate-400 text-xs leading-relaxed mb-6">
+                    Seu pedido já foi encaminhado para a equipe de preparo.
                 </p>
-
-                <div class="space-y-3">
-                    <button id="btn-track-order-redirect" onclick="window.redirectToTrackingPage()" class="hidden w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm shadow transition cursor-pointer flex items-center justify-center gap-2">
+                <div class="space-y-2.5">
+                    <button id="btn-track-order-redirect" onclick="window.redirectToTrackingPage()" class="hidden w-full bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-2">
                         🛵 Acompanhar Pedido ao Vivo
                     </button>
-                    
-                    <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer">
+                    <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-xs transition cursor-pointer">
                         Fechar
                     </button>
                 </div>
             </div>
         </div>
 
+        <!-- VISÃO DO GARÇOM -->
         <section id="waiter-view" class="view-section hidden space-y-6">
-            <!-- PAINEL DE VISUALIZAÇÃO DE MESAS OCUPADAS E LIVRES NO GARÇOM -->
-            <div class="bg-gray-800 p-5 rounded-xl shadow-md border border-gray-700">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">🪑 Status das Mesas em Tempo Real</h3>
-                    <div class="flex gap-3 text-xs font-bold">
-                        <span class="flex items-center gap-1 text-green-400"><span class="w-2.5 h-2.5 bg-green-500 rounded-full inline-block"></span> Livre</span>
-                        <span class="flex items-center gap-1 text-red-400"><span class="w-2.5 h-2.5 bg-red-500 rounded-full inline-block"></span> Ocupada / Ativa</span>
+            <div class="glass-card p-5 rounded-3xl border border-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">🪑 Status das Mesas em Tempo Real</h3>
+                    <div class="flex gap-3 text-[11px] font-semibold">
+                        <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span> Livre</span>
+                        <span class="flex items-center gap-1.5 text-rose-400"><span class="w-2 h-2 bg-rose-500 rounded-full inline-block"></span> Ocupada</span>
                     </div>
                 </div>
-                <div id="waiter-tables-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-3"></div>
+                <div id="waiter-tables-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2.5"></div>
             </div>
 
-            <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 border-l-4 border-l-orange-500">
-                <h2 class="text-2xl font-bold text-gray-100 mb-4">Painel de Atendimento do Garçom</h2>
-                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-orange-950/20 p-4 rounded border border-orange-900">
+            <div class="glass-card p-6 rounded-3xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent">
+                <h2 class="text-xl font-bold text-white mb-4">Painel do Garçom</h2>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div>
-                        <label class="block text-sm font-bold text-orange-400 mb-1">Selecione a Mesa do Cliente:</label>
-                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº da Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2 border border-orange-700 rounded focus:ring-2 focus:ring-orange-500 bg-gray-700 text-gray-100 font-bold outline-none text-center">
+                        <label class="block text-xs font-semibold text-amber-400 mb-1.5">Selecione a Mesa Atendida:</label>
+                        <input type="number" id="waiter-table-number" min="1" placeholder="Nº Mesa" oninput="window.updateWaiterTable()" class="w-32 p-2.5 border border-amber-500/40 rounded-xl focus:ring-2 focus:ring-amber-500/20 bg-slate-900 text-white font-extrabold outline-none text-center text-sm">
                     </div>
                 </div>
             </div>
 
-            <div class="sticky top-0 z-30 bg-gray-900/95 backdrop-blur border-b border-gray-800 py-3 -mx-4 px-4 sm:mx-0 sm:px-0 shadow-md">
-                <div id="waiter-category-tabs-container" class="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap px-2"></div>
+            <div class="glass-card p-3 rounded-2xl border border-slate-800 shadow-md">
+                <div class="relative flex items-center">
+                    <span class="absolute left-3 text-slate-400 text-sm">🔍</span>
+                    <input type="text" id="waiter-search-input" oninput="window.handleSearchChange('waiter')" placeholder="Buscar item por nome ou descrição..." class="w-full pl-9 pr-4 py-2.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 transition">
+                </div>
             </div>
 
-            <div id="waiter-dynamic-menu-container" class="space-y-8 pb-24"></div>
+            <div class="sticky top-[61px] z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 py-3 -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div id="waiter-category-tabs-container" class="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth whitespace-nowrap px-1"></div>
+            </div>
 
-            <div class="fixed bottom-0 left-0 right-0 bg-gray-800 shadow-xl border-t border-orange-800 p-4 z-40">
-                <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="text-xl font-bold text-gray-200">
-                        Total do Atendimento: <span class="text-orange-400 text-2xl">R$ <span id="waiter-total-price">0.00</span></span>
+            <div id="waiter-dynamic-menu-container" class="space-y-8 pb-28"></div>
+
+            <div class="fixed bottom-4 left-4 right-4 max-w-4xl mx-auto z-40">
+                <div class="glass-card bg-slate-900/95 border border-amber-500/30 shadow-2xl rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3 backdrop-blur-xl">
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                        <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total Atendimento:</div>
+                        <div class="text-amber-400 font-black text-2xl">R$ <span id="waiter-total-price">0.00</span></div>
                     </div>
-                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-3 rounded-lg shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                    <button onclick="window.submitWaiterOrder()" class="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-amber-500/20 transition cursor-pointer text-sm flex items-center justify-center gap-2 active:scale-95">
                         📝 Lançar Pedido na Mesa
                     </button>
                 </div>
             </div>
         </section>
 
+        <!-- VISÃO DA COZINHA -->
         <section id="kitchen-view" class="view-section hidden space-y-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-gray-700">
-                <h2 class="text-3xl font-bold text-gray-100">👨‍🍳 Monitor de Pedidos</h2>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-black text-white">👨‍🍳 Monitor da Cozinha</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Gerenciamento de pedidos em tempo real</p>
+                </div>
                 
-                <div class="flex bg-gray-800 p-1 rounded-xl border border-gray-700 w-full md:w-auto">
-                    <button id="tab-btn-tables" onclick="window.switchKitchenTab('tables')" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white cursor-pointer flex items-center justify-center gap-2">
-                        🍽️ Pedidos de Mesas
+                <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 w-full md:w-auto">
+                    <button id="tab-btn-tables" onclick="window.switchKitchenTab('tables')" class="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2">
+                        🍽️ Pedidos Salão
                     </button>
-                    <button id="tab-btn-delivery" onclick="window.switchKitchenTab('delivery')" class="flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2">
-                        🛵 Pedidos de Delivery
+                    <button id="tab-btn-delivery" onclick="window.switchKitchenTab('delivery')" class="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2">
+                        🛵 Delivery
                     </button>
                 </div>
             </div>
 
-            <div id="kitchen-tables-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-            <div id="kitchen-delivery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+            <div id="kitchen-tables-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+            <div id="kitchen-delivery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 hidden"></div>
         </section>
 
+        <!-- VISÃO ADMINISTRATIVA -->
         <section id="admin-view" class="view-section hidden space-y-6">
-            <div class="flex justify-between items-center border-b pb-2 border-gray-700">
-                <h2 class="text-3xl font-bold text-gray-100">Painel do Administrador</h2>
-                <button onclick="window.logoutSystem()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg shadow text-sm transition flex items-center gap-2 cursor-pointer">
-                    🚪 Sair do Sistema
+            <div class="flex justify-between items-center border-b pb-4 border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-black text-white">Painel do Administrador</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Gestão de produtos, relatórios e fechamentos</p>
+                </div>
+                <button onclick="window.logoutSystem()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-2">
+                    🚪 Sair
                 </button>
             </div>
 
-            <!-- MAPA/GRID DE MESAS NO ADMIN -->
-            <div class="bg-gray-800 p-5 rounded-xl shadow-md border border-gray-700">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">🪑 Visão Geral das Mesas do Salão</h3>
-                    <div class="flex gap-3 text-xs font-bold">
-                        <span class="flex items-center gap-1 text-green-400"><span class="w-2.5 h-2.5 bg-green-500 rounded-full inline-block"></span> Livre</span>
-                        <span class="flex items-center gap-1 text-red-400"><span class="w-2.5 h-2.5 bg-red-500 rounded-full inline-block"></span> Ocupada / Ativa</span>
+            <div class="glass-card p-5 rounded-3xl border border-slate-800">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">🪑 Visão Geral das Mesas do Salão</h3>
+                    <div class="flex gap-3 text-[11px] font-semibold">
+                        <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span> Livre</span>
+                        <span class="flex items-center gap-1.5 text-rose-400"><span class="w-2 h-2 bg-rose-500 rounded-full inline-block"></span> Ocupada</span>
                     </div>
                 </div>
-                <div id="admin-tables-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-3"></div>
+                <div id="admin-tables-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2.5"></div>
             </div>
             
-            <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-gray-700 border-l-4 border-l-blue-500">
+            <div class="glass-card p-6 rounded-3xl border border-slate-800">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-100">📊 Relatório de Vendas do Dia</h3>
+                        <h3 class="text-lg font-bold text-white">📊 Relatório do Dia</h3>
                     </div>
-                    <button onclick="window.clearSalesReport()" class="bg-red-950 text-red-400 hover:bg-red-900 font-semibold px-4 py-2 rounded transition text-sm cursor-pointer">🔄 Zerar Relatório</button>
+                    <button onclick="window.clearSalesReport()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold px-3 py-1.5 rounded-xl transition text-xs cursor-pointer">🔄 Zerar Relatório</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-green-950/30 p-4 rounded-lg border border-green-900">
-                        <p class="text-sm text-green-400 font-semibold uppercase">Total Faturado</p>
-                        <p class="text-3xl font-black text-green-400 mt-1">R$ <span id="sales-total-money">0.00</span></p>
+                    <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
+                        <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Total Faturado</p>
+                        <p class="text-2xl font-black text-emerald-400 mt-1">R$ <span id="sales-total-money">0.00</span></p>
                     </div>
-                    <div class="bg-blue-950/30 p-4 rounded-lg border border-blue-900">
-                        <p class="text-sm text-blue-400 font-semibold uppercase">Pedidos Realizados</p>
-                        <p class="text-3xl font-black text-blue-400 mt-1"><span id="sales-total-orders">0</span></p>
+                    <div class="bg-sky-500/10 border border-sky-500/20 p-4 rounded-2xl">
+                        <p class="text-[10px] text-sky-400 font-bold uppercase tracking-wider">Pedidos Realizados</p>
+                        <p class="text-2xl font-black text-sky-400 mt-1"><span id="sales-total-orders">0</span></p>
                     </div>
-                    <div class="bg-purple-950/30 p-4 rounded-lg border border-purple-900">
-                        <p class="text-sm text-purple-400 font-semibold uppercase">Itens Vendidos</p>
-                        <p class="text-3xl font-black text-purple-400 mt-1"><span id="sales-total-items">0</span></p>
+                    <div class="bg-purple-500/10 border border-purple-500/20 p-4 rounded-2xl">
+                        <p class="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Itens Vendidos</p>
+                        <p class="text-2xl font-black text-purple-400 mt-1"><span id="sales-total-items">0</span></p>
                     </div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-gray-800 p-6 rounded-lg shadow-md h-fit border border-gray-700">
-                    <h3 class="text-lg font-bold text-gray-200 mb-4">Adicionar Item ao Cardápio</h3>
+                <div class="glass-card p-6 rounded-3xl h-fit border border-slate-800">
+                    <h3 class="text-md font-bold text-white mb-4">Adicionar Item ao Cardápio</h3>
                     <form id="add-item-form" onsubmit="window.handleAddItem(event)" class="space-y-4">
                         <div>
-                            <div class="flex justify-between items-center">
-                                <label class="block text-sm font-medium text-gray-400">Categoria</label>
-                                <button type="button" id="toggle-cat-mode-btn" onclick="window.toggleCategoryMode()" class="text-xs font-bold text-blue-400 hover:underline cursor-pointer">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-semibold text-slate-400">Categoria</label>
+                                <button type="button" id="toggle-cat-mode-btn" onclick="window.toggleCategoryMode()" class="text-[11px] font-bold text-amber-400 hover:underline cursor-pointer">
                                     ➕ Nova Categoria
                                 </button>
                             </div>
-                            
-                            <div class="mt-1" id="category-field-container">
-                                <select id="item-category-select" required class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium">
-                                </select>
+                            <div id="category-field-container">
+                                <select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500"></select>
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-400">Nome do Item</label>
-                            <input type="text" id="item-name" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100">
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Nome do Item</label>
+                            <input type="text" id="item-name" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-400">Preço (R$)</label>
-                            <input type="number" id="item-price" step="0.01" required class="w-full mt-1 p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100">
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Preço (R$)</label>
+                            <input type="number" id="item-price" step="0.01" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-400">Descrição</label>
-                            <textarea id="item-desc" rows="2" class="w-full mt-1 p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100"></textarea>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Descrição</label>
+                            <textarea id="item-desc" rows="2" class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500 resize-none"></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-400">Foto do Item (.jpg, .png)</label>
-                            <input type="file" id="item-file" accept="image/*" class="w-full mt-1 p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-950 file:text-blue-400 hover:file:bg-blue-100">
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Foto (.jpg, .png)</label>
+                            <input type="file" id="item-file" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 cursor-pointer">
                         </div>
-                        <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition shadow cursor-pointer">Adicionar ao Cardápio</button>
+                        <button type="submit" id="submit-btn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 py-3 rounded-xl font-bold text-xs transition shadow-lg shadow-amber-500/20 cursor-pointer">Adicionar ao Cardápio</button>
                     </form>
                 </div>
 
-                <div class="bg-gray-800 p-6 rounded-lg shadow-md lg:col-span-2 space-y-6 border border-gray-700">
+                <div class="glass-card p-6 rounded-3xl lg:col-span-2 space-y-6 border border-slate-800">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-200 mb-4">Cardápio Cadastrado</h3>
-                        <div class="overflow-x-auto">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                            <h3 class="text-md font-bold text-white">Cardápio Cadastrado</h3>
+                            <div class="relative w-full sm:w-64">
+                                <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                                <input type="text" id="admin-search-input" oninput="window.handleSearchChange('admin')" placeholder="Buscar no admin..." class="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-amber-500 transition">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
                             <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-700 text-gray-300 text-sm uppercase">
+                                <thead class="sticky top-0 bg-slate-900/95 z-10 backdrop-blur-md">
+                                    <tr class="border-b border-slate-800 text-slate-400 text-[10px] uppercase tracking-wider">
                                         <th class="p-3">Foto</th>
                                         <th class="p-3">Item / Categoria</th>
                                         <th class="p-3">Preço</th>
@@ -402,58 +460,58 @@
                         </div>
                     </div>
 
-                    <hr class="border-gray-700">
+                    <hr class="border-slate-800">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
+                        <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-200 mb-1">📢 Gerador de QR Code / Links</h4>
-                                <p class="text-[11px] text-gray-400 mb-3">Crie links para mesas locais ou campanhas de Delivery na rua.</p>
+                                <h4 class="font-bold text-white text-sm mb-1">📢 Gerador de QR Code / Links Multi-Tenant</h4>
+                                <p class="text-[11px] text-slate-400 mb-3">Crie acessos vinculados à conta do seu restaurante.</p>
                                 
                                 <div class="space-y-3 mb-3">
                                     <div>
-                                        <label class="block text-xs text-gray-400 font-bold mb-1">Tipo de Link:</label>
-                                        <select id="qr-link-type" onchange="window.toggleLinkTypeSelector()" class="w-full p-2 border rounded outline-none bg-gray-800 border-gray-600 text-gray-100 text-sm">
-                                            <option value="mesa">Atendimento em Mesa Local</option>
-                                            <option value="delivery">Campanha Delivery (Rua / Panfleto)</option>
+                                        <label class="block text-[10px] text-slate-400 font-bold mb-1">Tipo de Link:</label>
+                                        <select id="qr-link-type" onchange="window.toggleLinkTypeSelector()" class="w-full p-2.5 rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-200 text-xs">
+                                            <option value="mesa">Mesa Local</option>
+                                            <option value="delivery">Campanha Delivery</option>
                                         </select>
                                     </div>
                                     <div id="qr-table-input-container">
-                                        <label class="block text-xs text-gray-400 font-bold mb-1">Nº da Mesa:</label>
-                                        <input type="number" id="qr-table-number" placeholder="Ex: 5" min="1" class="w-full p-2 border rounded outline-none bg-gray-800 border-gray-600 text-gray-100 text-sm">
+                                        <label class="block text-[10px] text-slate-400 font-bold mb-1">Nº da Mesa:</label>
+                                        <input type="number" id="qr-table-number" placeholder="Ex: 5" min="1" class="w-full p-2.5 rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-200 text-xs">
                                     </div>
-                                    <button onclick="window.generateAccessCode()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold transition cursor-pointer text-sm">Gerar Estrutura de Acesso</button>
+                                    <button onclick="window.generateAccessCode()" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold transition cursor-pointer text-xs">Gerar Link com Tenant ID</button>
                                 </div>
 
-                                <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white border rounded min-h-[160px]">
-                                    <p class="text-gray-400 text-xs text-center">O QR Code aparecerá aqui</p>
+                                <div id="qrcode-container" class="flex flex-col items-center justify-center p-4 bg-white rounded-xl min-h-[160px]">
+                                    <p class="text-slate-400 text-xs text-center">O QR Code aparecerá aqui</p>
                                 </div>
                             </div>
                             
                             <div id="download-btn-container" class="mt-3 hidden space-y-2">
-                                <button onclick="window.downloadQRCode()" class="w-full bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">📥 Baixar Imagem QR Code</button>
-                                <button onclick="window.shareOnWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">💬 Compartilhar Link no WhatsApp</button>
-                                <div class="p-2 bg-gray-900 rounded border border-gray-600 overflow-x-auto text-[10px] font-mono text-gray-300" id="generated-pure-link"></div>
+                                <button onclick="window.downloadQRCode()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">📥 Baixar Imagem QR Code</button>
+                                <button onclick="window.shareOnWhatsApp()" class="w-full bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">💬 Compartilhar no WhatsApp</button>
+                                <div class="p-2 bg-slate-950 rounded-xl border border-slate-800 overflow-x-auto text-[10px] font-mono text-slate-400" id="generated-pure-link"></div>
                             </div>
                         </div>
 
-                        <div class="bg-gray-700/50 p-4 rounded border border-gray-700 flex flex-col justify-between">
+                        <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
                             <div>
-                                <h4 class="font-bold text-gray-200 mb-3">Fechar Conta da Mesa</h4>
+                                <h4 class="font-bold text-white text-sm mb-3">Fechar Conta da Mesa</h4>
                                 <div class="flex gap-2 mb-3">
-                                    <input type="number" id="print-table-number" placeholder="Nº da Mesa" min="1" class="w-full p-2 border rounded outline-none text-center font-bold bg-gray-700 border-gray-600 text-gray-100">
-                                    <button onclick="window.prepareInvoice()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded font-bold transition cursor-pointer">Buscar</button>
+                                    <input type="number" id="print-table-number" placeholder="Nº Mesa" min="1" class="w-full p-2.5 rounded-xl outline-none text-center font-bold bg-slate-950 border border-slate-800 text-white text-xs">
+                                    <button onclick="window.prepareInvoice()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">Buscar</button>
                                 </div>
                             </div>
-                            <div id="invoice-preview" class="text-xs font-mono bg-gray-800 p-4 border rounded border-gray-600 text-gray-200 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
+                            <div id="invoice-preview" class="text-xs font-mono bg-slate-950 p-4 border rounded-xl border-slate-800 text-slate-300 min-h-[120px] max-h-[180px] overflow-y-auto shadow-inner mb-3">
                                 Insira o número da mesa acima.
                             </div>
                             <div class="flex flex-col gap-2">
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button onclick="window.printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">🖨️ Imprimir</button>
-                                    <button onclick="window.downloadInvoiceTXT()" class="bg-gray-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">📥 Baixar</button>
+                                    <button onclick="window.printInvoice()" class="bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">🖨️ Imprimir</button>
+                                    <button onclick="window.downloadInvoiceTXT()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">📥 Baixar TXT</button>
                                 </div>
-                                <button onclick="window.confirmPayment()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded font-bold text-sm transition cursor-pointer">💰 Liberar Mesa</button>
+                                <button onclick="window.confirmPayment()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">💰 Liberar Mesa</button>
                             </div>
                         </div>
                     </div>
@@ -463,13 +521,15 @@
         </section>
     </div>
 
+    <!-- IMPRESSÃO IMPERCEPTÍVEL -->
     <div id="invoice-print-section" style="display: none;"></div>
 
+    <!-- LÓGICA MULTI-TENANT E CONEXÃO COM O FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
-            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, updateDoc 
+            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, where 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const IMGBB_API_KEY = "08b078bd3bb77893a721483bacb0f386"; 
@@ -487,6 +547,10 @@
         const db = getFirestore(app);
         const auth = getAuth(app); 
 
+        // VARIÁVEIS MULTI-TENANT DE CONTROLE
+        let currentRestaurantId = null; 
+        let unsubs = []; 
+
         let menuItems = [];
         let salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
         let kitchenOrders = [];
@@ -503,6 +567,11 @@
         let activeKitchenTab = 'tables'; 
         let activeInvoiceText = "";
 
+        // Termos de busca
+        let clientSearchTerm = "";
+        let waiterSearchTerm = "";
+        let adminSearchTerm = "";
+
         let mapInstance = null;
         let deliveryMarker = null;
         let currentActiveOrderId = localStorage.getItem('lastDeliveryOrderId') || null;
@@ -511,46 +580,93 @@
         let lastGpsTimestamp = 0; 
         let unsubscribeActiveOrder = null;
 
-        const TOTAL_MESAS_ESTABELECIMENTO = 15;
+        let MINIMO_MESAS_EXIBICAO = 15;
 
-        onSnapshot(collection(db, "menu"), (snapshot) => {
-            menuItems = [];
-            snapshot.forEach(doc => { menuItems.push({ id: doc.id, ...doc.data() }); });
-            renderClientMenu();
-            renderWaiterMenu();
-            renderAdminMenu();
-            updateSelectCategories();
-        });
+        // INICIALIZA OS LISTENERS FILTRADOS POR TENANT
+        function setupMultiTenantListeners(tenantId) {
+            // Limpa ouvintes anteriores se houver troca de tenant
+            unsubs.forEach(unsub => unsub());
+            unsubs = [];
 
-        onSnapshot(doc(db, "reports", "sales"), (snapshot) => {
-            if (snapshot.exists()) salesReport = snapshot.data();
-            updateSalesReportView();
-        });
+            if (!tenantId) return;
 
-        onSnapshot(collection(db, "kitchen"), (snapshot) => {
-            kitchenOrders = [];
-            snapshot.forEach(doc => { kitchenOrders.push({ id: doc.id, ...doc.data() }); });
-            kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            renderKitchenOrders();
-        });
-
-        // MONITORAMENTO DAS MESAS EM TEMPO REAL
-        onSnapshot(collection(db, "tables"), (snapshot) => {
-            activeTables = {};
-            snapshot.forEach(docSnap => {
-                const tableId = docSnap.id.replace('mesa_', '');
-                activeTables[tableId] = docSnap.data();
+            // 1. Ouvir Cardápio do Restaurante
+            const qMenu = query(collection(db, "menu"), where("restaurantId", "==", tenantId));
+            const unsubMenu = onSnapshot(qMenu, (snapshot) => {
+                menuItems = [];
+                snapshot.forEach(doc => { menuItems.push({ id: doc.id, ...doc.data() }); });
+                renderClientMenu();
+                renderWaiterMenu();
+                renderAdminMenu();
+                updateSelectCategories();
             });
-            renderTablesStatusGrid();
-        });
+            unsubs.push(unsubMenu);
+
+            // 2. Ouvir Relatório do Restaurante
+            const unsubReport = onSnapshot(doc(db, "reports", tenantId), (snapshot) => {
+                if (snapshot.exists()) salesReport = snapshot.data();
+                else salesReport = { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
+                updateSalesReportView();
+            });
+            unsubs.push(unsubReport);
+
+            // 3. Ouvir Cozinha do Restaurante
+            const qKitchen = query(collection(db, "kitchen"), where("restaurantId", "==", tenantId));
+            const unsubKitchen = onSnapshot(qKitchen, (snapshot) => {
+                kitchenOrders = [];
+                snapshot.forEach(doc => { kitchenOrders.push({ id: doc.id, ...doc.data() }); });
+                kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                renderKitchenOrders();
+            });
+            unsubs.push(unsubKitchen);
+
+            // 4. Ouvir Mesas do Restaurante
+            const qTables = query(collection(db, "tables"), where("restaurantId", "==", tenantId));
+            const unsubTables = onSnapshot(qTables, (snapshot) => {
+                activeTables = {};
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.tableNum) {
+                        activeTables[data.tableNum.toString()] = data;
+                    }
+                });
+                renderTablesStatusGrid();
+            });
+            unsubs.push(unsubTables);
+        }
+
+        window.handleSearchChange = function(type) {
+            if (type === 'client') {
+                const input = document.getElementById('client-search-input');
+                clientSearchTerm = input ? input.value.toLowerCase().trim() : "";
+                renderClientMenu();
+            } else if (type === 'waiter') {
+                const input = document.getElementById('waiter-search-input');
+                waiterSearchTerm = input ? input.value.toLowerCase().trim() : "";
+                renderWaiterMenu();
+            } else if (type === 'admin') {
+                const input = document.getElementById('admin-search-input');
+                adminSearchTerm = input ? input.value.toLowerCase().trim() : "";
+                renderAdminMenu();
+            }
+        };
 
         function renderTablesStatusGrid() {
             const waiterGrid = document.getElementById('waiter-tables-grid');
             const adminGrid = document.getElementById('admin-tables-grid');
 
+            let maxTableNum = MINIMO_MESAS_EXIBICAO;
+
+            Object.keys(activeTables).forEach(tNum => {
+                const parsed = parseInt(tNum, 10);
+                if (!isNaN(parsed) && parsed > maxTableNum) {
+                    maxTableNum = parsed;
+                }
+            });
+
             let gridContent = '';
 
-            for (let i = 1; i <= TOTAL_MESAS_ESTABELECIMENTO; i++) {
+            for (let i = 1; i <= maxTableNum; i++) {
                 const numStr = i.toString();
                 const tableData = activeTables[numStr];
                 const isOccupied = tableData && tableData.orders && tableData.orders.length > 0;
@@ -564,17 +680,17 @@
 
                 if (isOccupied) {
                     gridContent += `
-                        <div onclick="window.selectTableFromGrid('${numStr}')" class="bg-red-950/40 border-2 border-red-600 text-red-200 p-3 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-red-900/50 transition shadow-sm group">
-                            <span class="text-xs font-bold text-red-400 group-hover:scale-105 transition">🔴 Mesa ${numStr.padStart(2, '0')}</span>
-                            <span class="text-[10px] uppercase font-black text-red-300 mt-1">Ocupada</span>
-                            <span class="text-xs font-extrabold text-green-400 mt-0.5">R$ ${tableTotal.toFixed(2)}</span>
+                        <div onclick="window.selectTableFromGrid('${numStr}')" class="bg-rose-500/10 border border-rose-500/30 text-rose-200 p-2.5 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-rose-500/20 transition shadow-sm group">
+                            <span class="text-[11px] font-bold text-rose-400 group-hover:scale-105 transition">🔴 Mesa ${numStr.padStart(2, '0')}</span>
+                            <span class="text-[9px] uppercase font-black text-rose-300 mt-0.5">Ocupada</span>
+                            <span class="text-[11px] font-black text-emerald-400 mt-0.5">R$ ${tableTotal.toFixed(2)}</span>
                         </div>
                     `;
                 } else {
                     gridContent += `
-                        <div onclick="window.selectTableFromGrid('${numStr}')" class="bg-green-950/30 border border-green-800 text-green-200 p-3 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-green-900/40 transition shadow-sm group">
-                            <span class="text-xs font-bold text-green-400 group-hover:scale-105 transition">🟢 Mesa ${numStr.padStart(2, '0')}</span>
-                            <span class="text-[10px] uppercase font-black text-green-500/80 mt-1">Livre</span>
+                        <div onclick="window.selectTableFromGrid('${numStr}')" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 p-2.5 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-500/20 transition shadow-sm group">
+                            <span class="text-[11px] font-bold text-emerald-400 group-hover:scale-105 transition">🟢 Mesa ${numStr.padStart(2, '0')}</span>
+                            <span class="text-[9px] uppercase font-black text-emerald-500/80 mt-0.5">Livre</span>
                         </div>
                     `;
                 }
@@ -599,30 +715,47 @@
             }
         }
 
-        function checkTableFromURL() {
+        async function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
+            const urlRestaurantId = urlParams.get('restaurante');
             
-            if (urlParams.has('delivery')) {
-                isDeliveryMode = true;
-                currentTable = "Delivery";
-                document.getElementById('main-navigation').classList.add('hidden'); 
-                document.getElementById('client-blocked-state').classList.add('hidden');
-                document.getElementById('client-allowed-state').classList.remove('hidden');
-                document.getElementById('current-table-label').innerText = `🛵 Modo Delivery (Rua)`;
-                document.getElementById('delivery-address-fields').classList.remove('hidden');
-                window.switchView('client-view');
-                setupClientRealtimeTracking();
-            } else if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
-                isDeliveryMode = false;
-                currentTable = urlParams.get('mesa');
-                document.getElementById('main-navigation').classList.add('hidden'); 
-                document.getElementById('client-blocked-state').classList.add('hidden');
-                document.getElementById('client-allowed-state').classList.remove('hidden');
-                document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
-                document.getElementById('delivery-address-fields').classList.add('hidden');
-                window.switchView('client-view');
+            if (urlRestaurantId) {
+                currentRestaurantId = urlRestaurantId;
+                setupMultiTenantListeners(currentRestaurantId);
+
+                if (urlParams.has('delivery')) {
+                    isDeliveryMode = true;
+                    currentTable = "Delivery";
+                    document.getElementById('main-navigation').classList.add('hidden'); 
+                    document.getElementById('client-blocked-state').classList.add('hidden');
+                    document.getElementById('client-allowed-state').classList.remove('hidden');
+                    document.getElementById('current-table-label').innerText = `🛵 Modo Delivery`;
+                    document.getElementById('delivery-address-fields').classList.remove('hidden');
+                    window.switchView('client-view');
+                    setupClientRealtimeTracking();
+                } else if (urlParams.has('mesa') && urlParams.get('mesa').trim() !== "") {
+                    isDeliveryMode = false;
+                    currentTable = urlParams.get('mesa');
+                    document.getElementById('main-navigation').classList.add('hidden'); 
+                    document.getElementById('client-blocked-state').classList.add('hidden');
+                    document.getElementById('client-allowed-state').classList.remove('hidden');
+                    document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
+                    document.getElementById('delivery-address-fields').classList.add('hidden');
+                    window.switchView('client-view');
+                }
             } else {
-                if (auth.currentUser || sessionStorage.getItem('isStaffLogged') === 'true') {
+                if (auth.currentUser) {
+                    currentRestaurantId = auth.currentUser.uid;
+                    
+                    // Validação de Assinatura do Restaurante
+                    const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
+                    if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
+                        alert("⚠️ Assinatura suspensa ou inativa. Entre em contato com o suporte.");
+                        auth.signOut();
+                        return;
+                    }
+
+                    setupMultiTenantListeners(currentRestaurantId);
                     showStaffPanels();
                 } else {
                     document.getElementById('main-navigation').classList.add('hidden');
@@ -643,9 +776,21 @@
             submitBtn.innerText = "Autenticando...";
 
             try {
-                await signInWithEmailAndPassword(auth, emailIn, passIn);
+                const userCred = await signInWithEmailAndPassword(auth, emailIn, passIn);
+                currentRestaurantId = userCred.user.uid;
+
+                // Verificar status de assinatura do SaaS
+                const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
+                if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
+                    errorMsg.classList.remove('hidden');
+                    errorMsg.innerText = "⚠️ Assinatura pendente ou suspensa.";
+                    auth.signOut();
+                    return;
+                }
+
                 sessionStorage.setItem('isStaffLogged', 'true');
                 document.getElementById('login-view').classList.add('hidden');
+                setupMultiTenantListeners(currentRestaurantId);
                 showStaffPanels();
             } catch (error) {
                 errorMsg.classList.remove('hidden');
@@ -664,7 +809,7 @@
         }
 
         window.logoutSystem = function() {
-            if(confirm("Deseja realmente sair?")) {
+            if(confirm("Deseja realmente sair do sistema?")) {
                 auth.signOut().then(() => {
                     sessionStorage.removeItem('isStaffLogged');
                     window.location.href = window.location.pathname;
@@ -673,39 +818,39 @@
         }
 
         function createItemCardHTML(item, qty, isWaiter = false) {
-            const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
+            const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300';
             const parsedPrice = Number(item.price) || 0;
             const updateFn = isWaiter ? 'window.updateWaiterQuantity' : 'window.updateQuantity';
-            const borderCol = isWaiter ? 'border-orange-950 bg-orange-950/20' : 'border-gray-700 bg-gray-700/50';
-            const textCol = isWaiter ? 'text-orange-400' : 'text-gray-400';
+            const borderCol = isWaiter ? 'border-amber-500/30 bg-amber-500/10' : 'border-slate-800 bg-slate-900';
+            const textCol = isWaiter ? 'text-amber-400' : 'text-slate-300';
             const isOutOfStock = item.outOfStock === true;
 
-            const disabledClass = isOutOfStock ? 'opacity-60 grayscale-[50%]' : '';
+            const disabledClass = isOutOfStock ? 'opacity-60 grayscale-[40%]' : '';
             const statusBadge = isOutOfStock 
-                ? `<span class="bg-red-900/80 text-red-200 border border-red-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">🔴 Esgotado</span>`
+                ? `<span class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">🔴 Esgotado</span>`
                 : '';
 
             const controlsHTML = isOutOfStock
-                ? `<span class="text-xs font-bold text-red-400 bg-red-950/40 px-3 py-1.5 rounded-lg border border-red-800/50">Indisponível</span>`
-                : `<div class="flex items-center border rounded-lg ${borderCol}">
-                    <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-l-lg cursor-pointer">-</button>
-                    <span class="px-3 font-semibold text-gray-100 min-w-[24px] text-center">${qty}</span>
-                    <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-gray-600 rounded-r-lg cursor-pointer">+</button>
+                ? `<span class="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">Indisponível</span>`
+                : `<div class="flex items-center border rounded-xl overflow-hidden ${borderCol}">
+                    <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-slate-800 cursor-pointer transition">-</button>
+                    <span class="px-3 font-bold text-white min-w-[24px] text-center text-xs">${qty}</span>
+                    <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-slate-800 cursor-pointer transition">+</button>
                    </div>`;
 
             return `
-                <div class="bg-gray-800 rounded-lg shadow p-4 flex gap-4 border border-gray-700 items-center relative ${disabledClass}">
+                <div class="glass-card rounded-2xl p-4 flex gap-4 border border-slate-800/80 items-center relative transition hover:border-slate-700 ${disabledClass}">
                     <div class="relative flex-shrink-0">
-                        <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md bg-gray-700">
+                        <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-xl bg-slate-800 border border-slate-800">
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start gap-2">
-                            <h4 class="text-lg font-bold text-gray-100 truncate">${item.name}</h4>
+                        <div class="flex justify-between items-start gap-2 mb-1">
+                            <h4 class="text-base font-bold text-white truncate">${item.name}</h4>
                             ${statusBadge}
                         </div>
-                        <p class="text-sm text-gray-400 line-clamp-2 mt-1">${item.desc || 'Sem descrição.'}</p>
+                        <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">${item.desc || 'Sem descrição.'}</p>
                         <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
-                            <span class="text-green-400 font-bold text-lg">R$ ${parsedPrice.toFixed(2)}</span>
+                            <span class="text-emerald-400 font-extrabold text-base">R$ ${parsedPrice.toFixed(2)}</span>
                             ${controlsHTML}
                         </div>
                     </div>
@@ -734,13 +879,20 @@
             container.innerHTML = '';
             if(tabsContainer) tabsContainer.innerHTML = '';
 
-            if (menuItems.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível.</p>';
+            const filteredItems = menuItems.filter(item => {
+                if (!clientSearchTerm) return true;
+                const nameMatch = item.name.toLowerCase().includes(clientSearchTerm);
+                const descMatch = item.desc && item.desc.toLowerCase().includes(clientSearchTerm);
+                return nameMatch || descMatch;
+            });
+
+            if (filteredItems.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 text-center py-12 text-sm">Nenhum item encontrado.</p>';
                 updateTotal();
                 return;
             }
 
-            const grouped = groupItemsByCategory(menuItems);
+            const grouped = groupItemsByCategory(filteredItems);
             const categoryKeys = Object.keys(grouped).sort();
 
             categoryKeys.forEach((categoryName, index) => {
@@ -750,20 +902,18 @@
                     const tabBtn = document.createElement('button');
                     const isActive = index === 0;
                     
-                    tabBtn.className = `text-sm font-bold transition-all whitespace-nowrap pb-1 border-b-2 cursor-pointer ${
+                    tabBtn.className = `text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer ${
                         isActive 
-                        ? 'text-yellow-400 border-yellow-400' 
-                        : 'text-gray-300 border-transparent hover:text-white'
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20' 
+                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
                     }`;
                     tabBtn.innerText = categoryName;
                     
                     tabBtn.onclick = (e) => {
                         tabsContainer.querySelectorAll('button').forEach(btn => {
-                            btn.classList.remove('text-yellow-400', 'border-yellow-400');
-                            btn.classList.add('text-gray-300', 'border-transparent');
+                            btn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white';
                         });
-                        tabBtn.classList.remove('text-gray-300', 'border-transparent');
-                        tabBtn.classList.add('text-yellow-400', 'border-yellow-400');
+                        tabBtn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20';
 
                         const sectionTarget = document.getElementById(categoryId);
                         if (sectionTarget) {
@@ -776,10 +926,10 @@
 
                 const categorySection = document.createElement('div');
                 categorySection.id = categoryId;
-                categorySection.className = "space-y-4 scroll-mt-20";
+                categorySection.className = "space-y-4 scroll-mt-28";
                 categorySection.innerHTML = `
-                    <h3 class="text-xl font-black text-gray-100 mb-4 flex items-center gap-2 border-b pb-2 border-gray-800 uppercase">${categoryName}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 `;
 
                 const grid = categorySection.querySelector('.grid');
@@ -817,26 +967,59 @@
             const itemsContainer = document.getElementById('review-modal-items');
             itemsContainer.innerHTML = '';
 
+            const selectedCartItems = [];
             menuItems.forEach(item => {
                 if (cart[item.id] && !item.outOfStock) {
                     const parsedPrice = Number(item.price) || 0;
-                    const subtotal = parsedPrice * cart[item.id];
-                    orderTotal += subtotal;
-                    pendingOrderItems.push({ name: item.name, qty: cart[item.id], price: parsedPrice });
+                    const qty = cart[item.id];
+                    let rawCat = item.category ? item.category.toString().trim() : "Geral";
+                    const category = rawCat ? rawCat.charAt(0).toUpperCase() + rawCat.slice(1) : "Geral";
+                    
+                    selectedCartItems.push({
+                        id: item.id,
+                        name: item.name,
+                        price: parsedPrice,
+                        qty: qty,
+                        category: category
+                    });
 
-                    itemsContainer.innerHTML += `
-                        <div class="flex justify-between items-center bg-gray-900/60 border border-gray-700/50 p-3 rounded-xl">
-                            <div class="flex items-center gap-2">
-                                <span class="bg-blue-950 text-blue-400 font-bold px-2 py-0.5 rounded text-xs">${cart[item.id]}x</span>
-                                <span class="text-sm font-semibold text-gray-200 truncate max-w-[180px]">${item.name}</span>
-                            </div>
-                            <span class="text-sm text-green-400 font-bold">R$ ${subtotal.toFixed(2)}</span>
-                        </div>
-                    `;
+                    pendingOrderItems.push({ name: item.name, qty: qty, price: parsedPrice });
+                    orderTotal += parsedPrice * qty;
                 }
             });
 
-            if (pendingOrderItems.length === 0) { alert('Seu carrinho está vazio ou os itens selecionados esgotaram!'); return; }
+            if (selectedCartItems.length === 0) { alert('Seu carrinho está vazio ou os itens esgotaram!'); return; }
+
+            const groupedReview = {};
+            selectedCartItems.forEach(item => {
+                if (!groupedReview[item.category]) groupedReview[item.category] = [];
+                groupedReview[item.category].push(item);
+            });
+
+            Object.keys(groupedReview).sort().forEach(catName => {
+                let catBlockHTML = `
+                    <div class="space-y-1.5">
+                        <div class="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1 border-b border-slate-800/80 pb-1">
+                            🏷️ ${catName}
+                        </div>
+                `;
+
+                groupedReview[catName].forEach(item => {
+                    const subtotal = item.price * item.qty;
+                    catBlockHTML += `
+                        <div class="flex justify-between items-center bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
+                            <div class="flex items-center gap-2.5">
+                                <span class="bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-lg text-xs">${item.qty}x</span>
+                                <span class="text-xs font-semibold text-slate-200 truncate max-w-[180px]">${item.name}</span>
+                            </div>
+                            <span class="text-xs text-emerald-400 font-bold">R$ ${subtotal.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+
+                catBlockHTML += `</div>`;
+                itemsContainer.innerHTML += catBlockHTML;
+            });
 
             document.getElementById('review-modal-total').innerText = orderTotal.toFixed(2);
             document.getElementById('order-review-modal').classList.remove('hidden');
@@ -898,7 +1081,7 @@
 
                     if (activeOrder.status === 'delivered') {
                         badge.innerText = "📍 Em Rota de Entrega";
-                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-blue-950 text-blue-400 border border-blue-800 animate-pulse";
+                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30 animate-pulse";
                         eta.innerText = "Chegando em breve...";
                         driverLabel.innerText = "Entregador a caminho GPS 🛰️";
 
@@ -909,7 +1092,7 @@
                         }
                     } else {
                         badge.innerText = "⏳ Na Cozinha / Em Preparo";
-                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-950 text-amber-400 border border-amber-800";
+                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30";
                         eta.innerText = "20-30 min";
                         driverLabel.innerText = "Aguardando Saída 🛵";
                     }
@@ -921,9 +1104,9 @@
                             const itemPrice = Number(item.price) || 0;
                             const totalItemPrice = itemPrice > 0 ? ` - R$ ${(itemPrice * item.qty).toFixed(2)}` : '';
                             itemsListContainer.innerHTML += `
-                                <li class="flex justify-between items-center bg-gray-800/80 px-2.5 py-1.5 rounded border border-gray-700/50">
-                                    <span><strong class="text-blue-400">${item.qty}x</strong> ${item.name}</span>
-                                    <span class="text-gray-400 font-semibold">${totalItemPrice}</span>
+                                <li class="flex justify-between items-center bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
+                                    <span><strong class="text-amber-400">${item.qty}x</strong> ${item.name}</span>
+                                    <span class="text-slate-400 font-semibold">${totalItemPrice}</span>
                                 </li>
                             `;
                         });
@@ -955,6 +1138,11 @@
         }
 
         window.sendOrderDirect = async function() {
+            if (!currentRestaurantId) {
+                alert("Restaurante não identificado. Acesse novamente o QR Code.");
+                return;
+            }
+
             const obsText = document.getElementById('client-order-observation').value.trim();
             
             let deliveryAddress = null;
@@ -967,7 +1155,7 @@
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
                 if (!nome || !phone || !bairro || !rua || !numero || !referencia) {
-                    alert("Por favor, preencha todos os campos do endereço!");
+                    alert("Preencha todos os campos do endereço de entrega.");
                     return;
                 }
                 deliveryAddress = { nome, phone, bairro, rua, numero, referencia };
@@ -988,6 +1176,7 @@
                 const kitchenItems = pendingOrderItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
                 
                 const kitchenOrderPayload = { 
+                    restaurantId: currentRestaurantId, // TENANT INJECT
                     origin: isDeliveryMode ? "🛵 DELIVERY" : `Mesa ${currentTable}`, 
                     time: time, 
                     items: kitchenItems, 
@@ -1003,31 +1192,42 @@
                 currentActiveOrderId = docRef.id;
                 localStorage.setItem('lastDeliveryOrderId', docRef.id);
 
-                await setDoc(doc(db, "reports", "sales"), {
+                // Gravação do relatório isolado por tenant
+                const reportRef = doc(db, "reports", currentRestaurantId);
+                await setDoc(reportRef, {
+                    restaurantId: currentRestaurantId,
                     totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
                     totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
                     totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
-                });
+                }, { merge: true });
 
                 const trackBtn = document.getElementById('btn-track-order-redirect');
 
                 if (isDeliveryMode) {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido foi enviado! Você pode acompanhar a entrega e conferir os itens pelo mapa ao vivo.";
+                    document.getElementById('success-modal-message').innerText = "Seu pedido foi enviado! Você pode acompanhar o deslocamento e conferir os itens pelo mapa ao vivo.";
                     trackBtn.classList.remove('hidden');
                     setupClientRealtimeTracking();
                 } else {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já está sendo preparado.";
+                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já foi encaminhado para a cozinha.";
                     trackBtn.classList.add('hidden');
                     
                     const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
-                    const mesaDocRef = doc(db, "tables", `mesa_${currentTable}`);
-                    const mesaSnapshot = await getDoc(mesaDocRef);
+                    
+                    // Buscar documento de mesa por filtro tenant
+                    const qTable = query(collection(db, "tables"), where("restaurantId", "==", currentRestaurantId), where("tableNum", "==", currentTable));
+                    const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`));
+                    
                     let currentTableHistory = [];
-                    if(mesaSnapshot.exists() && mesaSnapshot.data().orders) {
-                        currentTableHistory = mesaSnapshot.data().orders;
+                    if(snapTable.exists() && snapTable.data().orders) {
+                        currentTableHistory = snapTable.data().orders;
                     }
                     currentTableHistory = currentTableHistory.concat(orderWithObs);
-                    await setDoc(mesaDocRef, { orders: currentTableHistory });
+
+                    await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`), {
+                        restaurantId: currentRestaurantId,
+                        tableNum: currentTable,
+                        orders: currentTableHistory
+                    });
                 }
 
                 document.getElementById('order-success-modal').classList.remove('hidden');
@@ -1049,12 +1249,12 @@
                     status: 'delivered',
                     driverCoords: { lat: latitude, lng: longitude }
                 });
-            } catch(e) { console.error("Erro ao atualizar localização do GPS:", e); }
+            } catch(e) { console.error("Erro GPS:", e); }
         }
 
         window.startDriverGPS = function(orderId) {
             if (!navigator.geolocation) {
-                alert("Seu navegador não suporta compartilhamento de geolocalização.");
+                alert("Navegador sem suporte a geolocalização.");
                 return;
             }
 
@@ -1064,10 +1264,10 @@
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                    alert("📍 GPS Conectado com sucesso! Transmissão contínua ativada.");
+                    alert("📍 GPS Conectado com sucesso!");
                 },
                 (error) => {
-                    alert("Atenção: Por favor, ative a permissão de GPS/Localização no seu celular.");
+                    alert("Ative a permissão de GPS no celular.");
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -1076,7 +1276,7 @@
                 (position) => {
                     updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
                 },
-                (error) => { console.warn("Aviso de atualização nativa do GPS:", error); },
+                (error) => { console.warn("GPS aviso:", error); },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
 
@@ -1087,7 +1287,7 @@
                         (position) => {
                             updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
                         },
-                        (err) => console.warn("Erro no heartbeat do GPS:", err),
+                        (err) => console.warn("Erro no GPS heartbeat:", err),
                         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                     );
                 }
@@ -1120,7 +1320,12 @@
             else container.classList.remove('hidden');
         }
 
-        window.generateAccessCode = function() {
+        window.generateAccessCode = async function() {
+            if (!currentRestaurantId) {
+                alert("Sessão expirada. Faça login novamente.");
+                return;
+            }
+
             const type = document.getElementById('qr-link-type').value;
             const qrContainer = document.getElementById('qrcode-container');
             const baseUrl = window.location.href.split('?')[0];
@@ -1128,11 +1333,25 @@
             qrContainer.innerHTML = "";
             
             if (type === 'delivery') {
-                globalGeneratedLink = `${baseUrl}?delivery=true`;
+                globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&delivery=true`;
             } else {
                 const tableNum = document.getElementById('qr-table-number').value;
                 if(!tableNum) { alert("Informe o número da mesa!"); return; }
-                globalGeneratedLink = `${baseUrl}?mesa=${tableNum}`;
+                globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&mesa=${tableNum}`;
+
+                try {
+                    const mesaDocRef = doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`);
+                    const snap = await getDoc(mesaDocRef);
+                    if (!snap.exists()) {
+                        await setDoc(mesaDocRef, { 
+                            restaurantId: currentRestaurantId,
+                            tableNum: tableNum,
+                            orders: [] 
+                        });
+                    }
+                } catch(e) {
+                    console.error("Erro mesa QR Code:", e);
+                }
             }
 
             new QRCode(qrContainer, { text: globalGeneratedLink, width: 160, height: 160 });
@@ -1164,13 +1383,20 @@
             container.innerHTML = '';
             if(tabsContainer) tabsContainer.innerHTML = '';
 
-            if (menuItems.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhum item disponível.</p>';
+            const filteredItems = menuItems.filter(item => {
+                if (!waiterSearchTerm) return true;
+                const nameMatch = item.name.toLowerCase().includes(waiterSearchTerm);
+                const descMatch = item.desc && item.desc.toLowerCase().includes(waiterSearchTerm);
+                return nameMatch || descMatch;
+            });
+
+            if (filteredItems.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 text-center py-12 text-sm">Nenhum item encontrado.</p>';
                 updateWaiterTotal();
                 return;
             }
 
-            const grouped = groupItemsByCategory(menuItems);
+            const grouped = groupItemsByCategory(filteredItems);
             const categoryKeys = Object.keys(grouped).sort();
 
             categoryKeys.forEach((categoryName, index) => {
@@ -1180,20 +1406,18 @@
                     const tabBtn = document.createElement('button');
                     const isActive = index === 0;
                     
-                    tabBtn.className = `text-sm font-bold transition-all whitespace-nowrap pb-1 border-b-2 cursor-pointer ${
+                    tabBtn.className = `text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer ${
                         isActive 
-                        ? 'text-orange-400 border-orange-400' 
-                        : 'text-gray-300 border-transparent hover:text-white'
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20' 
+                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
                     }`;
                     tabBtn.innerText = categoryName;
                     
                     tabBtn.onclick = () => {
                         tabsContainer.querySelectorAll('button').forEach(btn => {
-                            btn.classList.remove('text-orange-400', 'border-orange-400');
-                            btn.classList.add('text-gray-300', 'border-transparent');
+                            btn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white';
                         });
-                        tabBtn.classList.remove('text-gray-300', 'border-transparent');
-                        tabBtn.classList.add('text-orange-400', 'border-orange-400');
+                        tabBtn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20';
 
                         const sectionTarget = document.getElementById(categoryId);
                         if (sectionTarget) {
@@ -1206,10 +1430,10 @@
 
                 const categorySection = document.createElement('div');
                 categorySection.id = categoryId;
-                categorySection.className = "space-y-4 scroll-mt-20";
+                categorySection.className = "space-y-4 scroll-mt-28";
                 categorySection.innerHTML = `
-                    <h3 class="text-xl font-black text-gray-300 mb-4 flex items-center gap-2 border-b pb-2 border-gray-700 uppercase">🏷️ ${categoryName}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">🏷️ ${categoryName}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 `;
 
                 const grid = categorySection.querySelector('.grid');
@@ -1252,10 +1476,10 @@
             });
 
             if(categories.size === 0) {
-                ['Bebidas', 'Pizzas', 'Pasteis', 'Refeições', 'Lanches'].forEach(c => categories.add(c));
+                ['Bebidas', 'Cervejas', 'Salgados', 'Pizzas', 'Pasteis', 'Refeições', 'Lanches'].forEach(c => categories.add(c));
             }
 
-            let selectHTML = `<select id="item-category-select" required class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium">`;
+            let selectHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500">`;
             Array.from(categories).sort().forEach(cat => {
                 selectHTML += `<option value="${cat}">${cat}</option>`;
             });
@@ -1268,7 +1492,7 @@
             const btn = document.getElementById('toggle-cat-mode-btn');
             
             if (!isCreatingNewCategory) {
-                container.innerHTML = `<input type="text" id="item-category-input" required placeholder="Ex: Sobremesas" class="w-full p-2 border rounded outline-none bg-gray-700 border-gray-600 text-gray-100 font-medium" autocomplete="off">`;
+                container.innerHTML = `<input type="text" id="item-category-input" required placeholder="Ex: Cervejas, Salgados..." class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500" autocomplete="off">`;
                 btn.innerText = "↩️ Ver Lista";
                 isCreatingNewCategory = true;
             } else {
@@ -1285,7 +1509,7 @@
                     outOfStock: !currentStatus
                 });
             } catch(e) {
-                console.error("Erro ao alterar estoque do item:", e);
+                console.error("Erro estoque:", e);
                 alert("Falha ao atualizar status do estoque.");
             }
         }
@@ -1293,33 +1517,54 @@
         function renderAdminMenu() {
             const tableBody = document.getElementById('admin-menu-table');
             if(!tableBody) return; tableBody.innerHTML = '';
-            if(menuItems.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400 text-sm">Cardápio vazio.</td></tr>`;
+
+            const filteredItems = menuItems.filter(item => {
+                if (!adminSearchTerm) return true;
+                const nameMatch = item.name.toLowerCase().includes(adminSearchTerm);
+                const descMatch = item.desc && item.desc.toLowerCase().includes(adminSearchTerm);
+                const catMatch = item.category && item.category.toLowerCase().includes(adminSearchTerm);
+                return nameMatch || descMatch || catMatch;
+            });
+
+            if(filteredItems.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500 text-xs">Nenhum item encontrado no cardápio.</td></tr>`;
                 return;
             }
 
-            const sortedItems = [...menuItems].sort((a, b) => (a.category || "").localeCompare(b.category || ""));
-            sortedItems.forEach(item => {
-                const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
-                const isOutOfStock = item.outOfStock === true;
+            const grouped = groupItemsByCategory(filteredItems);
+            const categoryKeys = Object.keys(grouped).sort();
 
-                const stockToggleBtn = isOutOfStock
-                    ? `<button onclick="window.toggleStockStatus('${item.id}', true)" class="bg-red-950/80 text-red-300 border border-red-700 hover:bg-red-900 px-2.5 py-1 rounded-lg font-bold text-xs cursor-pointer transition">🔴 Esgotado</button>`
-                    : `<button onclick="window.toggleStockStatus('${item.id}', false)" class="bg-green-950/80 text-green-300 border border-green-700 hover:bg-green-900 px-2.5 py-1 rounded-lg font-bold text-xs cursor-pointer transition">🟢 Disponível</button>`;
-
+            categoryKeys.forEach(categoryName => {
                 tableBody.innerHTML += `
-                    <tr class="border-b border-gray-700 text-gray-300 bg-gray-800 hover:bg-gray-700/50 transition">
-                        <td class="p-3"><img src="${imgUrl}" class="w-12 h-12 object-cover rounded-md border border-gray-600 shadow-sm"></td>
-                        <td class="p-3">
-                            <div class="font-bold text-gray-100">${item.name}</div>
-                            <span class="text-[11px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-950 text-blue-400">${item.category || 'Geral'}</span>
+                    <tr class="bg-slate-900/80 border-y border-slate-800/80">
+                        <td colspan="5" class="py-2.5 px-3 text-[11px] font-black text-amber-400 uppercase tracking-wider">
+                            🏷️ ${categoryName} (${grouped[categoryName].length})
                         </td>
-                        <td class="p-3 text-green-400 font-bold">R$ ${(Number(item.price) || 0).toFixed(2)}</td>
-                        <td class="p-3 text-center">${stockToggleBtn}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="window.deleteItem('${item.id}')" class="text-red-400 font-semibold bg-red-950/40 hover:bg-red-950 px-3 py-1.5 rounded-lg cursor-pointer transition text-xs">🗑️ Remover</button>
-                        </td>
-                    </tr>`;
+                    </tr>
+                `;
+
+                grouped[categoryName].forEach(item => {
+                    const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=150';
+                    const isOutOfStock = item.outOfStock === true;
+
+                    const stockToggleBtn = isOutOfStock
+                        ? `<button onclick="window.toggleStockStatus('${item.id}', true)" class="bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 px-2.5 py-1 rounded-xl font-bold text-[11px] cursor-pointer transition">🔴 Esgotado</button>`
+                        : `<button onclick="window.toggleStockStatus('${item.id}', false)" class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 px-2.5 py-1 rounded-xl font-bold text-[11px] cursor-pointer transition">🟢 Disponível</button>`;
+
+                    tableBody.innerHTML += `
+                        <tr class="border-b border-slate-800/50 text-slate-300 hover:bg-slate-900/40 transition">
+                            <td class="p-3"><img src="${imgUrl}" class="w-10 h-10 object-cover rounded-xl border border-slate-800"></td>
+                            <td class="p-3">
+                                <div class="font-bold text-white text-xs">${item.name}</div>
+                                <div class="text-[10px] text-slate-400 line-clamp-1">${item.desc || 'Sem descrição.'}</div>
+                            </td>
+                            <td class="p-3 text-emerald-400 font-extrabold text-xs">R$ ${(Number(item.price) || 0).toFixed(2)}</td>
+                            <td class="p-3 text-center">${stockToggleBtn}</td>
+                            <td class="p-3 text-center">
+                                <button onclick="window.deleteItem('${item.id}')" class="text-rose-400 font-semibold bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-2.5 py-1 rounded-xl cursor-pointer transition text-xs">🗑️ Excluir</button>
+                            </td>
+                        </tr>`;
+                });
             });
         }
 
@@ -1344,10 +1589,10 @@
                 if (data.success) {
                     return data.data.url;
                 } else {
-                    throw new Error("Erro na API do ImgBB");
+                    throw new Error("Erro ImgBB");
                 }
             } catch (err) {
-                console.warn("Falha no upload online da imagem, usando fallback local:", err);
+                console.warn("Fallback de imagem local:", err);
                 return new Promise((resolve) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
@@ -1358,8 +1603,19 @@
 
         window.handleAddItem = async function(event) {
             event.preventDefault();
+            if (!currentRestaurantId) { alert("Restaurante não identificado."); return; }
+
             const submitBtn = document.getElementById('submit-btn');
-            let rawCategory = isCreatingNewCategory ? document.getElementById('item-category-input').value.trim() : document.getElementById('item-category-select').value;
+            
+            let rawInputCategory = isCreatingNewCategory 
+                ? document.getElementById('item-category-input').value 
+                : document.getElementById('item-category-select').value;
+
+            rawInputCategory = rawInputCategory.trim();
+            let rawCategory = "Geral";
+            if (rawInputCategory !== "") {
+                rawCategory = rawInputCategory.charAt(0).toUpperCase() + rawInputCategory.slice(1);
+            }
 
             submitBtn.disabled = true;
             submitBtn.innerText = "Enviando imagem...";
@@ -1372,6 +1628,7 @@
                 }
 
                 await addDoc(collection(db, "menu"), { 
+                    restaurantId: currentRestaurantId, // TENANT INJECT
                     category: rawCategory, 
                     name: document.getElementById('item-name').value.trim(), 
                     price: Number(parseFloat(document.getElementById('item-price').value).toFixed(2)) || 0, 
@@ -1386,7 +1643,7 @@
                 alert("Item cadastrado com sucesso!");
             } catch(e) { 
                 console.error(e);
-                alert("Erro ao salvar o item."); 
+                alert("Erro ao salvar."); 
             } finally { 
                 submitBtn.disabled = false; 
                 submitBtn.innerText = "Adicionar ao Cardápio"; 
@@ -1394,7 +1651,7 @@
         }
 
         window.deleteItem = async function(id) {
-            if(confirm("Excluir item?")) await deleteDoc(doc(db, "menu", id));
+            if(confirm("Deseja excluir este item?")) await deleteDoc(doc(db, "menu", id));
         }
 
         window.updateWaiterTable = function() {
@@ -1403,6 +1660,8 @@
 
         window.submitWaiterOrder = async function() {
             if (!waiterActiveTable) { alert("Informe o número da mesa."); return; }
+            if (!currentRestaurantId) { alert("Restaurante não identificado."); return; }
+
             let orderTotal = 0, itemsCount = 0, currentItemsToSave = [], kitchenItems = [];
 
             menuItems.forEach(item => {
@@ -1415,24 +1674,39 @@
                 }
             });
 
-            if (orderTotal === 0) { alert("Adicione itens válidos/disponíveis."); return; }
+            if (orderTotal === 0) { alert("Selecione itens disponíveis."); return; }
 
             try {
                 const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                await addDoc(collection(db, "kitchen"), { origin: `Mesa ${waiterActiveTable}`, time, items: kitchenItems, status: 'pending', timestamp: Date.now(), totalPrice: orderTotal });
-                
-                const mesaDocRef = doc(db, "tables", `mesa_${waiterActiveTable}`);
+                await addDoc(collection(db, "kitchen"), { 
+                    restaurantId: currentRestaurantId, // TENANT INJECT
+                    origin: `Mesa ${waiterActiveTable}`, 
+                    time, 
+                    items: kitchenItems, 
+                    status: 'pending', 
+                    timestamp: Date.now(), 
+                    totalPrice: orderTotal 
+                });
+
+                const mesaDocRef = doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`);
                 const mesaSnapshot = await getDoc(mesaDocRef);
                 let tableHistory = [];
                 if(mesaSnapshot.exists()) tableHistory = mesaSnapshot.data().orders || [];
                 tableHistory = tableHistory.concat(currentItemsToSave);
-                await setDoc(mesaDocRef, { orders: tableHistory });
 
-                await setDoc(doc(db, "reports", "sales"), {
-                    totalRevenue: salesReport.totalRevenue + orderTotal,
-                    totalOrders: salesReport.totalOrders + 1,
-                    totalItemsSold: salesReport.totalItemsSold + itemsCount
+                await setDoc(mesaDocRef, { 
+                    restaurantId: currentRestaurantId,
+                    tableNum: waiterActiveTable,
+                    orders: tableHistory 
                 });
+
+                const reportRef = doc(db, "reports", currentRestaurantId);
+                await setDoc(reportRef, {
+                    restaurantId: currentRestaurantId,
+                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
+                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
+                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
+                }, { merge: true });
 
                 alert(`Pedido lançado na Mesa ${waiterActiveTable}!`);
                 waiterCart = {};
@@ -1448,20 +1722,20 @@
             const containerDelivery = document.getElementById('kitchen-delivery-container');
 
             if (tab === 'tables') {
-                btnTables.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-blue-600 text-white cursor-pointer flex items-center justify-center gap-2";
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
                 containerTables.classList.remove('hidden');
                 containerDelivery.classList.add('hidden');
             } else {
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition bg-emerald-600 text-white cursor-pointer flex items-center justify-center gap-2";
-                btnTables.className = "flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm transition text-gray-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-emerald-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
                 containerDelivery.classList.remove('hidden');
                 containerTables.classList.add('hidden');
             }
         }
 
         window.finishDeliveryOrder = async function(id) {
-            if (confirm("Deseja marcar este pedido como finalizado e arquivá-lo por completo?")) {
+            if (confirm("Marcar pedido como concluído e arquivar?")) {
                 try {
                     window.stopDriverGPS();
                     await deleteDoc(doc(db, "kitchen", id));
@@ -1481,102 +1755,102 @@
             const deliveryOrders = kitchenOrders.filter(o => o.address);
 
             if(tableOrders.length === 0) {
-                tablesContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de mesa no momento.</div>`;
+                tablesContainer.innerHTML = `<div class="col-span-full text-center text-slate-500 py-12 text-sm">📭 Nenhum pedido no salão.</div>`;
             } else {
                 tableOrders.forEach(order => {
                     let itemsListHTML = '';
-                    order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
+                    order.items.forEach(item => { itemsListHTML += `<li class="text-slate-200 font-semibold text-sm">▪️ ${item.qty}x ${item.name}</li>`; });
                     
                     let obsHTML = '';
                     if(order.observation && order.observation.trim() !== "") {
                         obsHTML = `
-                            <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
-                                <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
-                                <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
+                            <div class="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                <p class="text-[10px] font-bold text-amber-400 uppercase">⚠️ Observação:</p>
+                                <p class="text-xs font-semibold text-amber-200 mt-0.5">${order.observation}</p>
                             </div>
                         `;
                     }
 
                     tablesContainer.innerHTML += `
-                        <div class="p-5 rounded-xl shadow-md border-t-4 border-amber-400 bg-amber-950/10 bg-gray-800 flex flex-col justify-between">
+                        <div class="glass-card p-5 rounded-3xl border-t-4 border-amber-500 flex flex-col justify-between shadow-xl">
                             <div>
-                                <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
-                                    <div><h4 class="font-black text-xl text-gray-100">${order.origin}</h4><span class="text-xs text-gray-400">Hora: ${order.time}</span></div>
+                                <div class="flex justify-between items-start border-b border-slate-800 pb-3 mb-3">
+                                    <div><h4 class="font-black text-lg text-white">${order.origin}</h4><span class="text-[11px] text-slate-400">Hora: ${order.time}</span></div>
                                 </div>
                                 <ul class="space-y-1.5">${itemsListHTML}</ul>
                                 ${obsHTML}
                             </div>
-                            <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-red-950/40 text-red-400 py-2 rounded text-xs font-bold cursor-pointer hover:bg-red-900 transition">Remover do Monitor</button>
+                            <button onclick="window.deleteKitchenOrder('${order.id}')" class="w-full mt-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition border border-rose-500/20">Remover do Monitor</button>
                         </div>`;
                 });
             }
 
             if(deliveryOrders.length === 0) {
-                deliveryContainer.innerHTML = `<div class="col-span-full text-center text-gray-400 py-12">📭 Nenhum pedido de delivery no momento.</div>`;
+                deliveryContainer.innerHTML = `<div class="col-span-full text-center text-slate-500 py-12 text-sm">📭 Nenhum pedido de delivery.</div>`;
             } else {
                 deliveryOrders.forEach(order => {
                     let itemsListHTML = '';
-                    order.items.forEach(item => { itemsListHTML += `<li class="text-gray-300 font-medium text-base">▪️ ${item.qty}x ${item.name}</li>`; });
+                    order.items.forEach(item => { itemsListHTML += `<li class="text-slate-200 font-semibold text-sm">▪️ ${item.qty}x ${item.name}</li>`; });
                     
                     let obsHTML = '';
                     if(order.observation && order.observation.trim() !== "") {
                         obsHTML = `
-                            <div class="mt-3 p-2 bg-yellow-950/60 border border-yellow-800/80 rounded-lg">
-                                <p class="text-xs font-bold text-yellow-400 uppercase">⚠️ Observação:</p>
-                                <p class="text-sm font-semibold text-yellow-200 mt-0.5">${order.observation}</p>
+                            <div class="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                <p class="text-[10px] font-bold text-amber-400 uppercase">⚠️ Observação:</p>
+                                <p class="text-xs font-semibold text-amber-200 mt-0.5">${order.observation}</p>
                             </div>
                         `;
                     }
 
                     const formattedTotal = (Number(order.totalPrice) || 0).toFixed(2);
                     const isDelivered = order.status === 'delivered';
-                    const statusText = isDelivered ? '🛵 Saiu p/ Entrega' : '⏳ Preparando';
-                    const cardBorder = isDelivered ? "border-green-500 bg-green-950/10" : "border-blue-500 bg-blue-950/10";
+                    const statusText = isDelivered ? '🛵 Em Rota' : '⏳ Preparando';
+                    const cardBorder = isDelivered ? "border-t-4 border-emerald-500" : "border-t-4 border-sky-500";
 
                     let actionButtonsHTML = '';
                     if (!isDelivered) {
                         actionButtonsHTML = `
-                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
-                                📍 Marcar Em Rota e Iniciar GPS
+                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
+                                📍 Iniciar Rota e Transmitir GPS
                             </button>
                         `;
                     } else {
                         actionButtonsHTML = `
-                            <button onclick="window.startDriverGPS('${order.id}')" class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
-                                🛰️ Forçar Reconexão GPS
+                            <button onclick="window.startDriverGPS('${order.id}')" class="w-full mt-3 bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1">
+                                🛰️ Reconectar GPS
                             </button>
-                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-2 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-xs font-black tracking-wide shadow transition cursor-pointer flex items-center justify-center gap-1">
-                                ✓ Finalizar Pedido (Arquivar)
+                            <button onclick="window.finishDeliveryOrder('${order.id}')" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-black shadow transition cursor-pointer flex items-center justify-center gap-1">
+                                ✓ Finalizar e Arquivar
                             </button>
                         `;
                     }
 
                     deliveryContainer.innerHTML += `
-                        <div class="p-5 rounded-xl shadow-md border-t-4 bg-gray-800 flex flex-col justify-between ${cardBorder}">
+                        <div class="glass-card p-5 rounded-3xl flex flex-col justify-between shadow-xl ${cardBorder}">
                             <div>
-                                <div class="flex justify-between items-start border-b border-gray-700 pb-2 mb-3">
+                                <div class="flex justify-between items-start border-b border-slate-800 pb-3 mb-3">
                                     <div>
-                                        <h4 class="font-black text-xl text-gray-100">${order.origin}</h4>
-                                        <span class="text-xs text-gray-400">Hora: ${order.time}</span>
+                                        <h4 class="font-black text-lg text-white">${order.origin}</h4>
+                                        <span class="text-[11px] text-slate-400">Hora: ${order.time}</span>
                                     </div>
-                                    <span class="text-xs font-bold px-2 py-1 rounded ${isDelivered ? 'bg-green-950 text-green-400 border border-green-800' : 'bg-blue-950 text-blue-400 border border-blue-800'}">
+                                    <span class="text-[10px] font-extrabold px-2.5 py-1 rounded-full ${isDelivered ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'}">
                                         ${statusText}
                                     </span>
                                 </div>
                                 <ul class="space-y-1.5">${itemsListHTML}</ul>
                                 ${obsHTML}
 
-                                <div class="mt-4 p-3 bg-slate-900/80 border border-gray-700 rounded-xl text-xs space-y-1">
-                                    <p class="font-black text-blue-400 uppercase tracking-wider mb-2">🛵 Dados do Destinatário</p>
-                                    <p class="text-sm text-gray-100 font-bold">👤 Solicitante: <span class="font-normal text-gray-300">${order.address.nome || 'Não informado'}</span></p>
-                                    <p class="text-sm text-emerald-400 font-bold">📞 Whats: <span class="font-normal text-emerald-300">${order.address.phone}</span></p>
-                                    <p class="text-gray-300"><strong>📍 Bairro:</strong> ${order.address.bairro}</p>
-                                    <p class="text-gray-300"><strong>🏠 Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
+                                <div class="mt-4 p-3 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs space-y-1">
+                                    <p class="font-extrabold text-sky-400 uppercase text-[10px] tracking-wider mb-2">🛵 Dados do Destinatário</p>
+                                    <p class="text-xs text-slate-100 font-bold">👤 <span class="font-normal text-slate-300">${order.address.nome || 'Não informado'}</span></p>
+                                    <p class="text-xs text-emerald-400 font-bold">📞 Whats: <span class="font-normal text-emerald-300">${order.address.phone}</span></p>
+                                    <p class="text-slate-300"><strong>📍 Bairro:</strong> ${order.address.bairro}</p>
+                                    <p class="text-slate-300"><strong>🏠 Rua:</strong> ${order.address.rua}, Nº ${order.address.numero}</p>
                                     <p class="text-amber-400"><strong>🎯 Ref:</strong> ${order.address.referencia}</p>
                                     
-                                    <div class="mt-3 pt-2 border-t border-gray-700/80 flex justify-between items-center">
-                                        <span class="font-bold text-gray-300">💰 Valor Total:</span>
-                                        <span class="text-green-400 font-black text-lg">R$ ${formattedTotal}</span>
+                                    <div class="mt-3 pt-2 border-t border-slate-800 flex justify-between items-center">
+                                        <span class="font-semibold text-slate-400">Total:</span>
+                                        <span class="text-emerald-400 font-black text-base">R$ ${formattedTotal}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1587,23 +1861,35 @@
         }
 
         window.deleteKitchenOrder = async function(id) { if (confirm("Remover do monitor?")) await deleteDoc(doc(db, "kitchen", id)); }
+        
         function updateSalesReportView() {
             document.getElementById('sales-total-money').innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
             document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
             document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
         }
-        window.clearSalesReport = async function() { if(confirm("Zerar relatório?")) await setDoc(doc(db, "reports", "sales"), { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 }); }
+
+        window.clearSalesReport = async function() { 
+            if(!currentRestaurantId) return;
+            if(confirm("Deseja zerar os relatórios do dia?")) {
+                await setDoc(doc(db, "reports", currentRestaurantId), { 
+                    restaurantId: currentRestaurantId, 
+                    totalRevenue: 0, 
+                    totalOrders: 0, 
+                    totalItemsSold: 0 
+                });
+            }
+        }
 
         window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const previewContainer = document.getElementById('invoice-preview');
             const printSection = document.getElementById('invoice-print-section');
-            if(!tableNum) return;
+            if(!tableNum || !currentRestaurantId) return;
 
             try {
-                const snapshot = await getDoc(doc(db, "tables", `mesa_${tableNum}`));
+                const snapshot = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
                 if (!snapshot.exists() || !snapshot.data().orders || snapshot.data().orders.length === 0) {
-                    previewContainer.innerHTML = `<span class="text-red-500 font-bold">Mesa vazia.</span>`;
+                    previewContainer.innerHTML = `<span class="text-rose-400 font-bold">Mesa sem consumo registrado.</span>`;
                     activeInvoiceText = ""; printSection.innerHTML = ""; return;
                 }
                 const tableOrders = snapshot.data().orders;
@@ -1621,6 +1907,7 @@
         }
 
         window.printInvoice = function() { if(activeInvoiceText) window.print(); }
+        
         window.downloadInvoiceTXT = function() {
             const tableNum = document.getElementById('print-table-number').value;
             if(!activeInvoiceText) return;
@@ -1631,11 +1918,14 @@
 
         window.confirmPayment = async function() {
             const tableNum = document.getElementById('print-table-number').value;
-            if(!tableNum || !confirm(`Fechar Mesa ${tableNum}?`)) return;
+            if(!tableNum || !currentRestaurantId || !confirm(`Fechar conta e liberar Mesa ${tableNum}?`)) return;
             try {
-                await deleteDoc(doc(db, "tables", `mesa_${tableNum}`));
+                await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
+                
+                // Excluir apenas pedidos da cozinha associados ao tenant atual e à mesa indicada
                 kitchenOrders.filter(o => o.origin === `Mesa ${tableNum}`).forEach(async o => await deleteDoc(doc(db, "kitchen", o.id)));
-                document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa.";
+                
+                document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa acima.";
                 activeInvoiceText = "";
                 renderClientMenu(); renderWaiterMenu(); alert("Mesa liberada!");
             } catch(e) { console.error(e); }
@@ -1650,7 +1940,9 @@
             else if (viewId === 'kitchen-view') window.switchKitchenTab(activeKitchenTab);
         }
 
-        auth.onAuthStateChanged((user) => { checkTableFromURL(); });
+        onAuthStateChanged(auth, (user) => { 
+            checkTableFromURL(); 
+        });
     </script>
 </body>
 </html>
