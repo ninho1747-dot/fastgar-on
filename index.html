@@ -74,6 +74,14 @@
                 <div id="login-error-msg" class="text-rose-400 text-xs font-semibold hidden text-center bg-rose-950/40 py-2 rounded-lg border border-rose-800/50"></div>
                 <button type="submit" id="login-btn-submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] cursor-pointer text-sm">Entrar no Sistema</button>
             </form>
+
+            <!-- BOTAO WHATSAPP PARA ADQUIRIR LOGIN -->
+            <div id="login-whatsapp-container" class="mt-6 pt-6 border-t border-slate-800 text-center">
+                <p class="text-xs text-slate-400 mb-2">Ainda não tem uma conta?</p>
+                <a id="login-whatsapp-btn" href="#" target="_blank" class="inline-flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer shadow-lg shadow-emerald-500/10">
+                    <span>💬 Adquirir Login pelo WhatsApp</span>
+                </a>
+            </div>
         </div>
     </section>
 
@@ -87,6 +95,7 @@
             <span id="nav-user-badge" class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest">Painel Geral</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+            <button id="nav-btn-superadmin" onclick="window.switchView('superadmin-view')" class="hidden bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">👑 Master Admin</button>
             <button id="nav-btn-admin" onclick="window.switchView('admin-view')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">⚙️ Admin</button>
             <button id="nav-btn-waiter" onclick="window.switchView('waiter-view')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">💼 Garçom</button>
             <button id="nav-btn-kitchen" onclick="window.switchView('kitchen-view')" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">👨‍🍳 Monitor Pedidos</button>
@@ -354,7 +363,7 @@
             <div id="kitchen-delivery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 hidden"></div>
         </section>
 
-        <!-- VISÃO ADMINISTRATIVA -->
+        <!-- VISÃO ADMINISTRATIVA DA LOJA -->
         <section id="admin-view" class="view-section hidden space-y-6">
             <div class="flex justify-between items-center border-b pb-4 border-slate-800">
                 <div>
@@ -519,6 +528,69 @@
                 </div>
             </div>
         </section>
+
+        <!-- VISÃO DE SUPER ADMINISTRADOR / DONO DO SISTEMA -->
+        <section id="superadmin-view" class="view-section hidden space-y-6">
+            <div class="flex justify-between items-center border-b pb-4 border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-black text-white">👑 Painel Master (Dono do Sistema)</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Configurações globais e controle do SaaS</p>
+                </div>
+                <button onclick="window.logoutSystem()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-2">
+                    🚪 Sair
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- CONFIGURAÇÃO DO WHATSAPP DO LOGIN -->
+                <div class="glass-card p-6 rounded-3xl border border-purple-500/30">
+                    <h3 class="text-md font-bold text-white mb-2">📱 Configurações do WhatsApp para Vendas</h3>
+                    <p class="text-xs text-slate-400 mb-4">Defina o número que receberá mensagens de novos clientes na tela de login.</p>
+                    
+                    <form onsubmit="window.saveGlobalSettings(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">WhatsApp de Vendas/Aquisição (Com DDD e DDI)</label>
+                            <input type="text" id="setting-whatsapp" placeholder="Ex: 5511999999999" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-purple-500">
+                            <span class="text-[10px] text-slate-500 mt-1 block">Apenas números (Exemplo: 5511988887777)</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Mensagem Padrão do WhatsApp</label>
+                            <input type="text" id="setting-whatsapp-msg" placeholder="Olá, gostaria de adquirir um login para meu restaurante!" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-purple-500">
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl font-bold text-xs transition shadow-lg cursor-pointer">
+                            💾 Salvar Configurações
+                        </button>
+                    </form>
+                </div>
+
+                <!-- REGISTRO/CADASTRO DE NOVO RESTAURANTE -->
+                <div class="glass-card p-6 rounded-3xl border border-slate-800">
+                    <h3 class="text-md font-bold text-white mb-2">🏪 Ativar Novo Restaurante Cliente</h3>
+                    <p class="text-xs text-slate-400 mb-4">Adicione uma empresa ao Firebase Firestore para que ela tenha acesso ao sistema.</p>
+
+                    <form onsubmit="window.registerNewRestaurant(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">ID da Conta / UID (Firebase Auth)</label>
+                            <input type="text" id="new-rest-uid" required placeholder="Cole aqui o UID do usuário criado no Firebase Auth" class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Nome do Restaurante</label>
+                            <input type="text" id="new-rest-name" required placeholder="Ex: Hamburgueria Gourmet" class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Status da Assinatura</label>
+                            <select id="new-rest-status" class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs">
+                                <option value="active">🟢 Ativa</option>
+                                <option value="suspended">🔴 Suspensa / Inativa</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition shadow-lg cursor-pointer">
+                            ➕ Liberar Acesso do Restaurante
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- IMPRESSÃO IMPERCEPTÍVEL -->
@@ -549,6 +621,7 @@
 
         // VARIÁVEIS MULTI-TENANT DE CONTROLE
         let currentRestaurantId = null; 
+        let isSuperAdmin = false;
         let unsubs = []; 
 
         let menuItems = [];
@@ -582,9 +655,67 @@
 
         let MINIMO_MESAS_EXIBICAO = 15;
 
+        // INICIALIZAR LISTENERS DO FIREBASE PARA CONFIGURAÇÕES GLOBAIS
+        function setupGlobalSettingsListener() {
+            onSnapshot(doc(db, "system", "config"), (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    const num = data.whatsappNumber || "5511999999999";
+                    const msg = encodeURIComponent(data.whatsappMessage || "Olá, gostaria de adquirir um login para meu restaurante!");
+                    
+                    const btn = document.getElementById('login-whatsapp-btn');
+                    if (btn) btn.href = `https://api.whatsapp.com/send?phone=${num}&text=${msg}`;
+                    
+                    const inputNum = document.getElementById('setting-whatsapp');
+                    const inputMsg = document.getElementById('setting-whatsapp-msg');
+                    if (inputNum && !inputNum.value) inputNum.value = num;
+                    if (inputMsg && !inputMsg.value) inputMsg.value = data.whatsappMessage || "";
+                }
+            });
+        }
+        setupGlobalSettingsListener();
+
+        // SALVAR CONFIGURAÇÕES DO DONO (SUPERADMIN)
+        window.saveGlobalSettings = async function(e) {
+            e.preventDefault();
+            const num = document.getElementById('setting-whatsapp').value.replace(/\D/g, '');
+            const msg = document.getElementById('setting-whatsapp-msg').value;
+
+            try {
+                await setDoc(doc(db, "system", "config"), {
+                    whatsappNumber: num,
+                    whatsappMessage: msg
+                }, { merge: true });
+                alert("✅ Configurações salvas com sucesso!");
+            } catch(err) {
+                console.error(err);
+                alert("Erro ao salvar configurações.");
+            }
+        };
+
+        // CADASTRAR RESTAURANTE
+        window.registerNewRestaurant = async function(e) {
+            e.preventDefault();
+            const uid = document.getElementById('new-rest-uid').value.trim();
+            const name = document.getElementById('new-rest-name').value.trim();
+            const status = document.getElementById('new-rest-status').value;
+
+            try {
+                await setDoc(doc(db, "restaurants", uid), {
+                    name: name,
+                    subscriptionStatus: status,
+                    createdAt: Date.now()
+                });
+                alert("✅ Restaurante liberado e cadastrado!");
+                e.target.reset();
+            } catch(err) {
+                console.error(err);
+                alert("Erro ao cadastrar restaurante.");
+            }
+        };
+
         // INICIALIZA OS LISTENERS FILTRADOS POR TENANT
         function setupMultiTenantListeners(tenantId) {
-            // Limpa ouvintes anteriores se houver troca de tenant
             unsubs.forEach(unsub => unsub());
             unsubs = [];
 
@@ -747,12 +878,19 @@
                 if (auth.currentUser) {
                     currentRestaurantId = auth.currentUser.uid;
                     
-                    // Validação de Assinatura do Restaurante
-                    const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
-                    if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
-                        alert("⚠️ Assinatura suspensa ou inativa. Entre em contato com o suporte.");
-                        auth.signOut();
-                        return;
+                    // Checar se é Super Admin / Dono Geral
+                    const userDoc = await getDoc(doc(db, "users", currentRestaurantId));
+                    if (userDoc.exists() && userDoc.data().role === 'superadmin') {
+                        isSuperAdmin = true;
+                        document.getElementById('nav-btn-superadmin').classList.remove('hidden');
+                    } else {
+                        // Validação de Assinatura do Restaurante
+                        const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
+                        if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
+                            alert("⚠️ Assinatura suspensa ou inativa. Entre em contato com o suporte.");
+                            auth.signOut();
+                            return;
+                        }
                     }
 
                     setupMultiTenantListeners(currentRestaurantId);
@@ -779,13 +917,20 @@
                 const userCred = await signInWithEmailAndPassword(auth, emailIn, passIn);
                 currentRestaurantId = userCred.user.uid;
 
-                // Verificar status de assinatura do SaaS
-                const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
-                if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
-                    errorMsg.classList.remove('hidden');
-                    errorMsg.innerText = "⚠️ Assinatura pendente ou suspensa.";
-                    auth.signOut();
-                    return;
+                // Verificar se é Conta Master/Dono
+                const userDoc = await getDoc(doc(db, "users", currentRestaurantId));
+                if (userDoc.exists() && userDoc.data().role === 'superadmin') {
+                    isSuperAdmin = true;
+                    document.getElementById('nav-btn-superadmin').classList.remove('hidden');
+                } else {
+                    // Verificar status de assinatura do SaaS
+                    const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
+                    if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
+                        errorMsg.classList.remove('hidden');
+                        errorMsg.innerText = "⚠️ Assinatura pendente ou suspensa.";
+                        auth.signOut();
+                        return;
+                    }
                 }
 
                 sessionStorage.setItem('isStaffLogged', 'true');
@@ -805,7 +950,12 @@
             document.getElementById('main-navigation').classList.remove('hidden'); 
             document.getElementById('client-blocked-state').classList.remove('hidden');
             document.getElementById('client-allowed-state').classList.add('hidden');
-            window.switchView('admin-view'); 
+            
+            if (isSuperAdmin) {
+                window.switchView('superadmin-view');
+            } else {
+                window.switchView('admin-view'); 
+            }
         }
 
         window.logoutSystem = function() {
@@ -1176,7 +1326,7 @@
                 const kitchenItems = pendingOrderItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
                 
                 const kitchenOrderPayload = { 
-                    restaurantId: currentRestaurantId, // TENANT INJECT
+                    restaurantId: currentRestaurantId,
                     origin: isDeliveryMode ? "🛵 DELIVERY" : `Mesa ${currentTable}`, 
                     time: time, 
                     items: kitchenItems, 
@@ -1192,7 +1342,6 @@
                 currentActiveOrderId = docRef.id;
                 localStorage.setItem('lastDeliveryOrderId', docRef.id);
 
-                // Gravação do relatório isolado por tenant
                 const reportRef = doc(db, "reports", currentRestaurantId);
                 await setDoc(reportRef, {
                     restaurantId: currentRestaurantId,
@@ -1213,7 +1362,6 @@
                     
                     const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
                     
-                    // Buscar documento de mesa por filtro tenant
                     const qTable = query(collection(db, "tables"), where("restaurantId", "==", currentRestaurantId), where("tableNum", "==", currentTable));
                     const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`));
                     
@@ -1628,7 +1776,7 @@
                 }
 
                 await addDoc(collection(db, "menu"), { 
-                    restaurantId: currentRestaurantId, // TENANT INJECT
+                    restaurantId: currentRestaurantId,
                     category: rawCategory, 
                     name: document.getElementById('item-name').value.trim(), 
                     price: Number(parseFloat(document.getElementById('item-price').value).toFixed(2)) || 0, 
@@ -1679,7 +1827,7 @@
             try {
                 const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 await addDoc(collection(db, "kitchen"), { 
-                    restaurantId: currentRestaurantId, // TENANT INJECT
+                    restaurantId: currentRestaurantId,
                     origin: `Mesa ${waiterActiveTable}`, 
                     time, 
                     items: kitchenItems, 
@@ -1922,7 +2070,6 @@
             try {
                 await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
                 
-                // Excluir apenas pedidos da cozinha associados ao tenant atual e à mesa indicada
                 kitchenOrders.filter(o => o.origin === `Mesa ${tableNum}`).forEach(async o => await deleteDoc(doc(db, "kitchen", o.id)));
                 
                 document.getElementById('invoice-preview').innerHTML = "Insira o número da mesa acima.";
