@@ -48,6 +48,45 @@
         ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
         ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 9999px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 1); }
+
+        /* ===== DIÁLOGOS MODERNOS DO SISTEMA ===== */
+        .app-dialog-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem; background: rgba(2, 6, 23, .78);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity .22s ease, visibility .22s ease;
+        }
+        .app-dialog-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
+        .app-dialog {
+            width: min(100%, 430px); position: relative; overflow: hidden;
+            background: linear-gradient(145deg, rgba(30,41,59,.98), rgba(15,23,42,.99));
+            border: 1px solid rgba(148,163,184,.18); border-radius: 28px;
+            box-shadow: 0 30px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.025) inset;
+            transform: translateY(16px) scale(.97); opacity: 0;
+            transition: transform .24s cubic-bezier(.2,.8,.2,1), opacity .2s ease;
+        }
+        .app-dialog-overlay.show .app-dialog { transform: translateY(0) scale(1); opacity: 1; }
+        .app-dialog::before { content:""; position:absolute; inset:0 0 auto; height:3px; background:linear-gradient(90deg,var(--dialog-accent,#f59e0b),transparent); }
+        .app-dialog-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:27px; flex:none; box-shadow:0 12px 28px rgba(0,0,0,.22); }
+        .app-dialog-icon.success { color:#6ee7b7; background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.25); --dialog-accent:#10b981; }
+        .app-dialog-icon.error { color:#fda4af; background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.25); --dialog-accent:#f43f5e; }
+        .app-dialog-icon.warning { color:#fcd34d; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.25); --dialog-accent:#f59e0b; }
+        .app-dialog-icon.info { color:#7dd3fc; background:rgba(14,165,233,.12); border:1px solid rgba(14,165,233,.25); --dialog-accent:#0ea5e9; }
+        .app-dialog-title { font-size:18px; font-weight:800; letter-spacing:-.02em; color:#fff; line-height:1.2; }
+        .app-dialog-message { margin-top:7px; color:#aeb9c9; font-size:13px; line-height:1.65; white-space:pre-line; }
+        .app-dialog-close { width:100%; border:0; border-radius:14px; padding:12px 16px; color:#0f172a; background:linear-gradient(135deg,#fbbf24,#f59e0b); font:700 13px 'Plus Jakarta Sans',sans-serif; cursor:pointer; transition:transform .16s ease, filter .16s ease, box-shadow .16s ease; box-shadow:0 10px 24px rgba(245,158,11,.18); }
+        .app-dialog-close:hover { filter:brightness(1.06); transform:translateY(-1px); }
+        .app-dialog-close:active { transform:scale(.98); }
+        .app-dialog-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+        .app-dialog-btn { border:0; border-radius:14px; padding:12px 14px; font:700 12px 'Plus Jakarta Sans',sans-serif; cursor:pointer; transition:.16s ease; }
+        .app-dialog-btn.cancel { background:#1e293b; color:#cbd5e1; border:1px solid #334155; }
+        .app-dialog-btn.confirm { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 10px 22px rgba(16,185,129,.16); }
+        .app-dialog-btn:hover { transform:translateY(-1px); filter:brightness(1.06); }
+        .app-dialog-close-x { position:absolute; right:14px; top:14px; width:32px; height:32px; border:0; border-radius:10px; background:rgba(255,255,255,.05); color:#94a3b8; cursor:pointer; font-size:17px; }
+        .app-dialog-close-x:hover { background:rgba(255,255,255,.1); color:#fff; }
+        @media (max-width:480px) { .app-dialog { border-radius:24px; } .app-dialog-message { font-size:12.5px; } }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen selection:bg-amber-500 selection:text-slate-950 pb-12">
@@ -372,7 +411,7 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-800">
                 <div>
                     <h2 class="text-2xl font-black text-white">👨‍🍳 Monitor da Cozinha</h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Gerenciamento de pedidos em tempo real</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Pedidos organizados por mesa, acompanhamento em tempo real e controle de produção</p>
                 </div>
                 
                 <div class="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 w-full md:w-auto">
@@ -465,7 +504,7 @@
                     <div>
                         <h3 class="text-lg font-bold text-white">📊 Relatório do Dia</h3>
                     </div>
-                    <button onclick="window.clearSalesReport()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold px-3 py-1.5 rounded-xl transition text-xs cursor-pointer">🔄 Zerar Relatório</button>
+                    <div class="flex flex-wrap gap-2"><button onclick="window.generateSalesReport()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-400/40 font-bold px-3 py-1.5 rounded-xl transition text-xs cursor-pointer">📊 Gerar Relatório</button><button onclick="window.clearSalesReport()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-semibold px-3 py-1.5 rounded-xl transition text-xs cursor-pointer">🔄 Zerar Relatório</button></div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
@@ -667,11 +706,101 @@
         </section>
     </div>
 
+
+    <!-- DIÁLOGOS MODERNOS DE AÇÃO -->
+    <div id="app-dialog-overlay" class="app-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">
+        <div class="app-dialog">
+            <button id="app-dialog-x" class="app-dialog-close-x" type="button" aria-label="Fechar">×</button>
+            <div class="p-6 sm:p-7">
+                <div class="flex items-start gap-4">
+                    <div id="app-dialog-icon" class="app-dialog-icon info">ℹ️</div>
+                    <div class="min-w-0 pt-1">
+                        <div id="app-dialog-title" class="app-dialog-title">Ação realizada</div>
+                        <div id="app-dialog-message" class="app-dialog-message"></div>
+                    </div>
+                </div>
+                <div id="app-dialog-actions" class="app-dialog-actions hidden">
+                    <button id="app-dialog-cancel" class="app-dialog-btn cancel" type="button">Cancelar</button>
+                    <button id="app-dialog-confirm" class="app-dialog-btn confirm" type="button">Confirmar</button>
+                </div>
+                <div id="app-dialog-ok-wrap">
+                    <button id="app-dialog-ok" class="app-dialog-close mt-5" type="button">Entendi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- IMPRESSÃO IMPERCEPTÍVEL -->
     <div id="invoice-print-section" style="display: none;"></div>
 
     <!-- LÓGICA MULTI-TENANT E CONEXÃO COM O FIREBASE -->
     <script type="module">
+
+        // ===== SISTEMA DE DIÁLOGOS MODERNOS =====
+        const dialogOverlay = document.getElementById('app-dialog-overlay');
+        const dialogIcon = document.getElementById('app-dialog-icon');
+        const dialogTitle = document.getElementById('app-dialog-title');
+        const dialogMessage = document.getElementById('app-dialog-message');
+        const dialogActions = document.getElementById('app-dialog-actions');
+        const dialogOkWrap = document.getElementById('app-dialog-ok-wrap');
+        const dialogOk = document.getElementById('app-dialog-ok');
+        const dialogX = document.getElementById('app-dialog-x');
+        const dialogCancel = document.getElementById('app-dialog-cancel');
+        const dialogConfirm = document.getElementById('app-dialog-confirm');
+        let dialogConfirmAction = null;
+
+        function closeAppDialog() {
+            dialogOverlay.classList.remove('show');
+            dialogConfirmAction = null;
+            setTimeout(() => { if (!dialogOverlay.classList.contains('show')) dialogOverlay.style.display = 'none'; }, 240);
+        }
+
+        function showAppDialog(message, type = 'info', title = '') {
+            const text = String(message || '').replace(/^(?:[✅❌⚠️📍ℹ️🚀🎉💾📋🛵])\s*/u, '');
+            const config = {
+                success: { icon:'✓', title:'Ação realizada' },
+                error: { icon:'!', title:'Não foi possível concluir' },
+                warning: { icon:'⚠', title:'Atenção' },
+                info: { icon:'i', title:'Informação' }
+            };
+            const cfg = config[type] || config.info;
+            dialogIcon.className = `app-dialog-icon ${type}`;
+            dialogIcon.textContent = cfg.icon;
+            dialogTitle.textContent = title || cfg.title;
+            dialogMessage.textContent = text;
+            dialogActions.classList.add('hidden');
+            dialogOkWrap.classList.remove('hidden');
+            dialogOverlay.style.display = 'flex';
+            requestAnimationFrame(() => dialogOverlay.classList.add('show'));
+            setTimeout(() => dialogOk.focus(), 80);
+        }
+
+        function showAppConfirm(message, onConfirm, title = 'Confirme esta ação') {
+            dialogIcon.className = 'app-dialog-icon warning';
+            dialogIcon.textContent = '?';
+            dialogTitle.textContent = title;
+            dialogMessage.textContent = String(message || '');
+            dialogOkWrap.classList.add('hidden');
+            dialogActions.classList.remove('hidden');
+            dialogConfirmAction = onConfirm;
+            dialogOverlay.style.display = 'flex';
+            requestAnimationFrame(() => dialogOverlay.classList.add('show'));
+            setTimeout(() => dialogConfirm.focus(), 80);
+        }
+
+        dialogOk.addEventListener('click', closeAppDialog);
+        dialogX.addEventListener('click', closeAppDialog);
+        dialogCancel.addEventListener('click', closeAppDialog);
+        dialogConfirm.addEventListener('click', () => {
+            const action = dialogConfirmAction;
+            closeAppDialog();
+            if (typeof action === 'function') action();
+        });
+        dialogOverlay.addEventListener('click', (e) => { if (e.target === dialogOverlay) closeAppDialog(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dialogOverlay.classList.contains('show')) closeAppDialog(); });
+        window.showAppDialog = showAppDialog;
+        window.showAppConfirm = showAppConfirm;
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getAuth, 
@@ -681,7 +810,7 @@
             browserLocalPersistence 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
-            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, where 
+            getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, where, getDocs 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const IMGBB_API_KEY = "08b078bd3bb77893a721483bacb0f386"; 
@@ -770,7 +899,7 @@
                 } else {
                     const restDoc = await getDoc(doc(db, "restaurants", currentRestaurantId));
                     if (restDoc.exists() && restDoc.data().subscriptionStatus !== "active") {
-                        alert("⚠️ Assinatura suspensa ou inativa. Entre em contato com o suporte.");
+                        showAppDialog("⚠️ Assinatura suspensa ou inativa. Entre em contato com o suporte.", "info");
                         auth.signOut();
                         return;
                     }
@@ -817,10 +946,10 @@
                     whatsappNumber: num,
                     whatsappMessage: msg
                 }, { merge: true });
-                alert("✅ Configurações salvas com sucesso!");
+                showAppDialog("✅ Configurações salvas com sucesso!", "success");
             } catch(err) {
                 console.error(err);
-                alert("Erro ao salvar configurações.");
+                showAppDialog("Erro ao salvar configurações.", "error");
             }
         };
 
@@ -837,11 +966,11 @@
                     subscriptionStatus: status,
                     createdAt: Date.now()
                 });
-                alert("✅ Restaurante liberado e cadastrado!");
+                showAppDialog("✅ Restaurante liberado e cadastrado!", "success");
                 e.target.reset();
             } catch(err) {
                 console.error(err);
-                alert("Erro ao cadastrar restaurante.");
+                showAppDialog("Erro ao cadastrar restaurante.", "error");
             }
         };
 
@@ -887,10 +1016,10 @@
                     logo: logoUrl
                 }, { merge: true });
 
-                alert("✅ Perfil do restaurante atualizado com sucesso!");
+                showAppDialog("✅ Perfil do restaurante atualizado com sucesso!", "success");
             } catch(err) {
                 console.error("Erro ao salvar perfil:", err);
-                alert("Erro ao atualizar perfil do restaurante.");
+                showAppDialog("Erro ao atualizar perfil do restaurante.", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "💾 Salvar Perfil do Restaurante";
@@ -1048,7 +1177,13 @@
                 let tableTotal = 0;
                 if (isOccupied) {
                     tableData.orders.forEach(o => {
-                        tableTotal += (Number(o.price) || 0) * (o.qty || 1);
+                        if (o.items && Array.isArray(o.items)) {
+                            o.items.forEach(item => {
+                                tableTotal += (Number(item.price) || 0) * (item.qty || 1);
+                            });
+                        } else if (o.price && o.qty) {
+                            tableTotal += (Number(o.price) || 0) * (o.qty || 1);
+                        }
                     });
                 }
 
@@ -1176,11 +1311,11 @@
         }
 
         window.logoutSystem = function() {
-            if(confirm("Deseja realmente sair do sistema?")) {
+            showAppConfirm("Deseja realmente sair do sistema?", () => {
                 auth.signOut().then(() => {
                     window.location.href = window.location.pathname;
                 });
-            }
+            }, "Sair do sistema");
         }
 
         function createItemCardHTML(item, qty, isWaiter = false) {
@@ -1326,7 +1461,7 @@
         }
 
         window.showOrderReviewModal = function() {
-            if (!currentTable) { alert('Modalidade de acesso não identificada.'); return; }
+            if (!currentTable) { showAppDialog('Modalidade de acesso não identificada.', "warning"); return; }
 
             pendingOrderItems = [];
             let orderTotal = 0;
@@ -1354,7 +1489,7 @@
                 }
             });
 
-            if (selectedCartItems.length === 0) { alert('Seu carrinho está vazio ou os itens esgotaram!'); return; }
+            if (selectedCartItems.length === 0) { showAppDialog('Seu carrinho está vazio ou os itens esgotaram!', "warning"); return; }
 
             const groupedReview = {};
             selectedCartItems.forEach(item => {
@@ -1505,7 +1640,7 @@
 
         window.sendOrderDirect = async function() {
             if (!currentRestaurantId) {
-                alert("Restaurante não identificado. Acesse novamente o QR Code.");
+                showAppDialog("Restaurante não identificado. Acesse novamente o QR Code.", "info");
                 return;
             }
 
@@ -1521,7 +1656,7 @@
                 const referencia = document.getElementById('dev-referencia').value.trim();
 
                 if (!nome || !phone || !bairro || !rua || !numero || !referencia) {
-                    alert("Preencha todos os campos do endereço de entrega.");
+                    showAppDialog("Preencha todos os campos do endereço de entrega.", "info");
                     return;
                 }
                 deliveryAddress = { nome, phone, bairro, rua, numero, referencia };
@@ -1577,20 +1712,14 @@
                     trackBtn.classList.add('hidden');
                     
                     const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
-                    
                     const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`));
-                    
                     let currentTableHistory = [];
-                    if(snapTable.exists() && snapTable.data().orders) {
-                        currentTableHistory = snapTable.data().orders;
+                    if (snapTable.exists() && Array.isArray(snapTable.data().orders)) currentTableHistory = snapTable.data().orders;
+                    if (currentTableHistory.length && currentTableHistory[0]?.name && currentTableHistory[0]?.qty) {
+                        currentTableHistory = [{ orderId: `legacy-${Date.now()}`, createdAt: Date.now(), time, items: currentTableHistory.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) }];
                     }
-                    currentTableHistory = currentTableHistory.concat(orderWithObs);
-
-                    await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`), {
-                        restaurantId: currentRestaurantId,
-                        tableNum: currentTable,
-                        orders: currentTableHistory
-                    });
+                    currentTableHistory.push({ orderId: docRef.id, createdAt: Date.now(), time, observation: obsText || "", totalPrice: orderTotal, items: orderWithObs.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) });
+                    await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`), { restaurantId: currentRestaurantId, tableNum: currentTable, orders: currentTableHistory, updatedAt: Date.now() });
                 }
 
                 document.getElementById('order-success-modal').classList.remove('hidden');
@@ -1600,7 +1729,7 @@
                 renderClientMenu();
             } catch (error) { 
                 console.error("Erro:", error); 
-                alert("Falha de conexão ao enviar pedido.");
+                showAppDialog("Falha de conexão ao enviar pedido.", "error");
             }
         }
 
@@ -1617,7 +1746,7 @@
 
         window.startDriverGPS = function(orderId) {
             if (!navigator.geolocation) {
-                alert("Navegador sem suporte a geolocalização.");
+                showAppDialog("Navegador sem suporte a geolocalização.", "info");
                 return;
             }
 
@@ -1627,10 +1756,10 @@
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                    alert("📍 GPS Conectado com sucesso!");
+                    showAppDialog("📍 GPS Conectado com sucesso!", "success");
                 },
                 (error) => {
-                    alert("Ative a permissão de GPS no celular.");
+                    showAppDialog("Ative a permissão de GPS no celular.", "warning");
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -1685,7 +1814,7 @@
 
         window.generateAccessCode = async function() {
             if (!currentRestaurantId) {
-                alert("Sessão expirada. Faça login novamente.");
+                showAppDialog("Sessão expirada. Faça login novamente.", "warning");
                 return;
             }
 
@@ -1699,7 +1828,7 @@
                 globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&delivery=true`;
             } else {
                 const tableNum = document.getElementById('qr-table-number').value;
-                if(!tableNum) { alert("Informe o número da mesa!"); return; }
+                if(!tableNum) { showAppDialog("Informe o número da mesa!", "warning"); return; }
                 globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&mesa=${tableNum}`;
 
                 try {
@@ -1723,20 +1852,29 @@
         }
 
         window.downloadQRCode = function() {
-            const canvas = document.getElementById('qrcode-container').querySelector('canvas');
-            if(canvas) {
-                const link = document.createElement('a'); 
-                link.href = canvas.toDataURL("image/png");
-                link.download = `qrcode_fastorder.png`; 
-                link.click();
+            const img = document.querySelector("#qrcode-container img");
+            if (img) {
+                const a = document.createElement("a");
+                a.href = img.src;
+                a.download = `qrcode_restaurante_${currentRestaurantId}.png`;
+                a.click();
+            } else {
+                showAppDialog("Gere o QR Code primeiro.", "info");
             }
         }
 
         window.shareOnWhatsApp = function() {
-            if(!globalGeneratedLink) return;
-            const text = encodeURIComponent(`Olá! Acesse nosso cardápio virtual e faça seu pedido direto pelo link: ${globalGeneratedLink}`);
+            if (!globalGeneratedLink) { showAppDialog("Gere um link primeiro.", "info"); return; }
+            const text = encodeURIComponent(`Olá! Acesse nosso cardápio digital por aqui: ${globalGeneratedLink}`);
             window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
+
+        // FUNÇÕES DO PAINEL DO GARÇOM
+        window.updateWaiterTable = function() {
+            waiterActiveTable = document.getElementById('waiter-table-number').value;
+            waiterCart = {};
+            renderWaiterMenu();
+        };
 
         function renderWaiterMenu() {
             const container = document.getElementById('waiter-dynamic-menu-container');
@@ -1768,15 +1906,15 @@
                 if (tabsContainer) {
                     const tabBtn = document.createElement('button');
                     const isActive = index === 0;
-                    
+
                     tabBtn.className = `text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer ${
                         isActive 
                         ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20' 
                         : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
                     }`;
                     tabBtn.innerText = categoryName;
-                    
-                    tabBtn.onclick = () => {
+
+                    tabBtn.onclick = (e) => {
                         tabsContainer.querySelectorAll('button').forEach(btn => {
                             btn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white';
                         });
@@ -1795,7 +1933,7 @@
                 categorySection.id = categoryId;
                 categorySection.className = "space-y-4 scroll-mt-28";
                 categorySection.innerHTML = `
-                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">🏷️ ${categoryName}</h3>
+                    <h3 class="text-lg font-black text-amber-400 mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 `;
 
@@ -1818,52 +1956,267 @@
             waiterCart[id] += change;
             if (waiterCart[id] <= 0) delete waiterCart[id];
             renderWaiterMenu();
-        }
+        };
 
         function updateWaiterTotal() {
             let total = 0;
             menuItems.forEach(item => { if (waiterCart[item.id]) total += (Number(item.price) || 0) * waiterCart[item.id]; });
-            document.getElementById('waiter-total-price').innerText = total.toFixed(2);
+            const totalElem = document.getElementById('waiter-total-price');
+            if(totalElem) totalElem.innerText = total.toFixed(2);
         }
 
-        function updateSelectCategories() {
-            const container = document.getElementById('category-field-container');
-            if(!container || isCreatingNewCategory) return; 
+        window.submitWaiterOrder = async function() {
+            if (!currentRestaurantId) {
+                showAppDialog("Restaurante não identificado.", "info");
+                return;
+            }
+            if (!waiterActiveTable) { showAppDialog('Digite o número da mesa!', "warning"); return; }
             
-            const categories = new Set();
+            const waiterItems = [];
+            let orderTotal = 0;
+            let itemsCount = 0;
+
             menuItems.forEach(item => {
-                if(item.category) {
-                    let cat = item.category.toString().trim();
-                    categories.add(cat.charAt(0).toUpperCase() + cat.slice(1));
+                if (waiterCart[item.id] && !item.outOfStock) {
+                    const parsedPrice = Number(item.price) || 0;
+                    waiterItems.push({ name: item.name, qty: waiterCart[item.id], price: parsedPrice });
+                    orderTotal += parsedPrice * waiterCart[item.id];
+                    itemsCount += waiterCart[item.id];
                 }
             });
 
-            if(categories.size === 0) {
-                ['Bebidas', 'Cervejas', 'Salgados', 'Pizzas', 'Pasteis', 'Refeições', 'Lanches'].forEach(c => categories.add(c));
+            if (waiterItems.length === 0) { showAppDialog('Selecione ao menos um item!', "warning"); return; }
+
+            try {
+                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const kitchenItems = waiterItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
+                
+                const docRef = await addDoc(collection(db, "kitchen"), {
+                    restaurantId: currentRestaurantId,
+                    origin: `Mesa ${waiterActiveTable}`,
+                    time: time,
+                    items: kitchenItems,
+                    status: 'pending',
+                    timestamp: Date.now(),
+                    totalPrice: orderTotal
+                });
+
+                const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`));
+                let currentTableHistory = [];
+                if (snapTable.exists() && Array.isArray(snapTable.data().orders)) currentTableHistory = snapTable.data().orders;
+                if (currentTableHistory.length && currentTableHistory[0]?.name && currentTableHistory[0]?.qty) {
+                    currentTableHistory = [{ orderId: `legacy-${Date.now()}`, createdAt: Date.now(), time, items: currentTableHistory.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) }];
+                }
+                currentTableHistory.push({ orderId: docRef.id, createdAt: Date.now(), time, observation: "", totalPrice: orderTotal, items: waiterItems.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) });
+                await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`), { restaurantId: currentRestaurantId, tableNum: waiterActiveTable, orders: currentTableHistory, updatedAt: Date.now() });
+
+                const reportRef = doc(db, "reports", currentRestaurantId);
+                await setDoc(reportRef, {
+                    restaurantId: currentRestaurantId,
+                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
+                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
+                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
+                }, { merge: true });
+
+                showAppDialog(`✅ Pedido enviado para a Mesa ${waiterActiveTable}!`, "success");
+                waiterCart = {};
+                renderWaiterMenu();
+            } catch (error) { 
+                console.error(error); 
+                showAppDialog("Erro ao lançar pedido.", "error");
+            }
+        };
+
+        // CONTROLE DA COZINHA
+        window.switchKitchenTab = function(tab) {
+            activeKitchenTab = tab;
+            const btnTables = document.getElementById('tab-btn-tables');
+            const btnDelivery = document.getElementById('tab-btn-delivery');
+            const containerTables = document.getElementById('kitchen-tables-container');
+            const containerDelivery = document.getElementById('kitchen-delivery-container');
+
+            if (tab === 'tables') {
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                containerTables.classList.remove('hidden');
+                containerDelivery.classList.add('hidden');
+            } else {
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                containerDelivery.classList.remove('hidden');
+                containerTables.classList.add('hidden');
+            }
+        };
+
+        function renderKitchenOrders() {
+            const containerTables = document.getElementById('kitchen-tables-container');
+            const containerDelivery = document.getElementById('kitchen-delivery-container');
+
+            if(!containerTables || !containerDelivery) return;
+            containerTables.innerHTML = '';
+            containerDelivery.innerHTML = '';
+
+            const tableOrders = kitchenOrders.filter(o => !o.origin || !o.origin.includes('DELIVERY'));
+            const deliveryOrders = kitchenOrders.filter(o => o.origin && o.origin.includes('DELIVERY'));
+
+            // Renderizar Salão
+            if (tableOrders.length === 0) {
+                containerTables.innerHTML = '<p class="text-slate-500 text-center col-span-full py-12 text-sm">Nenhum pedido pendente no Salão. 🍽️</p>';
+            } else {
+                tableOrders.forEach(order => {
+                    containerTables.innerHTML += createKitchenCardHTML(order, false);
+                });
             }
 
-            let selectHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500">`;
-            categories.forEach(cat => {
-                selectHTML += `<option value="${cat}">${cat}</option>`;
-            });
-            selectHTML += `</select>`;
-            container.innerHTML = selectHTML;
+            // Renderizar Delivery
+            if (deliveryOrders.length === 0) {
+                containerDelivery.innerHTML = '<p class="text-slate-500 text-center col-span-full py-12 text-sm">Nenhum pedido de Delivery ativo. 🛵</p>';
+            } else {
+                deliveryOrders.forEach(order => {
+                    containerDelivery.innerHTML += createKitchenCardHTML(order, true);
+                });
+            }
         }
 
+        function createKitchenCardHTML(order, isDelivery = false) {
+            let itemsHTML = '';
+            let totalOrderVal = 0;
+
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    const priceNum = Number(item.price) || 0;
+                    totalOrderVal += priceNum * item.qty;
+                    itemsHTML += `
+                        <li class="flex justify-between items-center text-xs py-1 border-b border-slate-800/60 last:border-0">
+                            <span class="text-slate-200 font-medium"><strong class="text-amber-400 font-bold">${item.qty}x</strong> ${item.name}</span>
+                            <span class="text-slate-400 text-[11px]">R$ ${(priceNum * item.qty).toFixed(2)}</span>
+                        </li>
+                    `;
+                });
+            }
+
+            const obsHTML = order.observation ? `
+                <div class="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
+                    <strong>⚠️ Obs:</strong> ${order.observation}
+                </div>
+            ` : '';
+
+            let addressHTML = '';
+            if (isDelivery && order.address) {
+                const a = order.address;
+                addressHTML = `
+                    <div class="mt-3 p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl text-xs text-slate-300 space-y-1">
+                        <p class="font-bold text-sky-400 flex items-center gap-1">👤 ${a.nome} (${a.phone})</p>
+                        <p>📍 ${a.rua}, Nº ${a.numero} - ${a.bairro}</p>
+                        <p class="text-[11px] text-slate-400">Ref: ${a.referencia}</p>
+                    </div>
+                `;
+            }
+
+            let actionButtonsHTML = '';
+            if (isDelivery) {
+                if (order.status === 'delivered') {
+                    actionButtonsHTML = `
+                        <button onclick="window.stopDriverGPS()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            ⏹️ Parar GPS
+                        </button>
+                        <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            ✅ Concluir Entrega
+                        </button>
+                    `;
+                } else {
+                    actionButtonsHTML = `
+                        <button onclick="window.markAsDelivered('${order.id}')" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            🛵 Despachar Delivery (Ativar GPS)
+                        </button>
+                        <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            ✅ Finalizar
+                        </button>
+                    `;
+                }
+            } else {
+                actionButtonsHTML = `
+                    <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                        ✅ Concluir Pedido
+                    </button>
+                `;
+            }
+
+            const headerBg = isDelivery ? 'bg-sky-500/10 border-sky-500/30' : 'bg-amber-500/10 border-amber-500/30';
+            const titleCol = isDelivery ? 'text-sky-400' : 'text-amber-400';
+
+            return `
+                <div class="glass-card rounded-2xl p-5 border border-slate-800 flex flex-col justify-between space-y-4 shadow-xl">
+                    <div>
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                            <div>
+                                <span class="text-[10px] font-bold ${titleCol} uppercase tracking-wider block">${order.origin}</span>
+                                <span class="text-xs text-slate-400">🕒 ${order.time || 'Agora'}</span>
+                            </div>
+                            <span class="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                                R$ ${(order.totalPrice || totalOrderVal).toFixed(2)}
+                            </span>
+                        </div>
+
+                        ${addressHTML}
+                        ${obsHTML}
+
+                        <ul class="mt-4 space-y-1">
+                            ${itemsHTML}
+                        </ul>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-800/80 space-y-2">
+                        ${actionButtonsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.clearKitchenOrder = async function(id) {
+            try {
+                await deleteDoc(doc(db, "kitchen", id));
+            } catch(e) { console.error(e); }
+        };
+
+        // ADMINISTRAÇÃO DE CARDÁPIO E INVOICES
         window.toggleCategoryMode = function() {
+            isCreatingNewCategory = !isCreatingNewCategory;
             const container = document.getElementById('category-field-container');
             const btn = document.getElementById('toggle-cat-mode-btn');
 
-            if (!isCreatingNewCategory) {
-                isCreatingNewCategory = true;
-                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Ex: Sobremesas" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">`;
-                btn.innerText = "📋 Selecionar Existente";
+            if (isCreatingNewCategory) {
+                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Digite a nova categoria..." required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500">`;
+                btn.innerText = "↩️ Selecionar Categoria Existent";
             } else {
-                isCreatingNewCategory = false;
+                container.innerHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500"></select>`;
                 btn.innerText = "➕ Nova Categoria";
                 updateSelectCategories();
             }
         };
+
+        function updateSelectCategories() {
+            const select = document.getElementById('item-category-select');
+            if (!select) return;
+
+            const categoriesSet = new Set();
+            menuItems.forEach(i => {
+                if(i.category && i.category.toString().trim() !== "") {
+                    categoriesSet.add(i.category.toString().trim());
+                }
+            });
+
+            const categories = Array.from(categoriesSet).sort();
+            select.innerHTML = '';
+
+            if (categories.length === 0) {
+                select.innerHTML = '<option value="Geral">📂 Geral</option>';
+            } else {
+                categories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            }
+        }
 
         window.handleAddItem = async function(e) {
             e.preventDefault();
@@ -1881,10 +2234,10 @@
             }
 
             const name = document.getElementById('item-name').value.trim();
-            const price = parseFloat(document.getElementById('item-price').value);
+            const price = parseFloat(document.getElementById('item-price').value) || 0;
             const desc = document.getElementById('item-desc').value.trim();
             const fileInput = document.getElementById('item-file');
-            
+
             let imgUrl = "";
 
             if (fileInput.files.length > 0) {
@@ -1900,14 +2253,20 @@
             try {
                 await addDoc(collection(db, "menu"), {
                     restaurantId: currentRestaurantId,
-                    name, price, desc, category: categoryVal, img: imgUrl, outOfStock: false
+                    name: name,
+                    price: price,
+                    desc: desc,
+                    category: categoryVal,
+                    img: imgUrl,
+                    outOfStock: false
                 });
 
-                document.getElementById('add-item-form').reset();
+                showAppDialog("✅ Item adicionado com sucesso!", "success");
+                e.target.reset();
                 if(isCreatingNewCategory) window.toggleCategoryMode();
-                alert("✅ Item adicionado ao cardápio!");
             } catch(err) {
-                console.error("Erro ao salvar item:", err);
+                console.error(err);
+                showAppDialog("Erro ao adicionar item.", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Adicionar ao Cardápio";
@@ -1915,327 +2274,215 @@
         };
 
         function renderAdminMenu() {
-            const tableBody = document.getElementById('admin-menu-table');
-            if(!tableBody) return;
-            tableBody.innerHTML = '';
+            const tbody = document.getElementById('admin-menu-table');
+            if(!tbody) return;
+            tbody.innerHTML = '';
 
-            const filteredItems = menuItems.filter(item => {
-                if (!adminSearchTerm) return true;
-                const nameMatch = item.name.toLowerCase().includes(adminSearchTerm);
-                const descMatch = item.desc && item.desc.toLowerCase().includes(adminSearchTerm);
-                const catMatch = item.category && item.category.toLowerCase().includes(adminSearchTerm);
-                return nameMatch || descMatch || catMatch;
+            const filtered = menuItems.filter(i => {
+                if(!adminSearchTerm) return true;
+                return i.name.toLowerCase().includes(adminSearchTerm) || (i.category && i.category.toLowerCase().includes(adminSearchTerm));
             });
 
-            if (filteredItems.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-500 text-xs">Nenhum item cadastrado.</td></tr>`;
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 text-xs">Nenhum item cadastrado.</td></tr>`;
                 return;
             }
 
-            filteredItems.forEach(item => {
-                const img = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=100';
+            filtered.forEach(item => {
                 const isOutOfStock = item.outOfStock === true;
-                const price = Number(item.price) || 0;
+                const stockBadge = isOutOfStock
+                    ? `<button onclick="window.toggleStock('${item.id}', false)" class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-rose-500/20">🔴 Esgotado</button>`
+                    : `<button onclick="window.toggleStock('${item.id}', true)" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-emerald-500/20">🟢 Em Estoque</button>`;
 
-                tableBody.innerHTML += `
-                    <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 text-xs">
-                        <td class="p-3"><img src="${img}" class="w-10 h-10 object-cover rounded-xl bg-slate-800"></td>
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/60 text-xs hover:bg-slate-900/40">
+                        <td class="p-3">
+                            <img src="${item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=100'}" class="w-10 h-10 object-cover rounded-lg bg-slate-800">
+                        </td>
                         <td class="p-3">
                             <span class="font-bold text-white block">${item.name}</span>
-                            <span class="text-[10px] text-amber-400 font-semibold">${item.category || 'Geral'}</span>
+                            <span class="text-[10px] text-amber-400 uppercase font-semibold">${item.category || 'Geral'}</span>
                         </td>
-                        <td class="p-3 font-bold text-emerald-400">R$ ${price.toFixed(2)}</td>
+                        <td class="p-3 text-emerald-400 font-bold">R$ ${(Number(item.price) || 0).toFixed(2)}</td>
+                        <td class="p-3 text-center">${stockBadge}</td>
                         <td class="p-3 text-center">
-                            <button onclick="window.toggleStockStatus('${item.id}', ${!isOutOfStock})" class="px-2.5 py-1 rounded-lg font-bold text-[10px] cursor-pointer transition ${isOutOfStock ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}">
-                                ${isOutOfStock ? '🔴 Esgotado' : '🟢 Em Estoque'}
-                            </button>
-                        </td>
-                        <td class="p-3 text-center">
-                            <button onclick="window.deleteMenuItem('${item.id}')" class="text-rose-400 hover:text-rose-300 font-bold p-1 cursor-pointer">🗑️ Excluir</button>
+                            <button onclick="window.deleteMenuItem('${item.id}')" class="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg hover:bg-rose-500/10 cursor-pointer">🗑️</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        window.toggleStockStatus = async function(itemId, isOut) {
+        window.toggleStock = async function(id, outOfStock) {
             try {
-                await updateDoc(doc(db, "menu", itemId), { outOfStock: isOut });
+                await updateDoc(doc(db, "menu", id), { outOfStock: outOfStock });
             } catch(e) { console.error(e); }
         };
 
-        window.deleteMenuItem = async function(itemId) {
-            if(confirm("Deseja realmente excluir este item do cardápio?")) {
+        window.deleteMenuItem = function(id) {
+            showAppConfirm("Deseja excluir este item do cardápio?", async () => {
                 try {
-                    await deleteDoc(doc(db, "menu", itemId));
+                    await deleteDoc(doc(db, "menu", id));
+                    showAppDialog("Item excluído com sucesso!", "success");
                 } catch(e) { console.error(e); }
-            }
+            }, "Excluir Item");
         };
 
-        function updateSalesReportView() {
-            const revenue = document.getElementById('sales-total-money');
-            const orders = document.getElementById('sales-total-orders');
-            const items = document.getElementById('sales-total-items');
-
-            if(revenue) revenue.innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
-            if(orders) orders.innerText = Number(salesReport.totalOrders) || 0;
-            if(items) items.innerText = Number(salesReport.totalItemsSold) || 0;
-        }
-
-        window.clearSalesReport = async function() {
-            if(confirm("Deseja zerar o relatório de vendas do dia?")) {
-                try {
-                    await setDoc(doc(db, "reports", currentRestaurantId), {
-                        restaurantId: currentRestaurantId, totalRevenue: 0, totalOrders: 0, totalItemsSold: 0
-                    });
-                } catch(e) { console.error(e); }
-            }
-        };
-
-        window.switchKitchenTab = function(tab) {
-            activeKitchenTab = tab;
-            const btnTables = document.getElementById('tab-btn-tables');
-            const btnDelivery = document.getElementById('tab-btn-delivery');
-            const containerTables = document.getElementById('kitchen-tables-container');
-            const containerDelivery = document.getElementById('kitchen-delivery-container');
-
-            if(tab === 'tables') {
-                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
-                containerTables.classList.remove('hidden');
-                containerDelivery.classList.add('hidden');
-            } else {
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-white shadow cursor-pointer flex items-center justify-center gap-2";
-                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
-                containerDelivery.classList.remove('hidden');
-                containerTables.classList.add('hidden');
-            }
-        };
-
-        function renderKitchenOrders() {
-            const tablesContainer = document.getElementById('kitchen-tables-container');
-            const deliveryContainer = document.getElementById('kitchen-delivery-container');
-
-            if(!tablesContainer || !deliveryContainer) return;
-            tablesContainer.innerHTML = '';
-            deliveryContainer.innerHTML = '';
-
-            let tableCount = 0;
-            let deliveryCount = 0;
-
-            kitchenOrders.forEach(order => {
-                const isDelivery = order.origin.includes('DELIVERY');
-                const borderCol = isDelivery ? 'border-sky-500/30' : 'border-amber-500/30';
-                const tagCol = isDelivery ? 'bg-sky-500/10 text-sky-400 border-sky-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-
-                let itemsHTML = '';
-                if(order.items) {
-                    order.items.forEach(i => {
-                        itemsHTML += `
-                            <li class="flex justify-between items-center text-xs py-1 border-b border-slate-800/60 text-slate-200">
-                                <span><strong class="text-amber-400">${i.qty}x</strong> ${i.name}</span>
-                            </li>
-                        `;
-                    });
-                }
-
-                let addressHTML = '';
-                if(order.address) {
-                    addressHTML = `
-                        <div class="mt-2 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-0.5">
-                            <p class="font-bold text-sky-400">👤 ${order.address.nome} (${order.address.phone})</p>
-                            <p>📍 ${order.address.rua}, Nº ${order.address.numero} - ${order.address.bairro}</p>
-                            <p class="text-slate-500">Ref: ${order.address.referencia}</p>
-                        </div>
-                    `;
-                }
-
-                let obsHTML = '';
-                if(order.observation) {
-                    obsHTML = `<div class="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 mt-2"><strong>⚠️ Obs:</strong> ${order.observation}</div>`;
-                }
-
-                let actionBtn = '';
-                if(order.status === 'delivered') {
-                    actionBtn = `
-                        <div class="space-y-2 mt-3">
-                            <button onclick="window.startDriverGPS('${order.id}')" class="w-full bg-sky-600 hover:bg-sky-500 text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg">
-                                📡 Iniciar Rastreio GPS
-                            </button>
-                            <button onclick="window.finishKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
-                                ✅ Concluir Pedido
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    if(isDelivery) {
-                        actionBtn = `
-                            <button onclick="window.markAsDelivered('${order.id}')" class="w-full bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl text-xs font-bold transition cursor-pointer mt-3 shadow-lg flex items-center justify-center gap-1">
-                                🛵 Despachar p/ Entrega
-                            </button>
-                        `;
-                    } else {
-                        actionBtn = `
-                            <button onclick="window.finishKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold transition cursor-pointer mt-3 shadow-lg flex items-center justify-center gap-1">
-                                ✅ Marcar Pronto
-                            </button>
-                        `;
-                    }
-                }
-
-                const cardHTML = `
-                    <div class="glass-card p-5 rounded-3xl border ${borderCol} flex flex-col justify-between shadow-xl">
-                        <div>
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${tagCol}">${order.origin}</span>
-                                <span class="text-xs text-slate-400 font-mono">🕒 ${order.time}</span>
-                            </div>
-                            <ul class="space-y-1 mb-2">${itemsHTML}</ul>
-                            ${obsHTML}
-                            ${addressHTML}
-                        </div>
-                        ${actionBtn}
-                    </div>
-                `;
-
-                if(isDelivery) {
-                    deliveryContainer.innerHTML += cardHTML;
-                    deliveryCount++;
-                } else {
-                    tablesContainer.innerHTML += cardHTML;
-                    tableCount++;
-                }
-            });
-
-            if(tableCount === 0) tablesContainer.innerHTML = '<p class="text-slate-500 col-span-full text-center py-12 text-sm">Sem pedidos pendentes no salão.</p>';
-            if(deliveryCount === 0) deliveryContainer.innerHTML = '<p class="text-slate-500 col-span-full text-center py-12 text-sm">Sem pedidos pendentes de delivery.</p>';
-        }
-
-        window.finishKitchenOrder = async function(id) {
-            try {
-                window.stopDriverGPS();
-                await deleteDoc(doc(db, "kitchen", id));
-            } catch(e) { console.error(e); }
-        };
-
-        window.updateWaiterTable = function() {
-            waiterActiveTable = document.getElementById('waiter-table-number').value;
-        };
-
-        window.submitWaiterOrder = async function() {
-            if(!waiterActiveTable) { alert("Informe o número da mesa!"); return; }
-            if(!currentRestaurantId) return;
-
-            let orderTotal = 0;
-            const items = [];
-            
-            menuItems.forEach(item => {
-                if(waiterCart[item.id] && !item.outOfStock) {
-                    const parsedPrice = Number(item.price) || 0;
-                    items.push({ name: item.name, qty: waiterCart[item.id], price: parsedPrice });
-                    orderTotal += parsedPrice * waiterCart[item.id];
-                }
-            });
-
-            if(items.length === 0) { alert("Selecione ao menos um item!"); return; }
-
-            try {
-                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                
-                await addDoc(collection(db, "kitchen"), {
-                    restaurantId: currentRestaurantId,
-                    origin: `Mesa ${waiterActiveTable}`,
-                    time, items, status: 'pending', timestamp: Date.now(), totalPrice: orderTotal
-                });
-
-                const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`));
-                let currentTableHistory = [];
-                if(snapTable.exists() && snapTable.data().orders) {
-                    currentTableHistory = snapTable.data().orders;
-                }
-                currentTableHistory = currentTableHistory.concat(items);
-
-                await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`), {
-                    restaurantId: currentRestaurantId,
-                    tableNum: waiterActiveTable,
-                    orders: currentTableHistory
-                });
-
-                const reportRef = doc(db, "reports", currentRestaurantId);
-                await setDoc(reportRef, {
-                    restaurantId: currentRestaurantId,
-                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
-                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
-                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + items.reduce((acc, i) => acc + i.qty, 0)
-                }, { merge: true });
-
-                alert(`✅ Pedido lançado com sucesso na Mesa ${waiterActiveTable}!`);
-                waiterCart = {};
-                renderWaiterMenu();
-            } catch(e) { console.error(e); }
-        };
-
+        // FECHAR CONTA E GERAR INVOICE DA MESA
         window.prepareInvoice = async function() {
             const tableNum = document.getElementById('print-table-number').value;
             const preview = document.getElementById('invoice-preview');
 
-            if(!tableNum) { alert("Informe o número da mesa!"); return; }
-            if(!currentRestaurantId) return;
+            if (!tableNum) { showAppDialog("Informe o número da mesa!", "warning"); return; }
+
+            preview.innerText = "Buscando comanda...";
 
             try {
                 const snap = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
-                if(!snap.exists() || !snap.data().orders || snap.data().orders.length === 0) {
-                    preview.innerText = "Nenhum consumo registrado para esta mesa.";
+                if (!snap.exists() || !snap.data().orders || snap.data().orders.length === 0) {
+                    preview.innerText = `Nenhuma comanda aberta para a Mesa ${tableNum}.`;
                     activeInvoiceText = "";
                     return;
                 }
 
                 const orders = snap.data().orders;
-                let text = `==============================\n      EXTRATO DA MESA ${tableNum.padStart(2, '0')}\n==============================\n`;
-                let total = 0;
+                let totalMesa = 0;
+                let itemsSummary = {};
 
-                orders.forEach(i => {
-                    const sub = (Number(i.price) || 0) * i.qty;
-                    total += sub;
-                    text += `${i.qty}x ${i.name.padEnd(18)} R$ ${sub.toFixed(2)}\n`;
+                orders.forEach(o => {
+                    if (o.items && Array.isArray(o.items)) {
+                        o.items.forEach(item => {
+                            const p = Number(item.price) || 0;
+                            const key = item.name;
+                            if (!itemsSummary[key]) itemsSummary[key] = { qty: 0, price: p };
+                            itemsSummary[key].qty += item.qty;
+                            totalMesa += p * item.qty;
+                        });
+                    } else if (o.price && o.qty) {
+                        const p = Number(o.price) || 0;
+                        const key = o.name;
+                        if (!itemsSummary[key]) itemsSummary[key] = { qty: 0, price: p };
+                        itemsSummary[key].qty += o.qty;
+                        totalMesa += p * o.qty;
+                    }
                 });
 
-                text += `------------------------------\nTOTAL A PAGAR:      R$ ${total.toFixed(2)}\n==============================\nObrigado pela preferência!`;
-                
-                preview.innerText = text;
-                activeInvoiceText = text;
-            } catch(e) { console.error(e); }
+                const now = new Date().toLocaleString('pt-BR');
+                let txt = `================================\n`;
+                txt += `    ${restaurantInfo.name || 'RESTAURANTE'}\n`;
+                txt += `================================\n`;
+                txt += `Data: ${now}\n`;
+                txt += `Mesa: ${tableNum.padStart(2, '0')}\n`;
+                txt += `--------------------------------\n`;
+                txt += `ITEM            QTD  UN    TOTAL\n`;
+                txt += `--------------------------------\n`;
+
+                Object.keys(itemsSummary).forEach(name => {
+                    const item = itemsSummary[name];
+                    const sub = item.qty * item.price;
+                    const nameTrunc = name.padEnd(15, ' ').substring(0, 15);
+                    const qtyStr = item.qty.toString().padStart(3, ' ');
+                    const totalStr = sub.toFixed(2).padStart(8, ' ');
+                    txt += `${nameTrunc} ${qtyStr}  R$${totalStr}\n`;
+                });
+
+                txt += `--------------------------------\n`;
+                txt += `TOTAL DA MESA:       R$ ${totalMesa.toFixed(2)}\n`;
+                txt += `================================\n`;
+                txt += `   Obrigado pela preferência!\n`;
+                txt += `================================\n`;
+
+                preview.innerText = txt;
+                activeInvoiceText = txt;
+            } catch(e) {
+                console.error(e);
+                preview.innerText = "Erro ao buscar comanda.";
+            }
         };
 
         window.printInvoice = function() {
-            if(!activeInvoiceText) { alert("Busque o extrato de uma mesa primeiro!"); return; }
+            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com comanda aberta primeiro.", "info"); return; }
             const printSec = document.getElementById('invoice-print-section');
-            printSec.innerText = activeInvoiceText;
+            printSec.innerHTML = `<pre>${activeInvoiceText}</pre>`;
             window.print();
         };
 
         window.downloadInvoiceTXT = function() {
-            if(!activeInvoiceText) { alert("Busque o extrato de uma mesa primeiro!"); return; }
+            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com comanda aberta primeiro.", "info"); return; }
             const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `extrato_mesa_${document.getElementById('print-table-number').value}.txt`;
-            link.click();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `comanda_mesa_${document.getElementById('print-table-number').value}.txt`;
+            a.click();
         };
 
-        window.confirmPayment = async function() {
+        // LIBERAR MESA E REMOVER PEDIDOS DA COZINHA
+        window.confirmPayment = function() {
             const tableNum = document.getElementById('print-table-number').value;
-            if(!tableNum || !currentRestaurantId) return;
+            if(!tableNum) { showAppDialog("Informe a mesa para liberar!", "warning"); return; }
 
-            if(confirm(`Confirma o pagamento e liberação da Mesa ${tableNum}?`)) {
+            showAppConfirm(`Confirma o pagamento e liberação da Mesa ${tableNum}?`, async () => {
                 try {
+                    // 1. Remover da coleção de mesas ativas
                     await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
-                    document.getElementById('invoice-preview').innerText = "Insira o número da mesa acima.";
+                    
+                    // 2. Buscar e remover pedidos pendentes/ativos do Monitor de Pedidos da Cozinha referentes a esta Mesa
+                    const kitchenQuery = query(
+                        collection(db, "kitchen"), 
+                        where("restaurantId", "==", currentRestaurantId)
+                    );
+                    
+                    const kitchenSnap = await getDocs(kitchenQuery);
+                    
+                    const targetOrigin = `Mesa ${tableNum}`;
+                    const targetOriginPadded = `Mesa ${tableNum.padStart(2, '0')}`;
+                    
+                    const deletePromises = [];
+                    kitchenSnap.forEach((docSnap) => {
+                        const orderData = docSnap.data();
+                        if (orderData.origin === targetOrigin || orderData.origin === targetOriginPadded) {
+                            deletePromises.push(deleteDoc(doc(db, "kitchen", docSnap.id)));
+                        }
+                    });
+                    
+                    await Promise.all(deletePromises);
+
+                    document.getElementById('invoice-preview').innerText = `Mesa ${tableNum} liberada e zerada!`;
+                    document.getElementById('print-table-number').value = "";
                     activeInvoiceText = "";
-                    alert(`✅ Mesa ${tableNum} liberada com sucesso!`);
-                } catch(e) { console.error(e); }
-            }
+                    showAppDialog(`✅ Mesa ${tableNum} foi desocupada e os pedidos removidos do monitor!`, "success");
+                } catch(e) {
+                    console.error("Erro ao liberar mesa:", e);
+                    showAppDialog("Erro ao desocupar mesa.", "error");
+                }
+            }, "Liberar Mesa");
         };
+
+        // RELATÓRIOS
+        function updateSalesReportView() {
+            document.getElementById('sales-total-money').innerText = (salesReport.totalRevenue || 0).toFixed(2);
+            document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
+            document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
+        }
+
+        window.generateSalesReport = function() {
+            showAppDialog(`📊 Relatório Geral do Dia:\nFaturamento: R$ ${(salesReport.totalRevenue || 0).toFixed(2)}\nTotal Pedidos: ${salesReport.totalOrders || 0}\nItens Vendidos: ${salesReport.totalItemsSold || 0}`, "info");
+        };
+
+        window.clearSalesReport = function() {
+            showAppConfirm("Deseja realmente zerar os dados do relatório de vendas?", async () => {
+                try {
+                    await setDoc(doc(db, "reports", currentRestaurantId), {
+                        restaurantId: currentRestaurantId,
+                        totalRevenue: 0,
+                        totalOrders: 0,
+                        totalItemsSold: 0
+                    });
+                    showAppDialog("Relatório zerado com sucesso!", "success");
+                } catch(e) { console.error(e); }
+            }, "Zerar Relatório");
+        };
+
     </script>
 </body>
 </html>
