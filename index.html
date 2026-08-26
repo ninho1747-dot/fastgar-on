@@ -153,7 +153,7 @@
                 </p>
             </div>
 
-            <!-- MONITORAÇÃO DE DELIVERY AO VIVO -->
+            <!-- MONITORAÇÃO DE DELIVERY AO VIVO (EXCLUSIVO PARA DELIVERY) -->
             <div id="client-delivery-tracker" class="hidden mb-8 glass-card p-6 rounded-3xl border border-sky-500/30 shadow-2xl space-y-4">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-4">
                     <div>
@@ -198,6 +198,20 @@
                         <span class="text-emerald-400 font-extrabold text-lg">R$ <span id="tracker-order-total">0.00</span></span>
                     </div>
                 </div>
+            </div>
+
+            <!-- STATUS DE PREPARO (EXCLUSIVO PARA MESAS) -->
+            <div id="client-table-status" class="hidden mb-8 glass-card p-6 rounded-3xl border border-amber-500/30 shadow-2xl space-y-3 text-center">
+                <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl flex items-center justify-center text-3xl mx-auto shadow-inner animate-pulse">
+                    👨‍🍳
+                </div>
+                <div>
+                    <span class="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest block mb-1">Status do Pedido na Mesa</span>
+                    <h3 class="text-xl font-black text-white">Seu pedido já está em preparo!</h3>
+                </div>
+                <p class="text-slate-300 text-xs leading-relaxed max-w-md mx-auto">
+                    A cozinha já recebeu o seu pedido. Em breve ele será levado até a sua mesa. Fique à vontade para continuar navegando no cardápio se quiser pedir algo mais!
+                </p>
             </div>
 
             <!-- CONTEÚDO PERMITIDO / CARDÁPIO -->
@@ -1052,7 +1066,6 @@
                 renderAdminMenu();
                 updateSelectCategories();
             });
-            unsubs.push(unsubProfile); // Reutilizando a variável de lista de unsubs unsubs.push(unsubMenu);
             unsubs.push(unsubMenu);
 
             // 2. Ouvir Relatório do Restaurante
@@ -1084,6 +1097,11 @@
                     }
                 });
                 renderTablesStatusGrid();
+                
+                // Atualiza se houver pedidos ativos na mesa atual
+                if (currentTable && !isDeliveryMode) {
+                    setupClientRealtimeTracking();
+                }
             });
             unsubs.push(unsubTables);
         }
@@ -1252,6 +1270,7 @@
                     document.getElementById('current-table-label').innerText = `Mesa ${currentTable}`;
                     document.getElementById('delivery-address-fields').classList.add('hidden');
                     window.switchView('client-view');
+                    setupClientRealtimeTracking();
                 }
             }
         }
@@ -1319,831 +1338,219 @@
             }, "Sair do sistema");
         }
 
+        // RENDERIZAÇÃO DO CARDÁPIO DO CLIENTE E GARÇOM
         function createItemCardHTML(item, qty, isWaiter = false) {
-            const imgUrl = item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300';
-            const parsedPrice = Number(item.price) || 0;
-            const updateFn = isWaiter ? 'window.updateWaiterQuantity' : 'window.updateQuantity';
-            const borderCol = isWaiter ? 'border-amber-500/30 bg-amber-500/10' : 'border-slate-800 bg-slate-900';
-            const textCol = isWaiter ? 'text-amber-400' : 'text-slate-300';
-            const isOutOfStock = item.outOfStock === true;
+            const imgUrl = item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300';
+            const available = item.available !== false;
 
-            const disabledClass = isOutOfStock ? 'opacity-60 grayscale-[40%]' : '';
-            const statusBadge = isOutOfStock 
-                ? `<span class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">🔴 Esgotado</span>`
-                : '';
-
-            const controlsHTML = isOutOfStock
-                ? `<span class="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">Indisponível</span>`
-                : `<div class="flex items-center border rounded-xl overflow-hidden ${borderCol}">
-                    <button onclick="${updateFn}('${item.id}', -1)" class="px-3 py-1 font-bold ${textCol} hover:bg-slate-800 cursor-pointer transition">-</button>
-                    <span class="px-3 font-bold text-white min-w-[24px] text-center text-xs">${qty}</span>
-                    <button onclick="${updateFn}('${item.id}', 1)" class="px-3 py-1 font-bold ${textCol} hover:bg-slate-800 cursor-pointer transition">+</button>
-                   </div>`;
+            const fnQty = isWaiter ? 'changeWaiterQty' : 'changeQty';
 
             return `
-                <div class="glass-card rounded-2xl p-4 flex gap-4 border border-slate-800/80 items-center relative transition hover:border-slate-700 ${disabledClass}">
-                    <div class="relative flex-shrink-0">
-                        <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-xl bg-slate-800 border border-slate-800">
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start gap-2 mb-1">
-                            <h4 class="text-base font-bold text-white truncate">${item.name}</h4>
-                            ${statusBadge}
-                        </div>
-                        <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">${item.desc || 'Sem descrição.'}</p>
-                        <div class="flex justify-between items-center mt-3 flex-wrap gap-2">
-                            <span class="text-emerald-400 font-extrabold text-base">R$ ${parsedPrice.toFixed(2)}</span>
-                            ${controlsHTML}
+                <div class="glass-card rounded-2xl p-4 border border-slate-800 flex items-center justify-between gap-4 transition-all hover:border-slate-700 ${!available ? 'opacity-50 grayscale' : ''}">
+                    <div class="flex items-center gap-3.5 min-w-0">
+                        <img src="${imgUrl}" alt="${item.name}" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl bg-slate-900 border border-slate-800 flex-shrink-0">
+                        <div class="min-w-0">
+                            <h4 class="font-bold text-sm text-white truncate">${item.name}</h4>
+                            <p class="text-[11px] text-slate-400 line-clamp-2 mt-0.5 font-normal">${item.desc || 'Sem descrição'}</p>
+                            <span class="text-xs font-black text-amber-400 block mt-1">R$ ${Number(item.price).toFixed(2)}</span>
                         </div>
                     </div>
-                </div>`;
-        }
-
-        function groupItemsByCategory(items) {
-            const groups = {};
-            items.forEach(item => {
-                let cat = "📂 Geral"; 
-                if (item.category && item.category.toString().trim() !== "") {
-                    const rawCat = item.category.toString().trim();
-                    cat = rawCat.charAt(0).toUpperCase() + rawCat.slice(1);
-                }
-                if (!groups[cat]) groups[cat] = [];
-                groups[cat].push(item);
-            });
-            return groups;
+                    ${available ? `
+                        <div class="flex items-center gap-2 flex-shrink-0 bg-slate-900/90 border border-slate-800 p-1.5 rounded-xl shadow-inner">
+                            <button onclick="window.${fnQty}('${item.id}', -1)" class="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center font-bold text-sm transition cursor-pointer active:scale-95">-</button>
+                            <span class="w-6 text-center text-xs font-bold text-white">${qty}</span>
+                            <button onclick="window.${fnQty}('${item.id}', 1)" class="w-7 h-7 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg flex items-center justify-center font-bold text-sm transition cursor-pointer active:scale-95">+</button>
+                        </div>
+                    ` : `
+                        <span class="text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded-lg">Esgotado</span>
+                    `}
+                </div>
+            `;
         }
 
         function renderClientMenu() {
             const container = document.getElementById('client-dynamic-menu-container');
             const tabsContainer = document.getElementById('category-tabs-container');
-            
-            if(!container) return;
-            container.innerHTML = '';
-            if(tabsContainer) tabsContainer.innerHTML = '';
+            if (!container) return;
 
-            const filteredItems = menuItems.filter(item => {
-                if (!clientSearchTerm) return true;
-                const nameMatch = item.name.toLowerCase().includes(clientSearchTerm);
-                const descMatch = item.desc && item.desc.toLowerCase().includes(clientSearchTerm);
-                return nameMatch || descMatch;
+            let filtered = menuItems.filter(item => {
+                const matchName = item.name.toLowerCase().includes(clientSearchTerm);
+                const matchDesc = (item.desc || '').toLowerCase().includes(clientSearchTerm);
+                return matchName || matchDesc;
             });
 
-            if (filteredItems.length === 0) {
-                container.innerHTML = '<p class="text-slate-400 text-center py-12 text-sm">Nenhum item encontrado.</p>';
-                updateTotal();
+            const categories = [...new Set(menuItems.map(item => item.category || 'Geral'))];
+            
+            if (tabsContainer) {
+                tabsContainer.innerHTML = categories.map((cat, idx) => `
+                    <a href="#client-cat-${idx}" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:border-amber-500/50 hover:text-amber-400 transition inline-block">
+                        ${cat}
+                    </a>
+                `).join('');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 text-xs py-8">Nenhum item encontrado.</p>`;
                 return;
             }
 
-            const grouped = groupItemsByCategory(filteredItems);
-            const categoryKeys = Object.keys(grouped).sort();
-
-            categoryKeys.forEach((categoryName, index) => {
-                const categoryId = `cat-sec-${categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-
-                if (tabsContainer) {
-                    const tabBtn = document.createElement('button');
-                    const isActive = index === 0;
-                    
-                    tabBtn.className = `text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer ${
-                        isActive 
-                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20' 
-                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
-                    }`;
-                    tabBtn.innerText = categoryName;
-                    
-                    tabBtn.onclick = (e) => {
-                        tabsContainer.querySelectorAll('button').forEach(btn => {
-                            btn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white';
-                        });
-                        tabBtn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20';
-
-                        const sectionTarget = document.getElementById(categoryId);
-                        if (sectionTarget) {
-                            sectionTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    };
-
-                    tabsContainer.appendChild(tabBtn);
-                }
-
-                const categorySection = document.createElement('div');
-                categorySection.id = categoryId;
-                categorySection.className = "space-y-4 scroll-mt-28";
-                categorySection.innerHTML = `
-                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                `;
-
-                const grid = categorySection.querySelector('.grid');
-                grouped[categoryName].forEach(item => {
-                    grid.innerHTML += createItemCardHTML(item, cart[item.id] || 0, false);
-                });
-
-                container.appendChild(categorySection);
-            });
-
-            updateTotal();
-        }
-
-        window.updateQuantity = function(id, change) {
-            const item = menuItems.find(i => i.id === id);
-            if (item && item.outOfStock) return; 
-
-            if (!cart[id]) cart[id] = 0;
-            cart[id] += change;
-            if (cart[id] <= 0) delete cart[id];
-            renderClientMenu();
-        }
-
-        function updateTotal() {
-            let total = 0;
-            menuItems.forEach(item => { if (cart[item.id]) total += (Number(item.price) || 0) * cart[item.id]; });
-            document.getElementById('client-total-price').innerText = total.toFixed(2);
-        }
-
-        window.showOrderReviewModal = function() {
-            if (!currentTable) { showAppDialog('Modalidade de acesso não identificada.', "warning"); return; }
-
-            pendingOrderItems = [];
-            let orderTotal = 0;
-            const itemsContainer = document.getElementById('review-modal-items');
-            itemsContainer.innerHTML = '';
-
-            const selectedCartItems = [];
-            menuItems.forEach(item => {
-                if (cart[item.id] && !item.outOfStock) {
-                    const parsedPrice = Number(item.price) || 0;
-                    const qty = cart[item.id];
-                    let rawCat = item.category ? item.category.toString().trim() : "Geral";
-                    const category = rawCat ? rawCat.charAt(0).toUpperCase() + rawCat.slice(1) : "Geral";
-                    
-                    selectedCartItems.push({
-                        id: item.id,
-                        name: item.name,
-                        price: parsedPrice,
-                        qty: qty,
-                        category: category
-                    });
-
-                    pendingOrderItems.push({ name: item.name, qty: qty, price: parsedPrice });
-                    orderTotal += parsedPrice * qty;
-                }
-            });
-
-            if (selectedCartItems.length === 0) { showAppDialog('Seu carrinho está vazio ou os itens esgotaram!', "warning"); return; }
-
-            const groupedReview = {};
-            selectedCartItems.forEach(item => {
-                if (!groupedReview[item.category]) groupedReview[item.category] = [];
-                groupedReview[item.category].push(item);
-            });
-
-            Object.keys(groupedReview).sort().forEach(catName => {
-                let catBlockHTML = `
-                    <div class="space-y-1.5">
-                        <div class="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1 border-b border-slate-800/80 pb-1">
-                            🏷️ ${catName}
-                        </div>
-                `;
-
-                groupedReview[catName].forEach(item => {
-                    const subtotal = item.price * item.qty;
-                    catBlockHTML += `
-                        <div class="flex justify-between items-center bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl">
-                            <div class="flex items-center gap-2.5">
-                                <span class="bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded-lg text-xs">${item.qty}x</span>
-                                <span class="text-xs font-semibold text-slate-200 truncate max-w-[180px]">${item.name}</span>
+            let html = '';
+            categories.forEach((cat, idx) => {
+                const catItems = filtered.filter(item => (item.category || 'Geral') === cat);
+                if (catItems.length > 0) {
+                    html += `
+                        <div id="client-cat-${idx}" class="space-y-3">
+                            <h3 class="text-sm font-extrabold text-amber-400 uppercase tracking-wider border-b border-slate-800 pb-2">${cat}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${catItems.map(item => createItemCardHTML(item, cart[item.id] || 0, false)).join('')}
                             </div>
-                            <span class="text-xs text-emerald-400 font-bold">R$ ${subtotal.toFixed(2)}</span>
                         </div>
                     `;
-                });
-
-                catBlockHTML += `</div>`;
-                itemsContainer.innerHTML += catBlockHTML;
-            });
-
-            document.getElementById('review-modal-total').innerText = orderTotal.toFixed(2);
-            document.getElementById('order-review-modal').classList.remove('hidden');
-        }
-
-        function initTrackingMap(initialLat = null, initialLng = null) {
-            const lat = initialLat !== null ? initialLat : (parseFloat(localStorage.getItem('lastDriverLat')) || -23.55052);
-            const lng = initialLng !== null ? initialLng : (parseFloat(localStorage.getItem('lastDriverLng')) || -46.633308);
-
-            if (!mapInstance) {
-                mapInstance = L.map('tracking-map').setView([lat, lng], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap'
-                }).addTo(mapInstance);
-
-                const restIcon = L.divIcon({ html: '🏪', className: 'text-2xl', iconSize: [30, 30] });
-                L.marker([lat, lng], { icon: restIcon }).addTo(mapInstance).bindPopup("Restaurante / Origem");
-
-                const devIcon = L.divIcon({ html: '🛵', className: 'text-2xl', iconSize: [30, 30] });
-                deliveryMarker = L.marker([lat, lng], { icon: devIcon }).addTo(mapInstance).bindPopup("Entregador");
-            } else {
-                if (deliveryMarker) {
-                    deliveryMarker.setLatLng([lat, lng]);
-                }
-                mapInstance.setView([lat, lng]);
-            }
-        }
-
-        function setupClientRealtimeTracking() {
-            if (!isDeliveryMode) return;
-            const activeOrderId = currentActiveOrderId || localStorage.getItem('lastDeliveryOrderId');
-            if (!activeOrderId) return;
-
-            if (unsubscribeActiveOrder) unsubscribeActiveOrder();
-
-            unsubscribeActiveOrder = onSnapshot(doc(db, "kitchen", activeOrderId), (docSnap) => {
-                const trackerContainer = document.getElementById('client-delivery-tracker');
-                if (docSnap.exists()) {
-                    const activeOrder = docSnap.data();
-                    trackerContainer.classList.remove('hidden');
-
-                    let driverLat = activeOrder.driverCoords ? activeOrder.driverCoords.lat : null;
-                    let driverLng = activeOrder.driverCoords ? activeOrder.driverCoords.lng : null;
-
-                    if (driverLat && driverLng) {
-                        localStorage.setItem('lastDriverLat', driverLat);
-                        localStorage.setItem('lastDriverLng', driverLng);
-                    }
-
-                    setTimeout(() => {
-                        initTrackingMap(driverLat, driverLng);
-                        if (mapInstance) mapInstance.invalidateSize();
-                    }, 300);
-
-                    const badge = document.getElementById('tracker-status-badge');
-                    const eta = document.getElementById('tracker-eta');
-                    const driverLabel = document.getElementById('tracker-driver-label');
-
-                    if (activeOrder.status === 'delivered') {
-                        badge.innerText = "📍 Em Rota de Entrega";
-                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30 animate-pulse";
-                        eta.innerText = "Chegando em breve...";
-                        driverLabel.innerText = "Entregador a caminho GPS 🛰️";
-
-                        if (activeOrder.driverCoords && deliveryMarker) {
-                            const newPos = [activeOrder.driverCoords.lat, activeOrder.driverCoords.lng];
-                            deliveryMarker.setLatLng(newPos);
-                            if (mapInstance) mapInstance.panTo(newPos);
-                        }
-                    } else {
-                        badge.innerText = "⏳ Na Cozinha / Em Preparo";
-                        badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30";
-                        eta.innerText = "20-30 min";
-                        driverLabel.innerText = "Aguardando Saída 🛵";
-                    }
-
-                    const itemsListContainer = document.getElementById('tracker-order-items');
-                    if (itemsListContainer && activeOrder.items) {
-                        itemsListContainer.innerHTML = '';
-                        activeOrder.items.forEach(item => {
-                            const itemPrice = Number(item.price) || 0;
-                            const totalItemPrice = itemPrice > 0 ? ` - R$ ${(itemPrice * item.qty).toFixed(2)}` : '';
-                            itemsListContainer.innerHTML += `
-                                <li class="flex justify-between items-center bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800">
-                                    <span><strong class="text-amber-400">${item.qty}x</strong> ${item.name}</span>
-                                    <span class="text-slate-400 font-semibold">${totalItemPrice}</span>
-                                </li>
-                            `;
-                        });
-                    }
-
-                    const obsContainer = document.getElementById('tracker-order-obs-container');
-                    const obsText = document.getElementById('tracker-order-obs');
-                    if (activeOrder.observation && activeOrder.observation.trim() !== '') {
-                        obsContainer.classList.remove('hidden');
-                        obsText.innerText = activeOrder.observation;
-                    } else {
-                        obsContainer.classList.add('hidden');
-                    }
-
-                    const totalValElem = document.getElementById('tracker-order-total');
-                    if (totalValElem) {
-                        totalValElem.innerText = (Number(activeOrder.totalPrice) || 0).toFixed(2);
-                    }
-                } else {
-                    trackerContainer.classList.add('hidden');
                 }
             });
+            container.innerHTML = html;
+            updateClientTotal();
         }
-
-        window.redirectToTrackingPage = function() {
-            document.getElementById('order-success-modal').classList.add('hidden');
-            const trackerElement = document.getElementById('client-delivery-tracker');
-            trackerElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        window.sendOrderDirect = async function() {
-            if (!currentRestaurantId) {
-                showAppDialog("Restaurante não identificado. Acesse novamente o QR Code.", "info");
-                return;
-            }
-
-            const obsText = document.getElementById('client-order-observation').value.trim();
-            
-            let deliveryAddress = null;
-            if (isDeliveryMode) {
-                const nome = document.getElementById('dev-nome').value.trim();
-                const phone = document.getElementById('dev-phone').value.trim();
-                const bairro = document.getElementById('dev-bairro').value.trim();
-                const rua = document.getElementById('dev-rua').value.trim();
-                const numero = document.getElementById('dev-numero').value.trim();
-                const referencia = document.getElementById('dev-referencia').value.trim();
-
-                if (!nome || !phone || !bairro || !rua || !numero || !referencia) {
-                    showAppDialog("Preencha todos os campos do endereço de entrega.", "info");
-                    return;
-                }
-                deliveryAddress = { nome, phone, bairro, rua, numero, referencia };
-            }
-
-            document.getElementById('order-review-modal').classList.add('hidden');
-
-            let orderTotal = 0;
-            let itemsCount = 0;
-
-            pendingOrderItems.forEach(item => {
-                orderTotal += item.price * item.qty;
-                itemsCount += item.qty;
-            });
-
-            try {
-                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const kitchenItems = pendingOrderItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
-                
-                const kitchenOrderPayload = { 
-                    restaurantId: currentRestaurantId,
-                    origin: isDeliveryMode ? "🛵 DELIVERY" : `Mesa ${currentTable}`, 
-                    time: time, 
-                    items: kitchenItems, 
-                    status: 'pending', 
-                    timestamp: Date.now(),
-                    totalPrice: orderTotal
-                };
-
-                if (obsText !== "") kitchenOrderPayload.observation = obsText;
-                if (deliveryAddress) kitchenOrderPayload.address = deliveryAddress;
-
-                const docRef = await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
-                currentActiveOrderId = docRef.id;
-                localStorage.setItem('lastDeliveryOrderId', docRef.id);
-
-                const reportRef = doc(db, "reports", currentRestaurantId);
-                await setDoc(reportRef, {
-                    restaurantId: currentRestaurantId,
-                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
-                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
-                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
-                }, { merge: true });
-
-                const trackBtn = document.getElementById('btn-track-order-redirect');
-
-                if (isDeliveryMode) {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido foi enviado! Você pode acompanhar o deslocamento e conferir os itens pelo mapa ao vivo.";
-                    trackBtn.classList.remove('hidden');
-                    setupClientRealtimeTracking();
-                } else {
-                    document.getElementById('success-modal-message').innerText = "Seu pedido de mesa já foi encaminhado para a cozinha.";
-                    trackBtn.classList.add('hidden');
-                    
-                    const orderWithObs = pendingOrderItems.map(item => ({ ...item }));
-                    const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`));
-                    let currentTableHistory = [];
-                    if (snapTable.exists() && Array.isArray(snapTable.data().orders)) currentTableHistory = snapTable.data().orders;
-                    if (currentTableHistory.length && currentTableHistory[0]?.name && currentTableHistory[0]?.qty) {
-                        currentTableHistory = [{ orderId: `legacy-${Date.now()}`, createdAt: Date.now(), time, items: currentTableHistory.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) }];
-                    }
-                    currentTableHistory.push({ orderId: docRef.id, createdAt: Date.now(), time, observation: obsText || "", totalPrice: orderTotal, items: orderWithObs.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) });
-                    await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${currentTable}`), { restaurantId: currentRestaurantId, tableNum: currentTable, orders: currentTableHistory, updatedAt: Date.now() });
-                }
-
-                document.getElementById('order-success-modal').classList.remove('hidden');
-                
-                cart = {};
-                pendingOrderItems = [];
-                renderClientMenu();
-            } catch (error) { 
-                console.error("Erro:", error); 
-                showAppDialog("Falha de conexão ao enviar pedido.", "error");
-            }
-        }
-
-        async function updateDriverLocation(orderId, latitude, longitude) {
-            try {
-                lastGpsTimestamp = Date.now();
-                const orderRef = doc(db, "kitchen", orderId);
-                await updateDoc(orderRef, {
-                    status: 'delivered',
-                    driverCoords: { lat: latitude, lng: longitude }
-                });
-            } catch(e) { console.error("Erro GPS:", e); }
-        }
-
-        window.startDriverGPS = function(orderId) {
-            if (!navigator.geolocation) {
-                showAppDialog("Navegador sem suporte a geolocalização.", "info");
-                return;
-            }
-
-            if (driverWatchId !== null) navigator.geolocation.clearWatch(driverWatchId);
-            if (driverHeartbeatInterval !== null) clearInterval(driverHeartbeatInterval);
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                },
-                (err) => console.error(err),
-                { enableHighAccuracy: true }
-            );
-
-            driverWatchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                },
-                (err) => console.error(err),
-                { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-            );
-
-            driverHeartbeatInterval = setInterval(() => {
-                if (Date.now() - lastGpsTimestamp > 5000) {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                        },
-                        (err) => console.error(err),
-                        { enableHighAccuracy: true }
-                    );
-                }
-            }, 6000);
-
-            showAppDialog("🛵 Rastreio GPS ativado para o entregador!", "success");
-        };
-
-        // ===== LÓGICA DO GARÇOM =====
-        window.updateWaiterTable = function() {
-            const tableInput = document.getElementById('waiter-table-number');
-            waiterActiveTable = tableInput ? tableInput.value.trim() : null;
-            renderWaiterMenu();
-        };
 
         function renderWaiterMenu() {
             const container = document.getElementById('waiter-dynamic-menu-container');
             const tabsContainer = document.getElementById('waiter-category-tabs-container');
-
             if (!container) return;
-            container.innerHTML = '';
-            if (tabsContainer) tabsContainer.innerHTML = '';
 
-            const filteredItems = menuItems.filter(item => {
-                if (!waiterSearchTerm) return true;
-                const nameMatch = item.name.toLowerCase().includes(waiterSearchTerm);
-                const descMatch = item.desc && item.desc.toLowerCase().includes(waiterSearchTerm);
-                return nameMatch || descMatch;
+            let filtered = menuItems.filter(item => {
+                const matchName = item.name.toLowerCase().includes(waiterSearchTerm);
+                const matchDesc = (item.desc || '').toLowerCase().includes(waiterSearchTerm);
+                return matchName || matchDesc;
             });
 
-            if (filteredItems.length === 0) {
-                container.innerHTML = '<p class="text-slate-400 text-center py-12 text-sm">Nenhum item encontrado.</p>';
-                updateWaiterTotal();
+            const categories = [...new Set(menuItems.map(item => item.category || 'Geral'))];
+
+            if (tabsContainer) {
+                tabsContainer.innerHTML = categories.map((cat, idx) => `
+                    <a href="#waiter-cat-${idx}" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 border border-slate-800 text-slate-300 hover:border-amber-500/50 hover:text-amber-400 transition inline-block">
+                        ${cat}
+                    </a>
+                `).join('');
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 text-xs py-8">Nenhum item cadastrado no cardápio.</p>`;
                 return;
             }
 
-            const grouped = groupItemsByCategory(filteredItems);
-            const categoryKeys = Object.keys(grouped).sort();
-
-            categoryKeys.forEach((categoryName, index) => {
-                const categoryId = `waiter-cat-sec-${categoryName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-
-                if (tabsContainer) {
-                    const tabBtn = document.createElement('button');
-                    const isActive = index === 0;
-
-                    tabBtn.className = `text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer ${
-                        isActive 
-                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20' 
-                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white'
-                    }`;
-                    tabBtn.innerText = categoryName;
-
-                    tabBtn.onclick = (e) => {
-                        tabsContainer.querySelectorAll('button').forEach(btn => {
-                            btn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white';
-                        });
-                        tabBtn.className = 'text-xs font-bold transition-all px-4 py-2 rounded-xl border cursor-pointer bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20';
-
-                        const sectionTarget = document.getElementById(categoryId);
-                        if (sectionTarget) {
-                            sectionTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    };
-
-                    tabsContainer.appendChild(tabBtn);
+            let html = '';
+            categories.forEach((cat, idx) => {
+                const catItems = filtered.filter(item => (item.category || 'Geral') === cat);
+                if (catItems.length > 0) {
+                    html += `
+                        <div id="waiter-cat-${idx}" class="space-y-3">
+                            <h3 class="text-sm font-extrabold text-amber-400 uppercase tracking-wider border-b border-slate-800 pb-2">${cat}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${catItems.map(item => createItemCardHTML(item, waiterCart[item.id] || 0, true)).join('')}
+                            </div>
+                        </div>
+                    `;
                 }
-
-                const categorySection = document.createElement('div');
-                categorySection.id = categoryId;
-                categorySection.className = "space-y-4 scroll-mt-28";
-                categorySection.innerHTML = `
-                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                `;
-
-                const grid = categorySection.querySelector('.grid');
-                grouped[categoryName].forEach(item => {
-                    grid.innerHTML += createItemCardHTML(item, waiterCart[item.id] || 0, true);
-                });
-
-                container.appendChild(categorySection);
             });
-
+            container.innerHTML = html;
             updateWaiterTotal();
         }
 
-        window.updateWaiterQuantity = function(id, change) {
-            const item = menuItems.find(i => i.id === id);
-            if (item && item.outOfStock) return;
+        function renderAdminMenu() {
+            const tableBody = document.getElementById('admin-menu-table');
+            if (!tableBody) return;
 
-            if (!waiterCart[id]) waiterCart[id] = 0;
-            waiterCart[id] += change;
+            let filtered = menuItems.filter(item => {
+                const matchName = item.name.toLowerCase().includes(adminSearchTerm);
+                const matchDesc = (item.desc || '').toLowerCase().includes(adminSearchTerm);
+                return matchName || matchDesc;
+            });
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 text-xs">Nenhum item cadastrado.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(item => `
+                <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 text-xs">
+                    <td class="p-3">
+                        <img src="${item.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100'}" class="w-10 h-10 object-cover rounded-lg bg-slate-900">
+                    </td>
+                    <td class="p-3">
+                        <span class="font-bold text-white block">${item.name}</span>
+                        <span class="text-[10px] text-amber-400 font-semibold">${item.category || 'Geral'}</span>
+                    </td>
+                    <td class="p-3 font-bold text-emerald-400">R$ ${Number(item.price).toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="window.toggleItemAvailability('${item.id}', ${item.available !== false})" class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${item.available !== false ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'} cursor-pointer">
+                            ${item.available !== false ? '🟢 Disponível' : '🔴 Esgotado'}
+                        </button>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="window.deleteMenuItem('${item.id}')" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer">Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // CONTROLADORES DE QUANTIDADE E TOTAIS
+        window.changeQty = function(id, delta) {
+            cart[id] = (cart[id] || 0) + delta;
+            if (cart[id] <= 0) delete cart[id];
+            renderClientMenu();
+        };
+
+        window.changeWaiterQty = function(id, delta) {
+            waiterCart[id] = (waiterCart[id] || 0) + delta;
             if (waiterCart[id] <= 0) delete waiterCart[id];
             renderWaiterMenu();
         };
 
+        function updateClientTotal() {
+            let total = 0;
+            Object.keys(cart).forEach(id => {
+                const item = menuItems.find(i => i.id === id);
+                if (item) total += item.price * cart[id];
+            });
+            const el = document.getElementById('client-total-price');
+            if (el) el.innerText = total.toFixed(2);
+        }
+
         function updateWaiterTotal() {
             let total = 0;
-            menuItems.forEach(item => { if (waiterCart[item.id]) total += (Number(item.price) || 0) * waiterCart[item.id]; });
-            const elem = document.getElementById('waiter-total-price');
-            if (elem) elem.innerText = total.toFixed(2);
-        }
-
-        window.submitWaiterOrder = async function() {
-            if (!currentRestaurantId) {
-                showAppDialog("Restaurante não identificado.", "error");
-                return;
-            }
-
-            if (!waiterActiveTable || waiterActiveTable.trim() === "") {
-                showAppDialog("Por favor, selecione/digite o número da mesa a ser atendida.", "warning");
-                return;
-            }
-
-            const selectedWaiterItems = [];
-            let orderTotal = 0;
-            let itemsCount = 0;
-
-            menuItems.forEach(item => {
-                if (waiterCart[item.id] && !item.outOfStock) {
-                    const parsedPrice = Number(item.price) || 0;
-                    const qty = waiterCart[item.id];
-                    selectedWaiterItems.push({ name: item.name, qty: qty, price: parsedPrice });
-                    orderTotal += parsedPrice * qty;
-                    itemsCount += qty;
-                }
+            Object.keys(waiterCart).forEach(id => {
+                const item = menuItems.find(i => i.id === id);
+                if (item) total += item.price * waiterCart[id];
             });
-
-            if (selectedWaiterItems.length === 0) {
-                showAppDialog("Selecione ao menos um item para lançar o pedido.", "warning");
-                return;
-            }
-
-            try {
-                const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const kitchenOrderPayload = {
-                    restaurantId: currentRestaurantId,
-                    origin: `Mesa ${waiterActiveTable}`,
-                    time: time,
-                    items: selectedWaiterItems,
-                    status: 'pending',
-                    timestamp: Date.now(),
-                    totalPrice: orderTotal
-                };
-
-                const docRef = await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
-
-                const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`));
-                let currentTableHistory = [];
-                if (snapTable.exists() && Array.isArray(snapTable.data().orders)) currentTableHistory = snapTable.data().orders;
-
-                if (currentTableHistory.length && currentTableHistory[0]?.name && currentTableHistory[0]?.qty) {
-                    currentTableHistory = [{ orderId: `legacy-${Date.now()}`, createdAt: Date.now(), time, items: currentTableHistory.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) }];
-                }
-
-                currentTableHistory.push({
-                    orderId: docRef.id,
-                    createdAt: Date.now(),
-                    time,
-                    totalPrice: orderTotal,
-                    items: selectedWaiterItems
-                });
-
-                await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`), {
-                    restaurantId: currentRestaurantId,
-                    tableNum: waiterActiveTable,
-                    orders: currentTableHistory,
-                    updatedAt: Date.now()
-                });
-
-                const reportRef = doc(db, "reports", currentRestaurantId);
-                await setDoc(reportRef, {
-                    restaurantId: currentRestaurantId,
-                    totalRevenue: (Number(salesReport.totalRevenue) || 0) + orderTotal,
-                    totalOrders: (Number(salesReport.totalOrders) || 0) + 1,
-                    totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
-                }, { merge: true });
-
-                showAppDialog(`✅ Pedido da Mesa ${waiterActiveTable} enviado com sucesso para a cozinha!`, "success");
-                waiterCart = {};
-                renderWaiterMenu();
-            } catch (err) {
-                console.error(err);
-                showAppDialog("Erro ao enviar pedido do garçom.", "error");
-            }
-        };
-
-        // ===== LÓGICA DA COZINHA =====
-        window.switchKitchenTab = function(tab) {
-            activeKitchenTab = tab;
-            const btnTables = document.getElementById('tab-btn-tables');
-            const btnDelivery = document.getElementById('tab-btn-delivery');
-            const containerTables = document.getElementById('kitchen-tables-container');
-            const containerDelivery = document.getElementById('kitchen-delivery-container');
-
-            if (tab === 'tables') {
-                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
-                containerTables.classList.remove('hidden');
-                containerDelivery.classList.add('hidden');
-            } else {
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-white shadow cursor-pointer flex items-center justify-center gap-2";
-                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
-                containerDelivery.classList.remove('hidden');
-                containerTables.classList.add('hidden');
-            }
-            renderKitchenOrders();
-        };
-
-        function renderKitchenOrders() {
-            const containerTables = document.getElementById('kitchen-tables-container');
-            const containerDelivery = document.getElementById('kitchen-delivery-container');
-
-            if (!containerTables || !containerDelivery) return;
-
-            containerTables.innerHTML = '';
-            containerDelivery.innerHTML = '';
-
-            const tableOrders = kitchenOrders.filter(o => !o.origin || !o.origin.includes("DELIVERY"));
-            const deliveryOrders = kitchenOrders.filter(o => o.origin && o.origin.includes("DELIVERY"));
-
-            // Renderizar Pedidos de Salão
-            if (tableOrders.length === 0) {
-                containerTables.innerHTML = '<p class="text-slate-500 text-xs col-span-full text-center py-10">Nenhum pedido de salão pendente no momento.</p>';
-            } else {
-                tableOrders.forEach(order => {
-                    containerTables.innerHTML += createKitchenCardHTML(order, false);
-                });
-            }
-
-            // Renderizar Pedidos de Delivery
-            if (deliveryOrders.length === 0) {
-                containerDelivery.innerHTML = '<p class="text-slate-500 text-xs col-span-full text-center py-10">Nenhum pedido de delivery pendente no momento.</p>';
-            } else {
-                deliveryOrders.forEach(order => {
-                    containerDelivery.innerHTML += createKitchenCardHTML(order, true);
-                });
-            }
+            const el = document.getElementById('waiter-total-price');
+            if (el) el.innerText = total.toFixed(2);
         }
 
-        function createKitchenCardHTML(order, isDelivery) {
-            const isDelivered = order.status === 'delivered';
-            const statusBadge = isDelivered
-                ? `<span class="bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest">🛵 Em Rota</span>`
-                : `<span class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">⏳ Na Cozinha</span>`;
-
-            let itemsHTML = '';
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(i => {
-                    itemsHTML += `
-                        <li class="flex justify-between items-center text-xs py-1 border-b border-slate-800/50 last:border-0">
-                            <span class="text-slate-200 font-semibold"><strong class="text-amber-400">${i.qty}x</strong> ${i.name}</span>
-                            <span class="text-slate-400 font-mono text-[11px]">R$ ${((Number(i.price)||0)*i.qty).toFixed(2)}</span>
-                        </li>
-                    `;
-                });
-            }
-
-            let obsHTML = '';
-            if (order.observation) {
-                obsHTML = `
-                    <div class="mt-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
-                        <strong>Obs:</strong> ${order.observation}
-                    </div>
-                `;
-            }
-
-            let addressHTML = '';
-            if (isDelivery && order.address) {
-                const a = order.address;
-                addressHTML = `
-                    <div class="mt-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-0.5 text-slate-300">
-                        <p class="font-bold text-sky-400">👤 ${a.nome} (${a.phone})</p>
-                        <p>📍 ${a.rua}, Nº ${a.numero} - ${a.bairro}</p>
-                        <p class="text-[11px] text-slate-400">Ref: ${a.referencia}</p>
-                    </div>
-                `;
-            }
-
-            let actionBtnHTML = '';
-            if (isDelivery) {
-                actionBtnHTML = `
-                    <div class="grid grid-cols-2 gap-2 mt-4">
-                        <button onclick="window.startDriverGPS('${order.id}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            🛵 Iniciar GPS
-                        </button>
-                        <button onclick="window.completeKitchenOrder('${order.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            ✅ Concluir
-                        </button>
-                    </div>
-                `;
-            } else {
-                actionBtnHTML = `
-                    <button onclick="window.completeKitchenOrder('${order.id}')" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                        ✅ Concluir e Entregar
-                    </button>
-                `;
-            }
-
-            return `
-                <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                            <div>
-                                <h4 class="font-extrabold text-white text-base">${order.origin}</h4>
-                                <span class="text-[10px] text-slate-400 font-mono">Horário: ${order.time || '--:--'}</span>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        <ul class="space-y-1 mb-2">
-                            ${itemsHTML}
-                        </ul>
-                        ${obsHTML}
-                        ${addressHTML}
-                    </div>
-                    ${actionBtnHTML}
-                </div>
-            `;
-        }
-
-        window.completeKitchenOrder = async function(orderId) {
-            try {
-                await deleteDoc(doc(db, "kitchen", orderId));
-                showAppDialog("✅ Pedido finalizado!", "success");
-            } catch (err) {
-                console.error(err);
-                showAppDialog("Erro ao remover pedido da cozinha.", "error");
-            }
+        window.updateWaiterTable = function() {
+            const input = document.getElementById('waiter-table-number');
+            if (input) waiterActiveTable = input.value.trim();
         };
 
-        // ===== LÓGICA DO ADMINISTRADOR =====
+        // GESTÃO DE CATEGORIAS E PRODUTOS (ADMIN)
         function updateSelectCategories() {
             const select = document.getElementById('item-category-select');
-            if (!select) return;
-
-            const categoriesSet = new Set();
-            menuItems.forEach(item => {
-                if (item.category && item.category.trim() !== '') {
-                    categoriesSet.add(item.category.trim());
-                }
-            });
-
-            const categories = Array.from(categoriesSet).sort();
-            select.innerHTML = '';
-
-            if (categories.length === 0) {
-                select.innerHTML = '<option value="Geral">📂 Geral</option>';
-            } else {
-                categories.forEach(cat => {
-                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
-                });
-            }
+            if (!select || isCreatingNewCategory) return;
+            const categories = [...new Set(menuItems.map(i => i.category || 'Geral'))];
+            if (categories.length === 0) categories.push('Geral');
+            select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
         }
 
         window.toggleCategoryMode = function() {
             const container = document.getElementById('category-field-container');
             const btn = document.getElementById('toggle-cat-mode-btn');
+            isCreatingNewCategory = !isCreatingNewCategory;
 
-            if (!isCreatingNewCategory) {
-                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Nome da nova categoria..." required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">`;
-                btn.innerText = "📋 Usar Existente";
-                isCreatingNewCategory = true;
+            if (isCreatingNewCategory) {
+                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Nova Categoria..." required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">`;
+                btn.innerText = "↩️ Escolher Existente";
             } else {
                 container.innerHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500"></select>`;
                 btn.innerText = "➕ Nova Categoria";
-                isCreatingNewCategory = false;
                 updateSelectCategories();
             }
         };
@@ -2152,34 +1559,31 @@
             e.preventDefault();
             if (!currentRestaurantId) return;
 
-            const submitBtn = document.getElementById('submit-btn');
-            submitBtn.disabled = true;
-            submitBtn.innerText = "Cadastrando...";
-
             const name = document.getElementById('item-name').value.trim();
             const price = parseFloat(document.getElementById('item-price').value);
             const desc = document.getElementById('item-desc').value.trim();
             const fileInput = document.getElementById('item-file');
 
-            let category = "Geral";
+            let category = 'Geral';
             if (isCreatingNewCategory) {
-                const inputCat = document.getElementById('item-category-input');
-                if (inputCat && inputCat.value.trim() !== "") category = inputCat.value.trim();
+                category = document.getElementById('item-category-input').value.trim();
             } else {
-                const selectCat = document.getElementById('item-category-select');
-                if (selectCat && selectCat.value) category = selectCat.value;
+                category = document.getElementById('item-category-select').value;
             }
 
-            let imageUrl = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300";
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Cadastrando...";
 
+            let imgUrl = "";
             if (fileInput.files.length > 0) {
                 const formData = new FormData();
                 formData.append("image", fileInput.files[0]);
                 try {
                     const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
                     const data = await res.json();
-                    if(data.success) imageUrl = data.data.url;
-                } catch(err) { console.error("Erro upload:", err); }
+                    if (data.success) imgUrl = data.data.url;
+                } catch(err) { console.error("Erro upload imagem:", err); }
             }
 
             try {
@@ -2189,131 +1593,427 @@
                     price,
                     desc,
                     category,
-                    img: imageUrl,
-                    outOfStock: false
+                    img: imgUrl,
+                    available: true,
+                    createdAt: Date.now()
                 });
-
-                showAppDialog("✅ Item cadastrado com sucesso!", "success");
+                showAppDialog("✅ Item adicionado com sucesso!", "success");
                 e.target.reset();
-                if (isCreatingNewCategory) toggleCategoryMode();
+                if (isCreatingNewCategory) window.toggleCategoryMode();
             } catch(err) {
                 console.error(err);
-                showAppDialog("Erro ao adicionar produto.", "error");
+                showAppDialog("Erro ao cadastrar item.", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Adicionar ao Cardápio";
             }
         };
 
-        function renderAdminMenu() {
-            const tbody = document.getElementById('admin-menu-table');
-            if (!tbody) return;
-
-            tbody.innerHTML = '';
-
-            const filtered = menuItems.filter(item => {
-                if (!adminSearchTerm) return true;
-                const nameMatch = item.name.toLowerCase().includes(adminSearchTerm);
-                const descMatch = item.desc && item.desc.toLowerCase().includes(adminSearchTerm);
-                const catMatch = item.category && item.category.toLowerCase().includes(adminSearchTerm);
-                return nameMatch || descMatch || catMatch;
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 text-xs">Nenhum item cadastrado.</td></tr>';
-                return;
-            }
-
-            filtered.forEach(item => {
-                const isOutOfStock = item.outOfStock === true;
-                const stockBtnHTML = isOutOfStock
-                    ? `<button onclick="window.toggleStockItem('${item.id}', false)" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition">🟢 Reativar</button>`
-                    : `<button onclick="window.toggleStockItem('${item.id}', true)" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition">🔴 Esgotar</button>`;
-
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 text-xs">
-                        <td class="p-3">
-                            <img src="${item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300'}" class="w-10 h-10 object-cover rounded-lg bg-slate-800">
-                        </td>
-                        <td class="p-3">
-                            <p class="font-bold text-white">${item.name}</p>
-                            <span class="text-[10px] text-amber-400 font-semibold">${item.category || 'Geral'}</span>
-                        </td>
-                        <td class="p-3 font-bold text-emerald-400">R$ ${(Number(item.price)||0).toFixed(2)}</td>
-                        <td class="p-3 text-center">${stockBtnHTML}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="window.deleteMenuItem('${item.id}')" class="text-rose-400 hover:text-rose-300 font-bold px-2 py-1 rounded hover:bg-rose-500/10 transition cursor-pointer">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        window.toggleStockItem = async function(id, outOfStock) {
+        window.toggleItemAvailability = async function(id, currentStatus) {
             try {
-                await updateDoc(doc(db, "menu", id), { outOfStock });
-            } catch(e) { console.error(e); }
+                await updateDoc(doc(db, "menu", id), { available: !currentStatus });
+            } catch(err) { console.error(err); }
         };
 
-        window.deleteMenuItem = function(id) {
-            showAppConfirm("Deseja excluir este item do cardápio?", async () => {
+        window.deleteMenuItem = async function(id) {
+            showAppConfirm("Tem certeza que deseja remover este item?", async () => {
                 try {
                     await deleteDoc(doc(db, "menu", id));
                     showAppDialog("Item removido!", "success");
-                } catch(e) { console.error(e); }
+                } catch(err) { console.error(err); }
             }, "Excluir Item");
         };
 
-        function updateSalesReportView() {
-            const moneyElem = document.getElementById('sales-total-money');
-            const ordersElem = document.getElementById('sales-total-orders');
-            const itemsElem = document.getElementById('sales-total-items');
+        // ENVIO DE PEDIDOS
+        window.showOrderReviewModal = function() {
+            const items = [];
+            Object.keys(cart).forEach(id => {
+                const item = menuItems.find(i => i.id === id);
+                if (item) items.push({ ...item, qty: cart[id] });
+            });
 
-            if (moneyElem) moneyElem.innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
-            if (ordersElem) ordersElem.innerText = salesReport.totalOrders || 0;
-            if (itemsElem) itemsElem.innerText = salesReport.totalItemsSold || 0;
-        }
+            if (items.length === 0) {
+                showAppDialog("Selecione ao menos um item!", "warning");
+                return;
+            }
 
-        window.generateSalesReport = function() {
-            showAppDialog(`📊 Relatório do Dia:\n\n• Faturamento: R$ ${(salesReport.totalRevenue||0).toFixed(2)}\n• Pedidos: ${salesReport.totalOrders||0}\n• Itens Vendidos: ${salesReport.totalItemsSold||0}`, "info", "Relatório de Vendas");
+            pendingOrderItems = items;
+            const container = document.getElementById('review-modal-items');
+            container.innerHTML = items.map(i => `
+                <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                        <span class="font-bold text-white block">${i.name}</span>
+                        <span class="text-slate-400 font-mono">${i.qty}x R$ ${Number(i.price).toFixed(2)}</span>
+                    </div>
+                    <span class="font-black text-amber-400">R$ ${(i.qty * i.price).toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            const total = items.reduce((acc, i) => acc + (i.qty * i.price), 0);
+            document.getElementById('review-modal-total').innerText = total.toFixed(2);
+            document.getElementById('order-review-modal').classList.remove('hidden');
         };
 
-        window.clearSalesReport = function() {
-            showAppConfirm("Deseja zerar os relatórios de vendas do dia?", async () => {
-                if (!currentRestaurantId) return;
+        window.sendOrderDirect = async function() {
+            if (pendingOrderItems.length === 0) return;
+
+            const obs = document.getElementById('client-order-observation').value.trim();
+            const orderTotal = pendingOrderItems.reduce((acc, i) => acc + (i.qty * i.price), 0);
+
+            let deliveryData = null;
+            if (isDeliveryMode) {
+                const nome = document.getElementById('dev-nome').value.trim();
+                const phone = document.getElementById('dev-phone').value.trim();
+                const bairro = document.getElementById('dev-bairro').value.trim();
+                const rua = document.getElementById('dev-rua').value.trim();
+                const numero = document.getElementById('dev-numero').value.trim();
+                const ref = document.getElementById('dev-referencia').value.trim();
+
+                if (!nome || !phone || !bairro || !rua || !numero) {
+                    showAppDialog("Por favor, preencha todos os campos de entrega obrigatórios (*).", "warning");
+                    return;
+                }
+
+                deliveryData = { nome, phone, bairro, rua, numero, referencia: ref };
+            }
+
+            const orderPayload = {
+                restaurantId: currentRestaurantId,
+                tableNum: isDeliveryMode ? "Delivery" : currentTable,
+                items: pendingOrderItems,
+                observation: obs,
+                total: orderTotal,
+                status: 'pending',
+                timestamp: Date.now(),
+                isDelivery: isDeliveryMode,
+                deliveryInfo: deliveryData
+            };
+
+            try {
+                const docRef = await addDoc(collection(db, "kitchen"), orderPayload);
+
+                // Se for mesa local, atualiza registro da mesa no Firestore
+                if (!isDeliveryMode && currentTable) {
+                    const tableRef = doc(db, "tables", `${currentRestaurantId}_${currentTable}`);
+                    const tableSnap = await getDoc(tableRef);
+                    let existingOrders = tableSnap.exists() ? tableSnap.data().orders || [] : [];
+                    existingOrders.push(orderPayload);
+                    await setDoc(tableRef, {
+                        restaurantId: currentRestaurantId,
+                        tableNum: currentTable,
+                        orders: existingOrders,
+                        updatedAt: Date.now()
+                    }, { merge: true });
+                }
+
+                if (isDeliveryMode) {
+                    localStorage.setItem('lastDeliveryOrderId', docRef.id);
+                    currentActiveOrderId = docRef.id;
+                    document.getElementById('btn-track-order-redirect').classList.remove('hidden');
+                }
+
+                cart = {};
+                pendingOrderItems = [];
+                document.getElementById('order-review-modal').classList.add('hidden');
+                document.getElementById('order-success-modal').classList.remove('hidden');
+                renderClientMenu();
+            } catch(err) {
+                console.error(err);
+                showAppDialog("Erro ao enviar pedido.", "error");
+            }
+        };
+
+        window.submitWaiterOrder = async function() {
+            if (!waiterActiveTable) {
+                showAppDialog("Selecione o número da mesa!", "warning");
+                return;
+            }
+
+            const items = [];
+            Object.keys(waiterCart).forEach(id => {
+                const item = menuItems.find(i => i.id === id);
+                if (item) items.push({ ...item, qty: waiterCart[id] });
+            });
+
+            if (items.length === 0) {
+                showAppDialog("Adicione itens ao pedido!", "warning");
+                return;
+            }
+
+            const orderTotal = items.reduce((acc, i) => acc + (i.qty * i.price), 0);
+            const orderPayload = {
+                restaurantId: currentRestaurantId,
+                tableNum: waiterActiveTable,
+                items,
+                total: orderTotal,
+                status: 'pending',
+                timestamp: Date.now(),
+                isDelivery: false
+            };
+
+            try {
+                await addDoc(collection(db, "kitchen"), orderPayload);
+
+                const tableRef = doc(db, "tables", `${currentRestaurantId}_${waiterActiveTable}`);
+                const tableSnap = await getDoc(tableRef);
+                let existingOrders = tableSnap.exists() ? tableSnap.data().orders || [] : [];
+                existingOrders.push(orderPayload);
+                await setDoc(tableRef, {
+                    restaurantId: currentRestaurantId,
+                    tableNum: waiterActiveTable,
+                    orders: existingOrders,
+                    updatedAt: Date.now()
+                }, { merge: true });
+
+                waiterCart = {};
+                showAppDialog(`✅ Pedido lançado com sucesso na Mesa ${waiterActiveTable}!`, "success");
+                renderWaiterMenu();
+            } catch(err) {
+                console.error(err);
+                showAppDialog("Erro ao lançar pedido.", "error");
+            }
+        };
+
+        // MONITORAÇÃO DA COZINHA
+        window.switchKitchenTab = function(tab) {
+            activeKitchenTab = tab;
+            const btnTables = document.getElementById('tab-btn-tables');
+            const btnDelivery = document.getElementById('tab-btn-delivery');
+            const contTables = document.getElementById('kitchen-tables-container');
+            const contDelivery = document.getElementById('kitchen-delivery-container');
+
+            if (tab === 'tables') {
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-amber-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                contTables.classList.remove('hidden');
+                contDelivery.classList.add('hidden');
+            } else {
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-white shadow cursor-pointer flex items-center justify-center gap-2";
+                btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
+                contDelivery.classList.remove('hidden');
+                contTables.classList.add('hidden');
+            }
+        };
+
+        function renderKitchenOrders() {
+            const contTables = document.getElementById('kitchen-tables-container');
+            const contDelivery = document.getElementById('kitchen-delivery-container');
+            if (!contTables || !contDelivery) return;
+
+            const tableOrders = kitchenOrders.filter(o => !o.isDelivery);
+            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery);
+
+            contTables.innerHTML = tableOrders.length === 0 
+                ? `<p class="text-slate-400 text-xs text-center col-span-full py-8">Nenhum pedido no salão no momento.</p>` 
+                : tableOrders.map(o => createKitchenCardHTML(o)).join('');
+
+            contDelivery.innerHTML = deliveryOrders.length === 0 
+                ? `<p class="text-slate-400 text-xs text-center col-span-full py-8">Nenhum pedido de delivery no momento.</p>` 
+                : deliveryOrders.map(o => createKitchenCardHTML(o)).join('');
+        }
+
+        function createKitchenCardHTML(order) {
+            const isDone = order.status === 'ready';
+            return `
+                <div class="glass-card p-5 rounded-3xl border ${isDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30'} flex flex-col justify-between space-y-4 shadow-xl">
+                    <div>
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+                            <span class="font-extrabold text-sm ${order.isDelivery ? 'text-sky-400' : 'text-amber-400'}">
+                                ${order.isDelivery ? '🛵 Delivery' : `🍽️ Mesa ${order.tableNum}`}
+                            </span>
+                            <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-mono">
+                                ${new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+
+                        ${order.isDelivery && order.deliveryInfo ? `
+                            <div class="mb-3 p-2.5 bg-slate-900/80 rounded-xl text-[11px] text-slate-300 space-y-0.5 border border-slate-800">
+                                <p class="font-bold text-white">${order.deliveryInfo.nome} (${order.deliveryInfo.phone})</p>
+                                <p>${order.deliveryInfo.rua}, ${order.deliveryInfo.numero} - ${order.deliveryInfo.bairro}</p>
+                                ${order.deliveryInfo.referencia ? `<p class="text-slate-400 italic">Ref: ${order.deliveryInfo.referencia}</p>` : ''}
+                            </div>
+                        ` : ''}
+
+                        <ul class="space-y-1.5 text-xs text-slate-200">
+                            ${order.items.map(i => `
+                                <li class="flex justify-between border-b border-slate-800/40 pb-1">
+                                    <span><b class="text-amber-400">${i.qty}x</b> ${i.name}</span>
+                                    <span class="font-mono text-slate-400">R$ ${(i.qty * i.price).toFixed(2)}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+
+                        ${order.observation ? `
+                            <div class="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300">
+                                <b>Obs:</b> ${order.observation}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400">Total: R$ ${Number(order.total).toFixed(2)}</span>
+                        <button onclick="window.updateOrderStatus('${order.id}', '${isDone ? 'pending' : 'ready'}')" class="px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition ${isDone ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}">
+                            ${isDone ? '↩️ Em Preparo' : '✅ Pedido Pronto'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.updateOrderStatus = async function(orderId, newStatus) {
+            try {
+                await updateDoc(doc(db, "kitchen", orderId), { status: newStatus });
+            } catch(err) { console.error(err); }
+        };
+
+        // RELATÓRIOS E FECHAMENTO DE MESA
+        function updateSalesReportView() {
+            document.getElementById('sales-total-money').innerText = Number(salesReport.totalRevenue || 0).toFixed(2);
+            document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
+            document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
+        }
+
+        window.generateSalesReport = async function() {
+            showAppDialog("Relatório atualizado com base nos dados do Firestore em tempo real.", "info");
+        };
+
+        window.clearSalesReport = async function() {
+            showAppConfirm("Deseja realmente zerar o relatório de vendas do dia?", async () => {
                 try {
                     await setDoc(doc(db, "reports", currentRestaurantId), {
-                        restaurantId: currentRestaurantId,
                         totalRevenue: 0,
                         totalOrders: 0,
                         totalItemsSold: 0
                     });
-                    showAppDialog("Relatórios zerados com sucesso!", "success");
-                } catch(e) { console.error(e); }
+                    showAppDialog("Relatório zerado!", "success");
+                } catch(err) { console.error(err); }
             }, "Zerar Relatório");
         };
 
-        // ===== QR CODE E LINKS =====
+        window.prepareInvoice = function() {
+            const tableNum = document.getElementById('print-table-number').value.trim();
+            const preview = document.getElementById('invoice-preview');
+
+            if (!tableNum || !activeTables[tableNum]) {
+                preview.innerText = "Mesa sem pedidos ativos ou não encontrada.";
+                activeInvoiceText = "";
+                return;
+            }
+
+            const tableData = activeTables[tableNum];
+            let total = 0;
+            let itemsSummary = [];
+
+            (tableData.orders || []).forEach(o => {
+                if (o.items) {
+                    o.items.forEach(i => {
+                        itemsSummary.push(`${i.qty}x ${i.name} - R$ ${(i.qty * i.price).toFixed(2)}`);
+                        total += (i.qty * i.price);
+                    });
+                }
+            });
+
+            const text = `
+=== ${restaurantInfo.name || 'FastOrder'} ===
+Mesa: ${tableNum}
+Data: ${new Date().toLocaleString()}
+--------------------------------
+${itemsSummary.join('\n')}
+--------------------------------
+TOTAL: R$ ${total.toFixed(2)}
+================================
+Obrigado pela preferência!
+            `.trim();
+
+            activeInvoiceText = text;
+            preview.innerText = text;
+        };
+
+        window.printInvoice = function() {
+            if (!activeInvoiceText) {
+                showAppDialog("Busque uma mesa válida primeiro!", "warning");
+                return;
+            }
+            const printSec = document.getElementById('invoice-print-section');
+            printSec.innerText = activeInvoiceText;
+            window.print();
+        };
+
+        window.downloadInvoiceTXT = function() {
+            if (!activeInvoiceText) {
+                showAppDialog("Busque uma mesa válida primeiro!", "warning");
+                return;
+            }
+            const blob = new Blob([activeInvoiceText], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `comprovante-mesa-${document.getElementById('print-table-number').value}.txt`;
+            a.click();
+        };
+
+        window.confirmPayment = async function() {
+            const tableNum = document.getElementById('print-table-number').value.trim();
+            if (!tableNum || !activeTables[tableNum]) return;
+
+            showAppConfirm(`Confirmar pagamento e liberar a Mesa ${tableNum}?`, async () => {
+                try {
+                    const tableData = activeTables[tableNum];
+                    let totalRev = 0;
+                    let totalItems = 0;
+
+                    (tableData.orders || []).forEach(o => {
+                        if (o.items) {
+                            o.items.forEach(i => {
+                                totalRev += (i.qty * i.price);
+                                totalItems += i.qty;
+                            });
+                        }
+                    });
+
+                    // Atualizar relatórios
+                    const repRef = doc(db, "reports", currentRestaurantId);
+                    const repSnap = await getDoc(repRef);
+                    const currentRep = repSnap.exists() ? repSnap.data() : { totalRevenue: 0, totalOrders: 0, totalItemsSold: 0 };
+
+                    await setDoc(repRef, {
+                        totalRevenue: (currentRep.totalRevenue || 0) + totalRev,
+                        totalOrders: (currentRep.totalOrders || 0) + (tableData.orders || []).length,
+                        totalItemsSold: (currentRep.totalItemsSold || 0) + totalItems
+                    }, { merge: true });
+
+                    // Apagar mesa ativa
+                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_${tableNum}`));
+                    showAppDialog(`Mesa ${tableNum} liberada com sucesso!`, "success");
+                    document.getElementById('invoice-preview').innerText = "Insira o número da mesa acima.";
+                    activeInvoiceText = "";
+                } catch(err) { console.error(err); }
+            }, "Liberar Mesa");
+        };
+
+        // GERADOR DE QR CODE E LINKS MULTI-TENANT
         window.toggleLinkTypeSelector = function() {
             const type = document.getElementById('qr-link-type').value;
             const container = document.getElementById('qr-table-input-container');
-            if (type === 'mesa') container.classList.remove('hidden');
-            else container.classList.add('hidden');
+            if (type === 'delivery') container.classList.add('hidden');
+            else container.classList.remove('hidden');
         };
 
         window.generateAccessCode = function() {
             if (!currentRestaurantId) return;
-
             const type = document.getElementById('qr-link-type').value;
+            const tableNum = document.getElementById('qr-table-number').value.trim();
+
             const baseUrl = window.location.origin + window.location.pathname;
-            let finalUrl = "";
+            let finalUrl = `${baseUrl}?restaurante=${currentRestaurantId}`;
 
             if (type === 'mesa') {
-                const tableNum = document.getElementById('qr-table-number').value.trim();
-                if (!tableNum) { showAppDialog("Digite o número da mesa.", "warning"); return; }
-                finalUrl = `${baseUrl}?restaurante=${currentRestaurantId}&mesa=${tableNum}`;
+                if (!tableNum) {
+                    showAppDialog("Digite o número da mesa!", "warning");
+                    return;
+                }
+                finalUrl += `&mesa=${tableNum}`;
             } else {
-                finalUrl = `${baseUrl}?restaurante=${currentRestaurantId}&delivery=true`;
+                finalUrl += `&delivery=true`;
             }
 
             globalGeneratedLink = finalUrl;
@@ -2323,108 +2023,83 @@
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
                 text: finalUrl,
-                width: 140,
-                height: 140
+                width: 150,
+                height: 150
             });
 
             document.getElementById('download-btn-container').classList.remove('hidden');
         };
 
         window.downloadQRCode = function() {
-            const qrImg = document.querySelector('#qrcode-container img');
-            if (!qrImg) return;
-            const link = document.createElement('a');
-            link.href = qrImg.src;
-            link.download = 'qrcode-fastorder.png';
-            link.click();
+            const img = document.querySelector('#qrcode-container img');
+            if (!img) return;
+            const a = document.createElement('a');
+            a.href = img.src;
+            a.download = `qrcode-restaurante.png`;
+            a.click();
         };
 
         window.shareOnWhatsApp = function() {
             if (!globalGeneratedLink) return;
-            const msg = encodeURIComponent(`Acesse nosso cardápio digital pelo link: ${globalGeneratedLink}`);
+            const msg = encodeURIComponent(`Acesse nosso cardápio digital: ${globalGeneratedLink}`);
             window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
         };
 
-        // ===== FECHAMENTO DE CONTA / IMPRESSÃO =====
-        window.prepareInvoice = function() {
-            const tableNum = document.getElementById('print-table-number').value.trim();
-            const preview = document.getElementById('invoice-preview');
+        // RASTREAMENTO CLIENTE EM TEMPO REAL
+        function setupClientRealtimeTracking() {
+            if (!currentRestaurantId) return;
 
-            if (!tableNum) {
-                preview.innerHTML = "Insira o número da mesa acima.";
-                activeInvoiceText = "";
-                return;
-            }
+            const tracker = document.getElementById('client-delivery-tracker');
+            const tableStatus = document.getElementById('client-table-status');
 
-            const tableData = activeTables[tableNum];
-            if (!tableData || !tableData.orders || tableData.orders.length === 0) {
-                preview.innerHTML = `Mesa ${tableNum} está sem consumação em aberto.`;
-                activeInvoiceText = "";
-                return;
-            }
+            if (isDeliveryMode && currentActiveOrderId) {
+                if (tracker) tracker.classList.remove('hidden');
+                if (tableStatus) tableStatus.classList.add('hidden');
 
-            let total = 0;
-            let text = `================================\n`;
-            text += `      ${(restaurantInfo.name || "RESTAURANTE").toUpperCase()}\n`;
-            text += `================================\n`;
-            text += ` EXTRATO CONTA - MESA ${tableNum.padStart(2, '0')}\n`;
-            text += ` Data: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}\n`;
-            text += `--------------------------------\n`;
-            text += ` QTD  ITEM               VALOR  \n`;
-            text += `--------------------------------\n`;
+                if (unsubscribeActiveOrder) unsubscribeActiveOrder();
 
-            tableData.orders.forEach(o => {
-                if (o.items && Array.isArray(o.items)) {
-                    o.items.forEach(i => {
-                        const sub = (Number(i.price) || 0) * i.qty;
-                        total += sub;
-                        const nameStr = i.name.padEnd(18, ' ').substring(0, 18);
-                        const qtyStr = i.qty.toString().padStart(3, ' ');
-                        const subStr = sub.toFixed(2).padStart(7, ' ');
-                        text += `${qtyStr}  ${nameStr} ${subStr}\n`;
-                    });
+                unsubscribeActiveOrder = onSnapshot(doc(db, "kitchen", currentActiveOrderId), (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        const badge = document.getElementById('tracker-status-badge');
+                        if (badge) {
+                            if (data.status === 'ready') {
+                                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+                                badge.innerText = "🛵 Saiu para Entrega / Pronto";
+                            } else {
+                                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30";
+                                badge.innerText = "⏳ Preparando Pedido";
+                            }
+                        }
+
+                        const itemsList = document.getElementById('tracker-order-items');
+                        if (itemsList && data.items) {
+                            itemsList.innerHTML = data.items.map(i => `
+                                <li class="flex justify-between">
+                                    <span><b>${i.qty}x</b> ${i.name}</span>
+                                    <span>R$ ${(i.qty * i.price).toFixed(2)}</span>
+                                </li>
+                            `).join('');
+                        }
+
+                        const totalEl = document.getElementById('tracker-order-total');
+                        if (totalEl) totalEl.innerText = Number(data.total || 0).toFixed(2);
+                    }
+                });
+            } else if (!isDeliveryMode && currentTable) {
+                if (tracker) tracker.classList.add('hidden');
+                const tableData = activeTables[currentTable];
+                if (tableData && tableData.orders && tableData.orders.length > 0) {
+                    if (tableStatus) tableStatus.classList.remove('hidden');
+                } else {
+                    if (tableStatus) tableStatus.classList.add('hidden');
                 }
-            });
+            }
+        }
 
-            text += `--------------------------------\n`;
-            text += ` TOTAL:             R$ ${total.toFixed(2).padStart(8, ' ')}\n`;
-            text += `================================\n`;
-            text += `    Obrigado pela preferência!   \n`;
-            text += `================================\n`;
-
-            activeInvoiceText = text;
-            preview.innerText = text;
-        };
-
-        window.printInvoice = function() {
-            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com consumo primeiro.", "warning"); return; }
-            const printSec = document.getElementById('invoice-print-section');
-            printSec.innerText = activeInvoiceText;
-            window.print();
-        };
-
-        window.downloadInvoiceTXT = function() {
-            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com consumo primeiro.", "warning"); return; }
-            const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `extrato-mesa.txt`;
-            link.click();
-        };
-
-        window.confirmPayment = function() {
-            const tableNum = document.getElementById('print-table-number').value.trim();
-            if (!tableNum) { showAppDialog("Informe a mesa.", "warning"); return; }
-
-            showAppConfirm(`Deseja liberar e fechar a conta da Mesa ${tableNum}?`, async () => {
-                if (!currentRestaurantId) return;
-                try {
-                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
-                    document.getElementById('invoice-preview').innerText = `Mesa ${tableNum} liberada com sucesso!`;
-                    activeInvoiceText = "";
-                    showAppDialog(`✅ Mesa ${tableNum} liberada!`, "success");
-                } catch(e) { console.error(e); }
-            }, "Liberar Mesa");
+        window.redirectToTrackingPage = function() {
+            document.getElementById('order-success-modal').classList.add('hidden');
+            setupClientRealtimeTracking();
         };
 
     </script>
