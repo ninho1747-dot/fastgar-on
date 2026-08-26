@@ -1052,6 +1052,7 @@
                 renderAdminMenu();
                 updateSelectCategories();
             });
+            unsubs.push(unsubProfile); // Reutilizando a variável de lista de unsubs unsubs.push(unsubMenu);
             unsubs.push(unsubMenu);
 
             // 2. Ouvir Relatório do Restaurante
@@ -1756,123 +1757,38 @@
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
-                    showAppDialog("📍 GPS Conectado com sucesso!", "success");
                 },
-                (error) => {
-                    showAppDialog("Ative a permissão de GPS no celular.", "warning");
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                (err) => console.error(err),
+                { enableHighAccuracy: true }
             );
 
             driverWatchId = navigator.geolocation.watchPosition(
                 (position) => {
                     updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
                 },
-                (error) => { console.warn("GPS aviso:", error); },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                (err) => console.error(err),
+                { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
             );
 
             driverHeartbeatInterval = setInterval(() => {
-                const elapsedSeconds = (Date.now() - lastGpsTimestamp) / 1000;
-                if (elapsedSeconds > 5) {
+                if (Date.now() - lastGpsTimestamp > 5000) {
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
                             updateDriverLocation(orderId, position.coords.latitude, position.coords.longitude);
                         },
-                        (err) => console.warn("Erro no GPS heartbeat:", err),
-                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                        (err) => console.error(err),
+                        { enableHighAccuracy: true }
                     );
                 }
-            }, 5000);
-        }
+            }, 6000);
 
-        window.stopDriverGPS = function() {
-            if (driverWatchId !== null) {
-                navigator.geolocation.clearWatch(driverWatchId);
-                driverWatchId = null;
-            }
-            if (driverHeartbeatInterval !== null) {
-                clearInterval(driverHeartbeatInterval);
-                driverHeartbeatInterval = null;
-            }
-        }
+            showAppDialog("🛵 Rastreio GPS ativado para o entregador!", "success");
+        };
 
-        window.markAsDelivered = async function(id) {
-            try {
-                const orderRef = doc(db, "kitchen", id);
-                await updateDoc(orderRef, { status: 'delivered' });
-                window.startDriverGPS(id);
-            } catch(e) { console.error(e); }
-        }
-
-        window.toggleLinkTypeSelector = function() {
-            const type = document.getElementById('qr-link-type').value;
-            const container = document.getElementById('qr-table-input-container');
-            if (type === 'delivery') container.classList.add('hidden');
-            else container.classList.remove('hidden');
-        }
-
-        window.generateAccessCode = async function() {
-            if (!currentRestaurantId) {
-                showAppDialog("Sessão expirada. Faça login novamente.", "warning");
-                return;
-            }
-
-            const type = document.getElementById('qr-link-type').value;
-            const qrContainer = document.getElementById('qrcode-container');
-            const baseUrl = window.location.href.split('?')[0];
-            
-            qrContainer.innerHTML = "";
-            
-            if (type === 'delivery') {
-                globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&delivery=true`;
-            } else {
-                const tableNum = document.getElementById('qr-table-number').value;
-                if(!tableNum) { showAppDialog("Informe o número da mesa!", "warning"); return; }
-                globalGeneratedLink = `${baseUrl}?restaurante=${currentRestaurantId}&mesa=${tableNum}`;
-
-                try {
-                    const mesaDocRef = doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`);
-                    const snap = await getDoc(mesaDocRef);
-                    if (!snap.exists()) {
-                        await setDoc(mesaDocRef, { 
-                            restaurantId: currentRestaurantId,
-                            tableNum: tableNum,
-                            orders: [] 
-                        });
-                    }
-                } catch(e) {
-                    console.error("Erro mesa QR Code:", e);
-                }
-            }
-
-            new QRCode(qrContainer, { text: globalGeneratedLink, width: 160, height: 160 });
-            document.getElementById('generated-pure-link').innerText = globalGeneratedLink;
-            document.getElementById('download-btn-container').classList.remove('hidden');
-        }
-
-        window.downloadQRCode = function() {
-            const img = document.querySelector("#qrcode-container img");
-            if (img) {
-                const a = document.createElement("a");
-                a.href = img.src;
-                a.download = `qrcode_restaurante_${currentRestaurantId}.png`;
-                a.click();
-            } else {
-                showAppDialog("Gere o QR Code primeiro.", "info");
-            }
-        }
-
-        window.shareOnWhatsApp = function() {
-            if (!globalGeneratedLink) { showAppDialog("Gere um link primeiro.", "info"); return; }
-            const text = encodeURIComponent(`Olá! Acesse nosso cardápio digital por aqui: ${globalGeneratedLink}`);
-            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-        }
-
-        // FUNÇÕES DO PAINEL DO GARÇOM
+        // ===== LÓGICA DO GARÇOM =====
         window.updateWaiterTable = function() {
-            waiterActiveTable = document.getElementById('waiter-table-number').value;
-            waiterCart = {};
+            const tableInput = document.getElementById('waiter-table-number');
+            waiterActiveTable = tableInput ? tableInput.value.trim() : null;
             renderWaiterMenu();
         };
 
@@ -1880,9 +1796,9 @@
             const container = document.getElementById('waiter-dynamic-menu-container');
             const tabsContainer = document.getElementById('waiter-category-tabs-container');
 
-            if(!container) return;
+            if (!container) return;
             container.innerHTML = '';
-            if(tabsContainer) tabsContainer.innerHTML = '';
+            if (tabsContainer) tabsContainer.innerHTML = '';
 
             const filteredItems = menuItems.filter(item => {
                 if (!waiterSearchTerm) return true;
@@ -1933,7 +1849,7 @@
                 categorySection.id = categoryId;
                 categorySection.className = "space-y-4 scroll-mt-28";
                 categorySection.innerHTML = `
-                    <h3 class="text-lg font-black text-amber-400 mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
+                    <h3 class="text-lg font-black text-white mb-4 flex items-center gap-2 border-b pb-2 border-slate-800/80 uppercase tracking-wider">${categoryName}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 `;
 
@@ -1950,7 +1866,7 @@
 
         window.updateWaiterQuantity = function(id, change) {
             const item = menuItems.find(i => i.id === id);
-            if (item && item.outOfStock) return; 
+            if (item && item.outOfStock) return;
 
             if (!waiterCart[id]) waiterCart[id] = 0;
             waiterCart[id] += change;
@@ -1961,54 +1877,76 @@
         function updateWaiterTotal() {
             let total = 0;
             menuItems.forEach(item => { if (waiterCart[item.id]) total += (Number(item.price) || 0) * waiterCart[item.id]; });
-            const totalElem = document.getElementById('waiter-total-price');
-            if(totalElem) totalElem.innerText = total.toFixed(2);
+            const elem = document.getElementById('waiter-total-price');
+            if (elem) elem.innerText = total.toFixed(2);
         }
 
         window.submitWaiterOrder = async function() {
             if (!currentRestaurantId) {
-                showAppDialog("Restaurante não identificado.", "info");
+                showAppDialog("Restaurante não identificado.", "error");
                 return;
             }
-            if (!waiterActiveTable) { showAppDialog('Digite o número da mesa!', "warning"); return; }
-            
-            const waiterItems = [];
+
+            if (!waiterActiveTable || waiterActiveTable.trim() === "") {
+                showAppDialog("Por favor, selecione/digite o número da mesa a ser atendida.", "warning");
+                return;
+            }
+
+            const selectedWaiterItems = [];
             let orderTotal = 0;
             let itemsCount = 0;
 
             menuItems.forEach(item => {
                 if (waiterCart[item.id] && !item.outOfStock) {
                     const parsedPrice = Number(item.price) || 0;
-                    waiterItems.push({ name: item.name, qty: waiterCart[item.id], price: parsedPrice });
-                    orderTotal += parsedPrice * waiterCart[item.id];
-                    itemsCount += waiterCart[item.id];
+                    const qty = waiterCart[item.id];
+                    selectedWaiterItems.push({ name: item.name, qty: qty, price: parsedPrice });
+                    orderTotal += parsedPrice * qty;
+                    itemsCount += qty;
                 }
             });
 
-            if (waiterItems.length === 0) { showAppDialog('Selecione ao menos um item!', "warning"); return; }
+            if (selectedWaiterItems.length === 0) {
+                showAppDialog("Selecione ao menos um item para lançar o pedido.", "warning");
+                return;
+            }
 
             try {
                 const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                const kitchenItems = waiterItems.map(i => ({ name: i.name, qty: i.qty, price: i.price }));
-                
-                const docRef = await addDoc(collection(db, "kitchen"), {
+                const kitchenOrderPayload = {
                     restaurantId: currentRestaurantId,
                     origin: `Mesa ${waiterActiveTable}`,
                     time: time,
-                    items: kitchenItems,
+                    items: selectedWaiterItems,
                     status: 'pending',
                     timestamp: Date.now(),
                     totalPrice: orderTotal
-                });
+                };
+
+                const docRef = await addDoc(collection(db, "kitchen"), kitchenOrderPayload);
 
                 const snapTable = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`));
                 let currentTableHistory = [];
                 if (snapTable.exists() && Array.isArray(snapTable.data().orders)) currentTableHistory = snapTable.data().orders;
+
                 if (currentTableHistory.length && currentTableHistory[0]?.name && currentTableHistory[0]?.qty) {
                     currentTableHistory = [{ orderId: `legacy-${Date.now()}`, createdAt: Date.now(), time, items: currentTableHistory.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) }];
                 }
-                currentTableHistory.push({ orderId: docRef.id, createdAt: Date.now(), time, observation: "", totalPrice: orderTotal, items: waiterItems.map(i => ({name:i.name, qty:i.qty, price:Number(i.price)||0})) });
-                await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`), { restaurantId: currentRestaurantId, tableNum: waiterActiveTable, orders: currentTableHistory, updatedAt: Date.now() });
+
+                currentTableHistory.push({
+                    orderId: docRef.id,
+                    createdAt: Date.now(),
+                    time,
+                    totalPrice: orderTotal,
+                    items: selectedWaiterItems
+                });
+
+                await setDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${waiterActiveTable}`), {
+                    restaurantId: currentRestaurantId,
+                    tableNum: waiterActiveTable,
+                    orders: currentTableHistory,
+                    updatedAt: Date.now()
+                });
 
                 const reportRef = doc(db, "reports", currentRestaurantId);
                 await setDoc(reportRef, {
@@ -2018,16 +1956,16 @@
                     totalItemsSold: (Number(salesReport.totalItemsSold) || 0) + itemsCount
                 }, { merge: true });
 
-                showAppDialog(`✅ Pedido enviado para a Mesa ${waiterActiveTable}!`, "success");
+                showAppDialog(`✅ Pedido da Mesa ${waiterActiveTable} enviado com sucesso para a cozinha!`, "success");
                 waiterCart = {};
                 renderWaiterMenu();
-            } catch (error) { 
-                console.error(error); 
-                showAppDialog("Erro ao lançar pedido.", "error");
+            } catch (err) {
+                console.error(err);
+                showAppDialog("Erro ao enviar pedido do garçom.", "error");
             }
         };
 
-        // CONTROLE DA COZINHA
+        // ===== LÓGICA DA COZINHA =====
         window.switchKitchenTab = function(tab) {
             activeKitchenTab = tab;
             const btnTables = document.getElementById('tab-btn-tables');
@@ -2041,36 +1979,38 @@
                 containerTables.classList.remove('hidden');
                 containerDelivery.classList.add('hidden');
             } else {
-                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-slate-950 shadow cursor-pointer flex items-center justify-center gap-2";
+                btnDelivery.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition bg-sky-500 text-white shadow cursor-pointer flex items-center justify-center gap-2";
                 btnTables.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-xs transition text-slate-400 hover:text-white cursor-pointer flex items-center justify-center gap-2";
                 containerDelivery.classList.remove('hidden');
                 containerTables.classList.add('hidden');
             }
+            renderKitchenOrders();
         };
 
         function renderKitchenOrders() {
             const containerTables = document.getElementById('kitchen-tables-container');
             const containerDelivery = document.getElementById('kitchen-delivery-container');
 
-            if(!containerTables || !containerDelivery) return;
+            if (!containerTables || !containerDelivery) return;
+
             containerTables.innerHTML = '';
             containerDelivery.innerHTML = '';
 
-            const tableOrders = kitchenOrders.filter(o => !o.origin || !o.origin.includes('DELIVERY'));
-            const deliveryOrders = kitchenOrders.filter(o => o.origin && o.origin.includes('DELIVERY'));
+            const tableOrders = kitchenOrders.filter(o => !o.origin || !o.origin.includes("DELIVERY"));
+            const deliveryOrders = kitchenOrders.filter(o => o.origin && o.origin.includes("DELIVERY"));
 
-            // Renderizar Salão
+            // Renderizar Pedidos de Salão
             if (tableOrders.length === 0) {
-                containerTables.innerHTML = '<p class="text-slate-500 text-center col-span-full py-12 text-sm">Nenhum pedido pendente no Salão. 🍽️</p>';
+                containerTables.innerHTML = '<p class="text-slate-500 text-xs col-span-full text-center py-10">Nenhum pedido de salão pendente no momento.</p>';
             } else {
                 tableOrders.forEach(order => {
                     containerTables.innerHTML += createKitchenCardHTML(order, false);
                 });
             }
 
-            // Renderizar Delivery
+            // Renderizar Pedidos de Delivery
             if (deliveryOrders.length === 0) {
-                containerDelivery.innerHTML = '<p class="text-slate-500 text-center col-span-full py-12 text-sm">Nenhum pedido de Delivery ativo. 🛵</p>';
+                containerDelivery.innerHTML = '<p class="text-slate-500 text-xs col-span-full text-center py-10">Nenhum pedido de delivery pendente no momento.</p>';
             } else {
                 deliveryOrders.forEach(order => {
                     containerDelivery.innerHTML += createKitchenCardHTML(order, true);
@@ -2078,131 +2018,105 @@
             }
         }
 
-        function createKitchenCardHTML(order, isDelivery = false) {
-            let itemsHTML = '';
-            let totalOrderVal = 0;
+        function createKitchenCardHTML(order, isDelivery) {
+            const isDelivered = order.status === 'delivered';
+            const statusBadge = isDelivered
+                ? `<span class="bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest">🛵 Em Rota</span>`
+                : `<span class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">⏳ Na Cozinha</span>`;
 
+            let itemsHTML = '';
             if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
-                    const priceNum = Number(item.price) || 0;
-                    totalOrderVal += priceNum * item.qty;
+                order.items.forEach(i => {
                     itemsHTML += `
-                        <li class="flex justify-between items-center text-xs py-1 border-b border-slate-800/60 last:border-0">
-                            <span class="text-slate-200 font-medium"><strong class="text-amber-400 font-bold">${item.qty}x</strong> ${item.name}</span>
-                            <span class="text-slate-400 text-[11px]">R$ ${(priceNum * item.qty).toFixed(2)}</span>
+                        <li class="flex justify-between items-center text-xs py-1 border-b border-slate-800/50 last:border-0">
+                            <span class="text-slate-200 font-semibold"><strong class="text-amber-400">${i.qty}x</strong> ${i.name}</span>
+                            <span class="text-slate-400 font-mono text-[11px]">R$ ${((Number(i.price)||0)*i.qty).toFixed(2)}</span>
                         </li>
                     `;
                 });
             }
 
-            const obsHTML = order.observation ? `
-                <div class="mt-3 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
-                    <strong>⚠️ Obs:</strong> ${order.observation}
-                </div>
-            ` : '';
+            let obsHTML = '';
+            if (order.observation) {
+                obsHTML = `
+                    <div class="mt-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
+                        <strong>Obs:</strong> ${order.observation}
+                    </div>
+                `;
+            }
 
             let addressHTML = '';
             if (isDelivery && order.address) {
                 const a = order.address;
                 addressHTML = `
-                    <div class="mt-3 p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl text-xs text-slate-300 space-y-1">
-                        <p class="font-bold text-sky-400 flex items-center gap-1">👤 ${a.nome} (${a.phone})</p>
+                    <div class="mt-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-0.5 text-slate-300">
+                        <p class="font-bold text-sky-400">👤 ${a.nome} (${a.phone})</p>
                         <p>📍 ${a.rua}, Nº ${a.numero} - ${a.bairro}</p>
                         <p class="text-[11px] text-slate-400">Ref: ${a.referencia}</p>
                     </div>
                 `;
             }
 
-            let actionButtonsHTML = '';
+            let actionBtnHTML = '';
             if (isDelivery) {
-                if (order.status === 'delivered') {
-                    actionButtonsHTML = `
-                        <button onclick="window.stopDriverGPS()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            ⏹️ Parar GPS
+                actionBtnHTML = `
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button onclick="window.startDriverGPS('${order.id}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            🛵 Iniciar GPS
                         </button>
-                        <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            ✅ Concluir Entrega
+                        <button onclick="window.completeKitchenOrder('${order.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                            ✅ Concluir
                         </button>
-                    `;
-                } else {
-                    actionButtonsHTML = `
-                        <button onclick="window.markAsDelivered('${order.id}')" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            🛵 Despachar Delivery (Ativar GPS)
-                        </button>
-                        <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                            ✅ Finalizar
-                        </button>
-                    `;
-                }
+                    </div>
+                `;
             } else {
-                actionButtonsHTML = `
-                    <button onclick="window.clearKitchenOrder('${order.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
-                        ✅ Concluir Pedido
+                actionBtnHTML = `
+                    <button onclick="window.completeKitchenOrder('${order.id}')" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1">
+                        ✅ Concluir e Entregar
                     </button>
                 `;
             }
 
-            const headerBg = isDelivery ? 'bg-sky-500/10 border-sky-500/30' : 'bg-amber-500/10 border-amber-500/30';
-            const titleCol = isDelivery ? 'text-sky-400' : 'text-amber-400';
-
             return `
-                <div class="glass-card rounded-2xl p-5 border border-slate-800 flex flex-col justify-between space-y-4 shadow-xl">
+                <div class="glass-card p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
                             <div>
-                                <span class="text-[10px] font-bold ${titleCol} uppercase tracking-wider block">${order.origin}</span>
-                                <span class="text-xs text-slate-400">🕒 ${order.time || 'Agora'}</span>
+                                <h4 class="font-extrabold text-white text-base">${order.origin}</h4>
+                                <span class="text-[10px] text-slate-400 font-mono">Horário: ${order.time || '--:--'}</span>
                             </div>
-                            <span class="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                                R$ ${(order.totalPrice || totalOrderVal).toFixed(2)}
-                            </span>
+                            ${statusBadge}
                         </div>
-
-                        ${addressHTML}
-                        ${obsHTML}
-
-                        <ul class="mt-4 space-y-1">
+                        <ul class="space-y-1 mb-2">
                             ${itemsHTML}
                         </ul>
+                        ${obsHTML}
+                        ${addressHTML}
                     </div>
-
-                    <div class="pt-3 border-t border-slate-800/80 space-y-2">
-                        ${actionButtonsHTML}
-                    </div>
+                    ${actionBtnHTML}
                 </div>
             `;
         }
 
-        window.clearKitchenOrder = async function(id) {
+        window.completeKitchenOrder = async function(orderId) {
             try {
-                await deleteDoc(doc(db, "kitchen", id));
-            } catch(e) { console.error(e); }
-        };
-
-        // ADMINISTRAÇÃO DE CARDÁPIO E INVOICES
-        window.toggleCategoryMode = function() {
-            isCreatingNewCategory = !isCreatingNewCategory;
-            const container = document.getElementById('category-field-container');
-            const btn = document.getElementById('toggle-cat-mode-btn');
-
-            if (isCreatingNewCategory) {
-                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Digite a nova categoria..." required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500">`;
-                btn.innerText = "↩️ Selecionar Categoria Existent";
-            } else {
-                container.innerHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500"></select>`;
-                btn.innerText = "➕ Nova Categoria";
-                updateSelectCategories();
+                await deleteDoc(doc(db, "kitchen", orderId));
+                showAppDialog("✅ Pedido finalizado!", "success");
+            } catch (err) {
+                console.error(err);
+                showAppDialog("Erro ao remover pedido da cozinha.", "error");
             }
         };
 
+        // ===== LÓGICA DO ADMINISTRADOR =====
         function updateSelectCategories() {
             const select = document.getElementById('item-category-select');
             if (!select) return;
 
             const categoriesSet = new Set();
-            menuItems.forEach(i => {
-                if(i.category && i.category.toString().trim() !== "") {
-                    categoriesSet.add(i.category.toString().trim());
+            menuItems.forEach(item => {
+                if (item.category && item.category.trim() !== '') {
+                    categoriesSet.add(item.category.trim());
                 }
             });
 
@@ -2218,27 +2132,45 @@
             }
         }
 
+        window.toggleCategoryMode = function() {
+            const container = document.getElementById('category-field-container');
+            const btn = document.getElementById('toggle-cat-mode-btn');
+
+            if (!isCreatingNewCategory) {
+                container.innerHTML = `<input type="text" id="item-category-input" placeholder="Nome da nova categoria..." required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:border-amber-500">`;
+                btn.innerText = "📋 Usar Existente";
+                isCreatingNewCategory = true;
+            } else {
+                container.innerHTML = `<select id="item-category-select" required class="w-full p-2.5 rounded-xl outline-none bg-slate-900 border border-slate-800 text-slate-100 text-xs font-medium focus:border-amber-500"></select>`;
+                btn.innerText = "➕ Nova Categoria";
+                isCreatingNewCategory = false;
+                updateSelectCategories();
+            }
+        };
+
         window.handleAddItem = async function(e) {
             e.preventDefault();
-            if(!currentRestaurantId) return;
+            if (!currentRestaurantId) return;
 
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
-            submitBtn.innerText = "Salvando...";
-
-            let categoryVal = "";
-            if (isCreatingNewCategory) {
-                categoryVal = document.getElementById('item-category-input').value.trim();
-            } else {
-                categoryVal = document.getElementById('item-category-select').value;
-            }
+            submitBtn.innerText = "Cadastrando...";
 
             const name = document.getElementById('item-name').value.trim();
-            const price = parseFloat(document.getElementById('item-price').value) || 0;
+            const price = parseFloat(document.getElementById('item-price').value);
             const desc = document.getElementById('item-desc').value.trim();
             const fileInput = document.getElementById('item-file');
 
-            let imgUrl = "";
+            let category = "Geral";
+            if (isCreatingNewCategory) {
+                const inputCat = document.getElementById('item-category-input');
+                if (inputCat && inputCat.value.trim() !== "") category = inputCat.value.trim();
+            } else {
+                const selectCat = document.getElementById('item-category-select');
+                if (selectCat && selectCat.value) category = selectCat.value;
+            }
+
+            let imageUrl = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300";
 
             if (fileInput.files.length > 0) {
                 const formData = new FormData();
@@ -2246,27 +2178,27 @@
                 try {
                     const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: formData });
                     const data = await res.json();
-                    if(data.success) imgUrl = data.data.url;
+                    if(data.success) imageUrl = data.data.url;
                 } catch(err) { console.error("Erro upload:", err); }
             }
 
             try {
                 await addDoc(collection(db, "menu"), {
                     restaurantId: currentRestaurantId,
-                    name: name,
-                    price: price,
-                    desc: desc,
-                    category: categoryVal,
-                    img: imgUrl,
+                    name,
+                    price,
+                    desc,
+                    category,
+                    img: imageUrl,
                     outOfStock: false
                 });
 
-                showAppDialog("✅ Item adicionado com sucesso!", "success");
+                showAppDialog("✅ Item cadastrado com sucesso!", "success");
                 e.target.reset();
-                if(isCreatingNewCategory) window.toggleCategoryMode();
+                if (isCreatingNewCategory) toggleCategoryMode();
             } catch(err) {
                 console.error(err);
-                showAppDialog("Erro ao adicionar item.", "error");
+                showAppDialog("Erro ao adicionar produto.", "error");
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerText = "Adicionar ao Cardápio";
@@ -2275,47 +2207,51 @@
 
         function renderAdminMenu() {
             const tbody = document.getElementById('admin-menu-table');
-            if(!tbody) return;
+            if (!tbody) return;
+
             tbody.innerHTML = '';
 
-            const filtered = menuItems.filter(i => {
-                if(!adminSearchTerm) return true;
-                return i.name.toLowerCase().includes(adminSearchTerm) || (i.category && i.category.toLowerCase().includes(adminSearchTerm));
+            const filtered = menuItems.filter(item => {
+                if (!adminSearchTerm) return true;
+                const nameMatch = item.name.toLowerCase().includes(adminSearchTerm);
+                const descMatch = item.desc && item.desc.toLowerCase().includes(adminSearchTerm);
+                const catMatch = item.category && item.category.toLowerCase().includes(adminSearchTerm);
+                return nameMatch || descMatch || catMatch;
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 text-xs">Nenhum item cadastrado.</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500 text-xs">Nenhum item cadastrado.</td></tr>';
                 return;
             }
 
             filtered.forEach(item => {
                 const isOutOfStock = item.outOfStock === true;
-                const stockBadge = isOutOfStock
-                    ? `<button onclick="window.toggleStock('${item.id}', false)" class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-rose-500/20">🔴 Esgotado</button>`
-                    : `<button onclick="window.toggleStock('${item.id}', true)" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer hover:bg-emerald-500/20">🟢 Em Estoque</button>`;
+                const stockBtnHTML = isOutOfStock
+                    ? `<button onclick="window.toggleStockItem('${item.id}', false)" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition">🟢 Reativar</button>`
+                    : `<button onclick="window.toggleStockItem('${item.id}', true)" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition">🔴 Esgotar</button>`;
 
                 tbody.innerHTML += `
-                    <tr class="border-b border-slate-800/60 text-xs hover:bg-slate-900/40">
+                    <tr class="border-b border-slate-800/60 hover:bg-slate-900/40 text-xs">
                         <td class="p-3">
-                            <img src="${item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=100'}" class="w-10 h-10 object-cover rounded-lg bg-slate-800">
+                            <img src="${item.img || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300'}" class="w-10 h-10 object-cover rounded-lg bg-slate-800">
                         </td>
                         <td class="p-3">
-                            <span class="font-bold text-white block">${item.name}</span>
-                            <span class="text-[10px] text-amber-400 uppercase font-semibold">${item.category || 'Geral'}</span>
+                            <p class="font-bold text-white">${item.name}</p>
+                            <span class="text-[10px] text-amber-400 font-semibold">${item.category || 'Geral'}</span>
                         </td>
-                        <td class="p-3 text-emerald-400 font-bold">R$ ${(Number(item.price) || 0).toFixed(2)}</td>
-                        <td class="p-3 text-center">${stockBadge}</td>
+                        <td class="p-3 font-bold text-emerald-400">R$ ${(Number(item.price)||0).toFixed(2)}</td>
+                        <td class="p-3 text-center">${stockBtnHTML}</td>
                         <td class="p-3 text-center">
-                            <button onclick="window.deleteMenuItem('${item.id}')" class="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg hover:bg-rose-500/10 cursor-pointer">🗑️</button>
+                            <button onclick="window.deleteMenuItem('${item.id}')" class="text-rose-400 hover:text-rose-300 font-bold px-2 py-1 rounded hover:bg-rose-500/10 transition cursor-pointer">🗑️</button>
                         </td>
                     </tr>
                 `;
             });
         }
 
-        window.toggleStock = async function(id, outOfStock) {
+        window.toggleStockItem = async function(id, outOfStock) {
             try {
-                await updateDoc(doc(db, "menu", id), { outOfStock: outOfStock });
+                await updateDoc(doc(db, "menu", id), { outOfStock });
             } catch(e) { console.error(e); }
         };
 
@@ -2323,154 +2259,28 @@
             showAppConfirm("Deseja excluir este item do cardápio?", async () => {
                 try {
                     await deleteDoc(doc(db, "menu", id));
-                    showAppDialog("Item excluído com sucesso!", "success");
+                    showAppDialog("Item removido!", "success");
                 } catch(e) { console.error(e); }
             }, "Excluir Item");
         };
 
-        // FECHAR CONTA E GERAR INVOICE DA MESA
-        window.prepareInvoice = async function() {
-            const tableNum = document.getElementById('print-table-number').value;
-            const preview = document.getElementById('invoice-preview');
-
-            if (!tableNum) { showAppDialog("Informe o número da mesa!", "warning"); return; }
-
-            preview.innerText = "Buscando comanda...";
-
-            try {
-                const snap = await getDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
-                if (!snap.exists() || !snap.data().orders || snap.data().orders.length === 0) {
-                    preview.innerText = `Nenhuma comanda aberta para a Mesa ${tableNum}.`;
-                    activeInvoiceText = "";
-                    return;
-                }
-
-                const orders = snap.data().orders;
-                let totalMesa = 0;
-                let itemsSummary = {};
-
-                orders.forEach(o => {
-                    if (o.items && Array.isArray(o.items)) {
-                        o.items.forEach(item => {
-                            const p = Number(item.price) || 0;
-                            const key = item.name;
-                            if (!itemsSummary[key]) itemsSummary[key] = { qty: 0, price: p };
-                            itemsSummary[key].qty += item.qty;
-                            totalMesa += p * item.qty;
-                        });
-                    } else if (o.price && o.qty) {
-                        const p = Number(o.price) || 0;
-                        const key = o.name;
-                        if (!itemsSummary[key]) itemsSummary[key] = { qty: 0, price: p };
-                        itemsSummary[key].qty += o.qty;
-                        totalMesa += p * o.qty;
-                    }
-                });
-
-                const now = new Date().toLocaleString('pt-BR');
-                let txt = `================================\n`;
-                txt += `    ${restaurantInfo.name || 'RESTAURANTE'}\n`;
-                txt += `================================\n`;
-                txt += `Data: ${now}\n`;
-                txt += `Mesa: ${tableNum.padStart(2, '0')}\n`;
-                txt += `--------------------------------\n`;
-                txt += `ITEM            QTD  UN    TOTAL\n`;
-                txt += `--------------------------------\n`;
-
-                Object.keys(itemsSummary).forEach(name => {
-                    const item = itemsSummary[name];
-                    const sub = item.qty * item.price;
-                    const nameTrunc = name.padEnd(15, ' ').substring(0, 15);
-                    const qtyStr = item.qty.toString().padStart(3, ' ');
-                    const totalStr = sub.toFixed(2).padStart(8, ' ');
-                    txt += `${nameTrunc} ${qtyStr}  R$${totalStr}\n`;
-                });
-
-                txt += `--------------------------------\n`;
-                txt += `TOTAL DA MESA:       R$ ${totalMesa.toFixed(2)}\n`;
-                txt += `================================\n`;
-                txt += `   Obrigado pela preferência!\n`;
-                txt += `================================\n`;
-
-                preview.innerText = txt;
-                activeInvoiceText = txt;
-            } catch(e) {
-                console.error(e);
-                preview.innerText = "Erro ao buscar comanda.";
-            }
-        };
-
-        window.printInvoice = function() {
-            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com comanda aberta primeiro.", "info"); return; }
-            const printSec = document.getElementById('invoice-print-section');
-            printSec.innerHTML = `<pre>${activeInvoiceText}</pre>`;
-            window.print();
-        };
-
-        window.downloadInvoiceTXT = function() {
-            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com comanda aberta primeiro.", "info"); return; }
-            const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `comanda_mesa_${document.getElementById('print-table-number').value}.txt`;
-            a.click();
-        };
-
-        // LIBERAR MESA E REMOVER PEDIDOS DA COZINHA
-        window.confirmPayment = function() {
-            const tableNum = document.getElementById('print-table-number').value;
-            if(!tableNum) { showAppDialog("Informe a mesa para liberar!", "warning"); return; }
-
-            showAppConfirm(`Confirma o pagamento e liberação da Mesa ${tableNum}?`, async () => {
-                try {
-                    // 1. Remover da coleção de mesas ativas
-                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
-                    
-                    // 2. Buscar e remover pedidos pendentes/ativos do Monitor de Pedidos da Cozinha referentes a esta Mesa
-                    const kitchenQuery = query(
-                        collection(db, "kitchen"), 
-                        where("restaurantId", "==", currentRestaurantId)
-                    );
-                    
-                    const kitchenSnap = await getDocs(kitchenQuery);
-                    
-                    const targetOrigin = `Mesa ${tableNum}`;
-                    const targetOriginPadded = `Mesa ${tableNum.padStart(2, '0')}`;
-                    
-                    const deletePromises = [];
-                    kitchenSnap.forEach((docSnap) => {
-                        const orderData = docSnap.data();
-                        if (orderData.origin === targetOrigin || orderData.origin === targetOriginPadded) {
-                            deletePromises.push(deleteDoc(doc(db, "kitchen", docSnap.id)));
-                        }
-                    });
-                    
-                    await Promise.all(deletePromises);
-
-                    document.getElementById('invoice-preview').innerText = `Mesa ${tableNum} liberada e zerada!`;
-                    document.getElementById('print-table-number').value = "";
-                    activeInvoiceText = "";
-                    showAppDialog(`✅ Mesa ${tableNum} foi desocupada e os pedidos removidos do monitor!`, "success");
-                } catch(e) {
-                    console.error("Erro ao liberar mesa:", e);
-                    showAppDialog("Erro ao desocupar mesa.", "error");
-                }
-            }, "Liberar Mesa");
-        };
-
-        // RELATÓRIOS
         function updateSalesReportView() {
-            document.getElementById('sales-total-money').innerText = (salesReport.totalRevenue || 0).toFixed(2);
-            document.getElementById('sales-total-orders').innerText = salesReport.totalOrders || 0;
-            document.getElementById('sales-total-items').innerText = salesReport.totalItemsSold || 0;
+            const moneyElem = document.getElementById('sales-total-money');
+            const ordersElem = document.getElementById('sales-total-orders');
+            const itemsElem = document.getElementById('sales-total-items');
+
+            if (moneyElem) moneyElem.innerText = (Number(salesReport.totalRevenue) || 0).toFixed(2);
+            if (ordersElem) ordersElem.innerText = salesReport.totalOrders || 0;
+            if (itemsElem) itemsElem.innerText = salesReport.totalItemsSold || 0;
         }
 
         window.generateSalesReport = function() {
-            showAppDialog(`📊 Relatório Geral do Dia:\nFaturamento: R$ ${(salesReport.totalRevenue || 0).toFixed(2)}\nTotal Pedidos: ${salesReport.totalOrders || 0}\nItens Vendidos: ${salesReport.totalItemsSold || 0}`, "info");
+            showAppDialog(`📊 Relatório do Dia:\n\n• Faturamento: R$ ${(salesReport.totalRevenue||0).toFixed(2)}\n• Pedidos: ${salesReport.totalOrders||0}\n• Itens Vendidos: ${salesReport.totalItemsSold||0}`, "info", "Relatório de Vendas");
         };
 
         window.clearSalesReport = function() {
-            showAppConfirm("Deseja realmente zerar os dados do relatório de vendas?", async () => {
+            showAppConfirm("Deseja zerar os relatórios de vendas do dia?", async () => {
+                if (!currentRestaurantId) return;
                 try {
                     await setDoc(doc(db, "reports", currentRestaurantId), {
                         restaurantId: currentRestaurantId,
@@ -2478,9 +2288,143 @@
                         totalOrders: 0,
                         totalItemsSold: 0
                     });
-                    showAppDialog("Relatório zerado com sucesso!", "success");
+                    showAppDialog("Relatórios zerados com sucesso!", "success");
                 } catch(e) { console.error(e); }
             }, "Zerar Relatório");
+        };
+
+        // ===== QR CODE E LINKS =====
+        window.toggleLinkTypeSelector = function() {
+            const type = document.getElementById('qr-link-type').value;
+            const container = document.getElementById('qr-table-input-container');
+            if (type === 'mesa') container.classList.remove('hidden');
+            else container.classList.add('hidden');
+        };
+
+        window.generateAccessCode = function() {
+            if (!currentRestaurantId) return;
+
+            const type = document.getElementById('qr-link-type').value;
+            const baseUrl = window.location.origin + window.location.pathname;
+            let finalUrl = "";
+
+            if (type === 'mesa') {
+                const tableNum = document.getElementById('qr-table-number').value.trim();
+                if (!tableNum) { showAppDialog("Digite o número da mesa.", "warning"); return; }
+                finalUrl = `${baseUrl}?restaurante=${currentRestaurantId}&mesa=${tableNum}`;
+            } else {
+                finalUrl = `${baseUrl}?restaurante=${currentRestaurantId}&delivery=true`;
+            }
+
+            globalGeneratedLink = finalUrl;
+            document.getElementById('generated-pure-link').innerText = finalUrl;
+
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, {
+                text: finalUrl,
+                width: 140,
+                height: 140
+            });
+
+            document.getElementById('download-btn-container').classList.remove('hidden');
+        };
+
+        window.downloadQRCode = function() {
+            const qrImg = document.querySelector('#qrcode-container img');
+            if (!qrImg) return;
+            const link = document.createElement('a');
+            link.href = qrImg.src;
+            link.download = 'qrcode-fastorder.png';
+            link.click();
+        };
+
+        window.shareOnWhatsApp = function() {
+            if (!globalGeneratedLink) return;
+            const msg = encodeURIComponent(`Acesse nosso cardápio digital pelo link: ${globalGeneratedLink}`);
+            window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
+        };
+
+        // ===== FECHAMENTO DE CONTA / IMPRESSÃO =====
+        window.prepareInvoice = function() {
+            const tableNum = document.getElementById('print-table-number').value.trim();
+            const preview = document.getElementById('invoice-preview');
+
+            if (!tableNum) {
+                preview.innerHTML = "Insira o número da mesa acima.";
+                activeInvoiceText = "";
+                return;
+            }
+
+            const tableData = activeTables[tableNum];
+            if (!tableData || !tableData.orders || tableData.orders.length === 0) {
+                preview.innerHTML = `Mesa ${tableNum} está sem consumação em aberto.`;
+                activeInvoiceText = "";
+                return;
+            }
+
+            let total = 0;
+            let text = `================================\n`;
+            text += `      ${(restaurantInfo.name || "RESTAURANTE").toUpperCase()}\n`;
+            text += `================================\n`;
+            text += ` EXTRATO CONTA - MESA ${tableNum.padStart(2, '0')}\n`;
+            text += ` Data: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}\n`;
+            text += `--------------------------------\n`;
+            text += ` QTD  ITEM               VALOR  \n`;
+            text += `--------------------------------\n`;
+
+            tableData.orders.forEach(o => {
+                if (o.items && Array.isArray(o.items)) {
+                    o.items.forEach(i => {
+                        const sub = (Number(i.price) || 0) * i.qty;
+                        total += sub;
+                        const nameStr = i.name.padEnd(18, ' ').substring(0, 18);
+                        const qtyStr = i.qty.toString().padStart(3, ' ');
+                        const subStr = sub.toFixed(2).padStart(7, ' ');
+                        text += `${qtyStr}  ${nameStr} ${subStr}\n`;
+                    });
+                }
+            });
+
+            text += `--------------------------------\n`;
+            text += ` TOTAL:             R$ ${total.toFixed(2).padStart(8, ' ')}\n`;
+            text += `================================\n`;
+            text += `    Obrigado pela preferência!   \n`;
+            text += `================================\n`;
+
+            activeInvoiceText = text;
+            preview.innerText = text;
+        };
+
+        window.printInvoice = function() {
+            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com consumo primeiro.", "warning"); return; }
+            const printSec = document.getElementById('invoice-print-section');
+            printSec.innerText = activeInvoiceText;
+            window.print();
+        };
+
+        window.downloadInvoiceTXT = function() {
+            if (!activeInvoiceText) { showAppDialog("Busque uma mesa com consumo primeiro.", "warning"); return; }
+            const blob = new Blob([activeInvoiceText], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `extrato-mesa.txt`;
+            link.click();
+        };
+
+        window.confirmPayment = function() {
+            const tableNum = document.getElementById('print-table-number').value.trim();
+            if (!tableNum) { showAppDialog("Informe a mesa.", "warning"); return; }
+
+            showAppConfirm(`Deseja liberar e fechar a conta da Mesa ${tableNum}?`, async () => {
+                if (!currentRestaurantId) return;
+                try {
+                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_mesa_${tableNum}`));
+                    document.getElementById('invoice-preview').innerText = `Mesa ${tableNum} liberada com sucesso!`;
+                    activeInvoiceText = "";
+                    showAppDialog(`✅ Mesa ${tableNum} liberada!`, "success");
+                } catch(e) { console.error(e); }
+            }, "Liberar Mesa");
         };
 
     </script>
