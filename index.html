@@ -2016,9 +2016,55 @@ Obrigado pela preferência!
                         totalItemsSold: (currentRep.totalItemsSold || 0) + totalItems
                     }, { merge: true });
 
-                    // Apagar mesa ativa
-                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_${tableNum}`));
-                    showAppDialog(`Mesa ${tableNum} liberada com sucesso!`, "success");
+                    // ============================================================
+                    // FECHAMENTO ATÔMICO DA MESA + LIMPEZA DO MONITOR DA COZINHA
+                    // Ao liberar uma mesa, TODOS os pedidos de salão pertencentes
+                    // àquela mesa devem deixar o monitor imediatamente.
+                    // ============================================================
+                    const normalizedClosingTable = String(tableNum).trim().replace(/^0+/, '') || '0';
+
+                    // 1) Buscar todos os pedidos do restaurante no monitor.
+                    // Não usamos where(tableNum == ...) porque pedidos antigos podem
+                    // ter sido gravados como número ou como texto.
+                    const kitchenSnapshot = await getDocs(
+                        query(collection(db, "kitchen"), where("restaurantId", "==", currentRestaurantId))
+                    );
+
+                    const kitchenDeletes = [];
+                    kitchenSnapshot.forEach(kDoc => {
+                        const kData = kDoc.data();
+                        if (kData.isDelivery === true) return;
+
+                        const orderTable = String(kData.tableNum ?? "").trim().replace(/^0+/, '') || '0';
+                        if (orderTable === normalizedClosingTable) {
+                            kitchenDeletes.push(deleteDoc(kDoc.ref));
+                        }
+                    });
+
+                    // 2) Remover do Firestore todos os pedidos dessa mesa.
+                    // Promise.all garante que não fique pedido residual no monitor.
+                    await Promise.all(kitchenDeletes);
+
+                    // 3) Apagar a mesa ativa.
+                    const tableRef = doc(db, "tables", `${currentRestaurantId}_${normalizedClosingTable}`);
+                    await deleteDoc(tableRef);
+
+                    // 4) Atualização imediata da memória local.
+                    // Assim o pedido desaparece da tela sem esperar o próximo
+                    // ciclo do onSnapshot.
+                    kitchenOrders = kitchenOrders.filter(order => {
+                        if (order.isDelivery === true) return true;
+                        const orderTable = String(order.tableNum ?? "").trim().replace(/^0+/, '') || '0';
+                        return orderTable !== normalizedClosingTable;
+                    });
+
+                    delete activeTables[tableNum];
+                    delete activeTables[normalizedClosingTable];
+
+                    renderKitchenOrders();
+                    renderTablesStatusGrid();
+
+                    showAppDialog(`Mesa ${normalizedClosingTable} liberada e pedidos removidos do monitor da cozinha!`, "success");
                     document.getElementById('invoice-preview').innerText = "Insira o número da mesa acima.";
                     activeInvoiceText = "";
                 } catch(err) { console.error(err); }
