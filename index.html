@@ -1078,11 +1078,43 @@
 
             // 3. Ouvir Cozinha do Restaurante
             const qKitchen = query(collection(db, "kitchen"), where("restaurantId", "==", tenantId));
-            const unsubKitchen = onSnapshot(qKitchen, (snapshot) => {
-                kitchenOrders = [];
-                snapshot.forEach(doc => { kitchenOrders.push({ id: doc.id, ...doc.data() }); });
+            const unsubKitchen = onSnapshot(qKitchen, async (snapshot) => {
+                const validOrders = [];
+                const invalidOrderRefs = [];
+
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data() || {};
+                    const rawTable = data.tableNum;
+                    const normalizedTable = rawTable === null || rawTable === undefined ? "" : String(rawTable).trim();
+                    const isDelivery = data.isDelivery === true;
+
+                    // Pedido de salão sem mesa é um registro inválido.
+                    // Ele não pode aparecer como "Mesa undefined" no monitor.
+                    if (!isDelivery && !normalizedTable) {
+                        invalidOrderRefs.push(docSnap.ref);
+                        return;
+                    }
+
+                    validOrders.push({
+                        id: docSnap.id,
+                        ...data,
+                        tableNum: isDelivery ? "Delivery" : normalizedTable
+                    });
+                });
+
+                kitchenOrders = validOrders;
                 kitchenOrders.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                 renderKitchenOrders();
+
+                // Limpa automaticamente registros antigos quebrados do Firestore.
+                if (invalidOrderRefs.length) {
+                    try {
+                        await Promise.all(invalidOrderRefs.map(ref => deleteDoc(ref)));
+                        console.info(`[COZINHA] ${invalidOrderRefs.length} pedido(s) inválido(s), sem mesa, removido(s).`);
+                    } catch (cleanupError) {
+                        console.error("Erro ao limpar pedidos inválidos da cozinha:", cleanupError);
+                    }
+                }
             });
             unsubs.push(unsubKitchen);
 
@@ -1800,8 +1832,9 @@
             const contDelivery = document.getElementById('kitchen-delivery-container');
             if (!contTables || !contDelivery) return;
 
-            const tableOrders = kitchenOrders.filter(o => !o.isDelivery);
-            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery);
+            // Segurança adicional: nunca renderizar pedido de salão sem número de mesa.
+            const tableOrders = kitchenOrders.filter(o => !o.isDelivery && o.tableNum !== undefined && o.tableNum !== null && String(o.tableNum).trim() !== "");
+            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery === true);
 
             contTables.innerHTML = tableOrders.length === 0 
                 ? `<p class="text-slate-400 text-xs text-center col-span-full py-8">Nenhum pedido no salão no momento.</p>` 
@@ -1814,12 +1847,14 @@
 
         function createKitchenCardHTML(order) {
             const isDone = order.status === 'ready';
+            const safeTableNum = order.isDelivery ? "Delivery" : String(order.tableNum ?? "").trim();
+            if (!order.isDelivery && !safeTableNum) return '';
             return `
                 <div class="glass-card p-5 rounded-3xl border ${isDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30'} flex flex-col justify-between space-y-4 shadow-xl">
                     <div>
                         <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
                             <span class="font-extrabold text-sm ${order.isDelivery ? 'text-sky-400' : 'text-amber-400'}">
-                                ${order.isDelivery ? '🛵 Delivery' : `🍽️ Mesa ${order.tableNum}`}
+                                ${order.isDelivery ? '🛵 Delivery' : `🍽️ Mesa ${safeTableNum}`}
                             </span>
                             <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-mono">
                                 ${new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
