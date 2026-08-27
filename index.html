@@ -153,6 +153,8 @@
                     </div>
                     <div id="driver-order-summary" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-4 text-xs"></div>
                     <div id="driver-gps-status" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-4">📍 Aguardando autorização de localização...</div>
+                    <div id="driver-route-map" class="shadow-inner border border-slate-800 rounded-2xl mb-4 overflow-hidden" style="height:360px"></div>
+                    <div id="driver-route-status" class="text-[11px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 mb-4">🗺️ Aguardando localização do cliente e do entregador...</div>
                     <div class="grid grid-cols-2 gap-3">
                         <button id="driver-start-btn" onclick="window.startDriverTracking()" class="bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">📍 Iniciar Rota</button>
                         <button id="driver-delivered-btn" onclick="window.markDeliveryDelivered()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">✅ Entregue</button>
@@ -340,6 +342,17 @@
                             <input type="text" id="dev-rua" placeholder="Ex: Rua Nova" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                     </div>
+                    <div class="mt-3 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20">
+                        <div class="flex items-start gap-2">
+                            <span class="text-lg">📍</span>
+                            <div class="flex-1">
+                                <p class="text-[11px] font-bold text-sky-300">Localização para o entregador</p>
+                                <p id="client-location-status" class="text-[10px] text-slate-400 mt-0.5">Envie sua localização pelo GPS para facilitar a entrega.</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.shareClientLocation()" id="client-location-btn" class="mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">📍 Compartilhar minha localização</button>
+                    </div>
+
                     <div class="grid grid-cols-3 gap-2">
                         <div class="col-span-1">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nº / Apto *</label>
@@ -904,6 +917,13 @@
         let unsubscribeActiveOrder = null;
         let driverOrderId = null;
         let driverRestaurantId = null;
+        let driverMapInstance = null;
+        let driverMarker = null;
+        let customerMarker = null;
+        let driverRouteLine = null;
+        let clientLocationShared = false;
+        let lastRouteCalculationAt = 0;
+        let lastRouteKey = "";
 
         let MINIMO_MESAS_EXIBICAO = 15;
 
@@ -1995,7 +2015,11 @@
                 if (d.isDelivery !== true) return;
                 if (label) label.textContent = `Pedido #${driverOrderId.slice(-6).toUpperCase()} • ${d.deliveryInfo?.nome || "Cliente"}`;
                 if (summary) summary.innerHTML = `<div class="font-bold text-white mb-2">📦 Dados da entrega</div><div class="text-slate-300">${d.deliveryInfo?.rua || ""}, ${d.deliveryInfo?.numero || ""}</div><div class="text-slate-400">${d.deliveryInfo?.bairro || ""}</div>${d.deliveryInfo?.referencia ? `<div class="text-slate-500 mt-1">Ref.: ${d.deliveryInfo.referencia}</div>` : ""}<div class="text-emerald-400 font-black mt-2">R$ ${Number(d.total || 0).toFixed(2)}</div>`;
+                updateDriverRouteMap(d.driverLocation || null, d.customerLocation || null);
+                const routeStatus = document.getElementById("driver-route-status");
+                if (routeStatus && !d.customerLocation) routeStatus.textContent = "📍 Aguardando o cliente compartilhar a localização.";
                 if (d.status === "delivered") {
+                    resetDriverRouteMap();
                     const statusEl = document.getElementById("driver-gps-status");
                     if (statusEl) statusEl.textContent = "✅ Entrega concluída.";
                     const btn = document.getElementById("driver-delivered-btn");
@@ -2017,6 +2041,7 @@
                 const order = snap.data() || {};
                 if (order.isDelivery !== true) { showAppDialog("Este pedido não é um delivery.", "warning"); return; }
                 await updateDoc(ref, { status: "delivered", deliveredAt: Date.now(), driverLocation: null, driverLocationUpdatedAt: null });
+                resetDriverRouteMap();
                 kitchenOrders = kitchenOrders.filter(o => o.id !== targetId);
                 renderKitchenOrders();
                 if (currentActiveOrderId === targetId) { localStorage.removeItem("lastDeliveryOrderId"); currentActiveOrderId = null; }
@@ -2251,6 +2276,61 @@ Obrigado pela preferência!
             const msg = encodeURIComponent(`Acesse nosso cardápio digital: ${globalGeneratedLink}`);
             window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
         };
+
+        // ===== LOCALIZAÇÃO DO CLIENTE + ROTA DO ENTREGADOR =====
+        window.shareClientLocation = function(){
+            if(!isDeliveryMode || !currentActiveOrderId){ showAppDialog("Envie o pedido primeiro para compartilhar a localização.","warning"); return; }
+            if(!navigator.geolocation){ showAppDialog("Este aparelho não oferece localização pelo navegador.","error"); return; }
+            const btn=document.getElementById("client-location-btn"), st=document.getElementById("client-location-status");
+            if(btn) { btn.disabled=true; btn.textContent="📡 Obtendo localização..."; }
+            navigator.geolocation.getCurrentPosition(async pos=>{
+                const location={latitude:Number(pos.coords.latitude),longitude:Number(pos.coords.longitude),accuracy:Number(pos.coords.accuracy||0),updatedAt:Date.now()};
+                try{
+                    await updateDoc(doc(db,"kitchen",currentActiveOrderId),{customerLocation:location,customerLocationUpdatedAt:Date.now()});
+                    clientLocationShared=true;
+                    if(st) st.textContent="✅ Localização enviada ao entregador. Você pode continuar usando o app.";
+                    if(btn){btn.textContent="✅ Localização compartilhada";btn.classList.remove("bg-sky-600");btn.classList.add("bg-emerald-600");}
+                }catch(e){ console.error(e); if(st) st.textContent="⚠️ Não foi possível enviar a localização."; if(btn){btn.disabled=false;btn.textContent="📍 Tentar novamente";} }
+            },err=>{
+                console.error(err);
+                const msg=err.code===1?"Permita o acesso à localização nas configurações do navegador.":"Não foi possível obter sua localização.";
+                if(st) st.textContent="⚠️ "+msg; if(btn){btn.disabled=false;btn.textContent="📍 Compartilhar minha localização";}
+            },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+        };
+
+        function ensureDriverRouteMap(lat=-5.7945,lng=-35.2110){
+            const el=document.getElementById("driver-route-map"); if(!el||typeof L==="undefined") return null;
+            if(!driverMapInstance){
+                driverMapInstance=L.map(el).setView([lat,lng],15);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(driverMapInstance);
+            }
+            setTimeout(()=>driverMapInstance.invalidateSize(),100); return driverMapInstance;
+        }
+
+        async function updateDriverRouteMap(driverLoc,customerLoc){
+            if(!driverLoc&&!customerLoc)return;
+            const base=driverLoc||customerLoc, map=ensureDriverRouteMap(Number(base.latitude),Number(base.longitude)); if(!map)return;
+            if(driverLoc){const p=[Number(driverLoc.latitude),Number(driverLoc.longitude)]; if(!driverMarker) driverMarker=L.marker(p).addTo(map).bindPopup("🛵 Você"); else driverMarker.setLatLng(p);}
+            if(customerLoc){const p=[Number(customerLoc.latitude),Number(customerLoc.longitude)]; if(!customerMarker) customerMarker=L.marker(p).addTo(map).bindPopup("📍 Cliente"); else customerMarker.setLatLng(p);}
+            if(driverLoc&&customerLoc){
+                const a=`${Number(driverLoc.longitude)},${Number(driverLoc.latitude)}`, b=`${Number(customerLoc.longitude)},${Number(customerLoc.latitude)}`;
+                const routeKey = `${a}|${b}`;
+                if(Date.now()-lastRouteCalculationAt < 10000 && routeKey===lastRouteKey) return;
+                lastRouteCalculationAt=Date.now(); lastRouteKey=routeKey;
+                try{
+                    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a};${b}?overview=full&geometries=geojson`);
+                    const data=await r.json();
+                    if(data.code==="Ok"&&data.routes?.[0]){
+                        const coords=data.routes[0].geometry.coordinates.map(x=>[x[1],x[0]]);
+                        if(driverRouteLine) driverRouteLine.setLatLngs(coords); else driverRouteLine=L.polyline(coords,{weight:6,opacity:.85}).addTo(map);
+                        const km=(data.routes[0].distance/1000).toFixed(1), min=Math.round(data.routes[0].duration/60);
+                        const st=document.getElementById("driver-route-status"); if(st) st.textContent=`🗺️ Rota calculada: ${km} km • aproximadamente ${min} min até o cliente.`;
+                        map.fitBounds(L.latLngBounds(coords),{padding:[35,35]});
+                    }
+                }catch(e){console.error("Erro ao calcular rota",e); const st=document.getElementById("driver-route-status"); if(st) st.textContent="⚠️ Não foi possível calcular a rota agora. Os pontos estão marcados no mapa.";}
+            }
+        }
+        function resetDriverRouteMap(){if(driverMapInstance){try{driverMapInstance.remove()}catch(e){}} driverMapInstance=null;driverMarker=null;customerMarker=null;driverRouteLine=null;const el=document.getElementById("driver-route-map");if(el)el.innerHTML="";}
 
         // ===== RASTREAMENTO DO DELIVERY EM TEMPO REAL =====
         function ensureTrackingMap(lat=-5.7945,lng=-35.2110){
