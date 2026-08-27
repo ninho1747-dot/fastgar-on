@@ -1799,8 +1799,16 @@
                 cart = {};
                 pendingOrderItems = [];
                 document.getElementById('order-review-modal').classList.add('hidden');
-                document.getElementById('order-success-modal').classList.remove('hidden');
+                document.getElementById('order-success-modal').classList.add('hidden');
                 renderClientMenu();
+                // O cliente passa a acompanhar o próprio pedido imediatamente, sem precisar abrir outra tela.
+                if (isDeliveryMode) {
+                    setupClientRealtimeTracking();
+                    const tracker = document.getElementById('client-delivery-tracker');
+                    if (tracker) tracker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    document.getElementById('order-success-modal').classList.remove('hidden');
+                }
             } catch(err) {
                 console.error(err);
                 showAppDialog("Erro ao enviar pedido.", "error");
@@ -1886,7 +1894,7 @@
 
             // Segurança adicional: nunca renderizar pedido de salão sem número de mesa.
             const tableOrders = kitchenOrders.filter(o => !o.isDelivery && o.tableNum !== undefined && o.tableNum !== null && String(o.tableNum).trim() !== "");
-            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery === true && o.status !== "delivered");
+            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery === true && String(o.status || "").toLowerCase() !== "delivered");
 
             contTables.innerHTML = tableOrders.length === 0 
                 ? `<p class="text-slate-400 text-xs text-center col-span-full py-8">Nenhum pedido no salão no momento.</p>` 
@@ -1902,7 +1910,7 @@
             const safeTableNum = order.isDelivery ? "Delivery" : String(order.tableNum ?? "").trim();
             if (!order.isDelivery && !safeTableNum) return '';
             return `
-                <div class="glass-card p-5 rounded-3xl border ${isDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30'} flex flex-col justify-between space-y-4 shadow-xl">
+                <div data-order-id="${order.id}" class="glass-card p-5 rounded-3xl border ${isDone ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30'} flex flex-col justify-between space-y-4 shadow-xl">
                     <div>
                         <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
                             <span class="font-extrabold text-sm ${order.isDelivery ? 'text-sky-400' : 'text-amber-400'}">
@@ -2381,6 +2389,16 @@ Obrigado pela preferência!
                     const total=document.getElementById("tracker-order-total"); if(total) total.innerText=Number(d.total||0).toFixed(2);
                     const oc=document.getElementById("tracker-order-obs-container"),oe=document.getElementById("tracker-order-obs"); if(oc&&oe){if(d.observation){oc.classList.remove("hidden");oe.innerText=d.observation;}else oc.classList.add("hidden");}
                     if(d.driverLocation) updateTrackingMap(d.driverLocation); else if(mapStatus) mapStatus.textContent=d.status==="delivered"?"✅ Entrega finalizada.":"📍 Aguardando o entregador iniciar a localização...";
+                    if(d.status === "delivered") {
+                        setTimeout(() => {
+                            const trackerEl = document.getElementById("client-delivery-tracker");
+                            if (trackerEl) trackerEl.classList.add("hidden");
+                            resetTrackingMap();
+                            if (unsubscribeActiveOrder) { unsubscribeActiveOrder(); unsubscribeActiveOrder = null; }
+                            localStorage.removeItem("lastDeliveryOrderId");
+                            currentActiveOrderId = null;
+                        }, 1200);
+                    }
                 });
             } else if(!isDeliveryMode&&currentTable){ if(tracker) tracker.classList.add("hidden"); resetTrackingMap(); const td=activeTables[currentTable]; if(tableStatus) tableStatus.classList.toggle("hidden",!(td&&td.orders&&td.orders.length)); }
         }
