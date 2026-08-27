@@ -187,6 +187,19 @@
                     </span>
                 </div>
 
+                <div class="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-3">
+                    <div class="flex items-start gap-2">
+                        <span class="text-lg">📍</span>
+                        <div class="flex-1">
+                            <p class="text-[11px] font-bold text-sky-300">Localização da entrega</p>
+                            <p id="tracker-location-status" class="text-[10px] text-slate-400 mt-0.5">Compartilhe a localização do seu celular para o entregador seguir a rota até você.</p>
+                        </div>
+                    </div>
+                    <button type="button" id="tracker-location-btn" onclick="window.shareClientLocation()" class="mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">
+                        📍 Compartilhar minha localização
+                    </button>
+                </div>
+
                 <div id="tracking-map" class="shadow-inner border border-slate-800"></div>
                 <div id="tracking-map-status" class="text-[11px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2">📍 Aguardando localização do entregador...</div>
 
@@ -395,11 +408,18 @@
                     Seu pedido já foi encaminhado para a equipe de preparo.
                 </p>
                 <div class="space-y-2.5">
+                    <div id="success-location-box" class="hidden text-left bg-sky-500/10 border border-sky-500/20 rounded-2xl p-3">
+                        <p class="text-[11px] font-bold text-sky-300">📍 Ajude o entregador a encontrar você</p>
+                        <p id="success-location-status" class="text-[10px] text-slate-400 mt-1">Compartilhe a localização exata do seu celular para receber a entrega mais rapidamente.</p>
+                        <button type="button" id="success-location-btn" onclick="window.shareClientLocation()" class="mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition cursor-pointer">
+                            📍 Compartilhar minha localização
+                        </button>
+                    </div>
                     <button id="btn-track-order-redirect" onclick="window.redirectToTrackingPage()" class="hidden w-full bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-2">
                         🛵 Acompanhar Pedido ao Vivo
                     </button>
-                    <button onclick="document.getElementById('order-success-modal').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-xs transition cursor-pointer">
-                        Fechar
+                    <button onclick="document.getElementById('order-success-modal').classList.add('hidden'); if(isDeliveryMode) window.redirectToTrackingPage();" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-xs transition cursor-pointer">
+                        Continuar acompanhando pedido
                     </button>
                 </div>
             </div>
@@ -1770,7 +1790,9 @@
                 isDelivery: isDeliveryMode,
                 deliveryInfo: deliveryData,
                 driverLocation: null,
-                driverLocationUpdatedAt: null
+                driverLocationUpdatedAt: null,
+                customerLocation: null,
+                customerLocationUpdatedAt: null
             };
 
             try {
@@ -1799,13 +1821,24 @@
                 cart = {};
                 pendingOrderItems = [];
                 document.getElementById('order-review-modal').classList.add('hidden');
-                document.getElementById('order-success-modal').classList.add('hidden');
                 renderClientMenu();
-                // O cliente passa a acompanhar o próprio pedido imediatamente, sem precisar abrir outra tela.
+
                 if (isDeliveryMode) {
+                    // O acompanhamento fica ativo imediatamente e o cliente recebe,
+                    // logo após confirmar, o botão para compartilhar o GPS.
                     setupClientRealtimeTracking();
-                    const tracker = document.getElementById('client-delivery-tracker');
-                    if (tracker) tracker.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const successModal = document.getElementById('order-success-modal');
+                    const locationBox = document.getElementById('success-location-box');
+                    const locationStatus = document.getElementById('success-location-status');
+                    const locationBtn = document.getElementById('success-location-btn');
+                    if (locationBox) locationBox.classList.remove('hidden');
+                    if (locationStatus) locationStatus.textContent = "Compartilhe a localização exata do seu celular para o entregador seguir a rota até você.";
+                    if (locationBtn) {
+                        locationBtn.disabled = false;
+                        locationBtn.textContent = "📍 Compartilhar minha localização";
+                        locationBtn.className = "mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition cursor-pointer";
+                    }
+                    if (successModal) successModal.classList.remove('hidden');
                 } else {
                     document.getElementById('order-success-modal').classList.remove('hidden');
                 }
@@ -2287,23 +2320,76 @@ Obrigado pela preferência!
 
         // ===== LOCALIZAÇÃO DO CLIENTE + ROTA DO ENTREGADOR =====
         window.shareClientLocation = function(){
-            if(!isDeliveryMode || !currentActiveOrderId){ showAppDialog("Envie o pedido primeiro para compartilhar a localização.","warning"); return; }
-            if(!navigator.geolocation){ showAppDialog("Este aparelho não oferece localização pelo navegador.","error"); return; }
-            const btn=document.getElementById("client-location-btn"), st=document.getElementById("client-location-status");
-            if(btn) { btn.disabled=true; btn.textContent="📡 Obtendo localização..."; }
+            if(!isDeliveryMode || !currentActiveOrderId){
+                showAppDialog("Confirme o pedido primeiro para compartilhar sua localização.","warning");
+                return;
+            }
+            if(!navigator.geolocation){
+                showAppDialog("Este aparelho não oferece localização pelo navegador.","error");
+                return;
+            }
+
+            const buttons=[
+                document.getElementById("success-location-btn"),
+                document.getElementById("tracker-location-btn"),
+                document.getElementById("client-location-btn")
+            ].filter(Boolean);
+            const statuses=[
+                document.getElementById("success-location-status"),
+                document.getElementById("tracker-location-status"),
+                document.getElementById("client-location-status")
+            ].filter(Boolean);
+
+            buttons.forEach(btn=>{btn.disabled=true;btn.textContent="📡 Obtendo localização...";});
+            statuses.forEach(st=>st.textContent="Permita o acesso à localização do smartphone...");
+
             navigator.geolocation.getCurrentPosition(async pos=>{
-                const location={latitude:Number(pos.coords.latitude),longitude:Number(pos.coords.longitude),accuracy:Number(pos.coords.accuracy||0),updatedAt:Date.now()};
+                const location={
+                    latitude:Number(pos.coords.latitude),
+                    longitude:Number(pos.coords.longitude),
+                    accuracy:Number(pos.coords.accuracy||0),
+                    updatedAt:Date.now()
+                };
+
+                if(!Number.isFinite(location.latitude)||!Number.isFinite(location.longitude)){
+                    throw new Error("Coordenadas inválidas");
+                }
+
                 try{
-                    await updateDoc(doc(db,"kitchen",currentActiveOrderId),{customerLocation:location,customerLocationUpdatedAt:Date.now()});
+                    await updateDoc(doc(db,"kitchen",currentActiveOrderId),{
+                        customerLocation:location,
+                        customerLocationUpdatedAt:Date.now()
+                    });
+
                     clientLocationShared=true;
-                    if(st) st.textContent="✅ Localização enviada ao entregador. Você pode continuar usando o app.";
-                    if(btn){btn.textContent="✅ Localização compartilhada";btn.classList.remove("bg-sky-600");btn.classList.add("bg-emerald-600");}
-                }catch(e){ console.error(e); if(st) st.textContent="⚠️ Não foi possível enviar a localização."; if(btn){btn.disabled=false;btn.textContent="📍 Tentar novamente";} }
+                    statuses.forEach(st=>st.textContent="✅ Localização enviada ao entregador. Agora ele poderá seguir a rota até você.");
+                    buttons.forEach(btn=>{
+                        btn.disabled=true;
+                        btn.textContent="✅ Localização compartilhada";
+                        btn.className=btn.className.replace(/bg-sky-600/g,"bg-emerald-600").replace(/hover:bg-sky-500/g,"hover:bg-emerald-500");
+                    });
+
+                    const mapStatus=document.getElementById("tracking-map-status");
+                    if(mapStatus && !window.__lastDriverLocation){
+                        mapStatus.textContent="📍 Sua localização foi enviada. Aguardando o entregador iniciar a rota...";
+                    }
+                }catch(e){
+                    console.error("Erro ao enviar localização do cliente:",e);
+                    statuses.forEach(st=>st.textContent="⚠️ Não foi possível enviar a localização. Tente novamente.");
+                    buttons.forEach(btn=>{btn.disabled=false;btn.textContent="📍 Tentar novamente";});
+                }
             },err=>{
-                console.error(err);
-                const msg=err.code===1?"Permita o acesso à localização nas configurações do navegador.":"Não foi possível obter sua localização.";
-                if(st) st.textContent="⚠️ "+msg; if(btn){btn.disabled=false;btn.textContent="📍 Compartilhar minha localização";}
-            },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+                console.error("Erro GPS cliente:",err);
+                const msg=err.code===1
+                    ?"Permita o acesso à localização nas configurações do navegador/celular."
+                    :"Não foi possível obter sua localização. Verifique o GPS e tente novamente.";
+                statuses.forEach(st=>st.textContent="⚠️ "+msg);
+                buttons.forEach(btn=>{btn.disabled=false;btn.textContent="📍 Compartilhar minha localização";});
+            },{
+                enableHighAccuracy:true,
+                maximumAge:0,
+                timeout:15000
+            });
         };
 
         function ensureDriverRouteMap(lat=-5.7945,lng=-35.2110){
@@ -2388,7 +2474,22 @@ Obrigado pela preferência!
                     const list=document.getElementById("tracker-order-items"); if(list&&Array.isArray(d.items)) list.innerHTML=d.items.map(i=>`<li class="flex justify-between"><span><b>${i.qty}x</b> ${i.name}</span><span>R$ ${(i.qty*i.price).toFixed(2)}</span></li>`).join("");
                     const total=document.getElementById("tracker-order-total"); if(total) total.innerText=Number(d.total||0).toFixed(2);
                     const oc=document.getElementById("tracker-order-obs-container"),oe=document.getElementById("tracker-order-obs"); if(oc&&oe){if(d.observation){oc.classList.remove("hidden");oe.innerText=d.observation;}else oc.classList.add("hidden");}
+                    const locBtn=document.getElementById("tracker-location-btn");
+                    const locStatus=document.getElementById("tracker-location-status");
+                    if(d.customerLocation){
+                        clientLocationShared=true;
+                        if(locStatus) locStatus.textContent="✅ Localização enviada ao entregador. A rota será seguida até este ponto.";
+                        if(locBtn){locBtn.disabled=true;locBtn.textContent="✅ Localização compartilhada";locBtn.classList.remove("bg-sky-600","hover:bg-sky-500");locBtn.classList.add("bg-emerald-600");}
+                    }
                     if(d.driverLocation) updateTrackingMap(d.driverLocation); else if(mapStatus) mapStatus.textContent=d.status==="delivered"?"✅ Entrega finalizada.":"📍 Aguardando o entregador iniciar a localização...";
+                    if(d.status==="delivered"){
+                        const tracker=document.getElementById("client-delivery-tracker");
+                        if(tracker) tracker.classList.add("hidden");
+                        resetTrackingMap();
+                        if(unsubscribeActiveOrder){ unsubscribeActiveOrder(); unsubscribeActiveOrder=null; }
+                        localStorage.removeItem("lastDeliveryOrderId");
+                        currentActiveOrderId=null;
+                    }
                     if(d.status === "delivered") {
                         setTimeout(() => {
                             const trackerEl = document.getElementById("client-delivery-tracker");
