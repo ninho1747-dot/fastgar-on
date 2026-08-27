@@ -142,6 +142,26 @@
 
     <div class="max-w-6xl mx-auto p-4 sm:p-6">
         
+        <!-- PAINEL DO ENTREGADOR / MOTOBOY -->
+        <section id="driver-view" class="view-section hidden">
+            <div class="max-w-xl mx-auto">
+                <div class="glass-card p-6 rounded-3xl border border-sky-500/30 shadow-2xl">
+                    <div class="text-center mb-5">
+                        <div class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-3xl mx-auto mb-3">🛵</div>
+                        <h2 class="text-2xl font-black text-white">Painel do Entregador</h2>
+                        <p id="driver-order-label" class="text-xs text-slate-400 mt-1">Preparando pedido...</p>
+                    </div>
+                    <div id="driver-order-summary" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-4 text-xs"></div>
+                    <div id="driver-gps-status" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-4">📍 Aguardando autorização de localização...</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="driver-start-btn" onclick="window.startDriverTracking()" class="bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">📍 Iniciar Rota</button>
+                        <button id="driver-delivered-btn" onclick="window.markDeliveryDelivered()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">✅ Entregue</button>
+                    </div>
+                    <p class="text-[10px] text-slate-500 text-center mt-4">Mantenha esta tela aberta durante a rota para compartilhar sua localização com o cliente.</p>
+                </div>
+            </div>
+        </section>
+
         <!-- VISÃO DO CLIENTE -->
         <section id="client-view" class="view-section hidden">
             <!-- BLOQUEIO DE ACESSO SEM QR -->
@@ -166,6 +186,7 @@
                 </div>
 
                 <div id="tracking-map" class="shadow-inner border border-slate-800"></div>
+                <div id="tracking-map-status" class="text-[11px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2">📍 Aguardando localização do entregador...</div>
 
                 <div class="grid grid-cols-2 gap-3 text-xs bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
                     <div>
@@ -881,6 +902,8 @@
         let driverHeartbeatInterval = null; 
         let lastGpsTimestamp = 0; 
         let unsubscribeActiveOrder = null;
+        let driverOrderId = null;
+        let driverRestaurantId = null;
 
         let MINIMO_MESAS_EXIBICAO = 15;
 
@@ -1088,6 +1111,12 @@
                     const normalizedTable = rawTable === null || rawTable === undefined ? "" : String(rawTable).trim();
                     const isDelivery = data.isDelivery === true;
 
+                    // Delivery concluído é histórico, não pedido ativo do monitor.
+                    if (isDelivery && data.status === "delivered") {
+                        invalidOrderRefs.push(docSnap.ref);
+                        return;
+                    }
+
                     // Pedido de salão sem mesa é um registro inválido.
                     // Ele não pode aparecer como "Mesa undefined" no monitor.
                     if (!isDelivery && !normalizedTable) {
@@ -1278,6 +1307,7 @@
         async function checkTableFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const urlRestaurantId = urlParams.get('restaurante');
+            if (urlParams.get("entregador") === "true") { initDriverMode(); return; }
             
             if (urlRestaurantId) {
                 currentRestaurantId = urlRestaurantId;
@@ -1718,7 +1748,9 @@
                 status: 'pending',
                 timestamp: Date.now(),
                 isDelivery: isDeliveryMode,
-                deliveryInfo: deliveryData
+                deliveryInfo: deliveryData,
+                driverLocation: null,
+                driverLocationUpdatedAt: null
             };
 
             try {
@@ -1834,7 +1866,7 @@
 
             // Segurança adicional: nunca renderizar pedido de salão sem número de mesa.
             const tableOrders = kitchenOrders.filter(o => !o.isDelivery && o.tableNum !== undefined && o.tableNum !== null && String(o.tableNum).trim() !== "");
-            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery === true);
+            const deliveryOrders = kitchenOrders.filter(o => o.isDelivery === true && o.status !== "delivered");
 
             contTables.innerHTML = tableOrders.length === 0 
                 ? `<p class="text-slate-400 text-xs text-center col-span-full py-8">Nenhum pedido no salão no momento.</p>` 
@@ -1887,9 +1919,16 @@
 
                     <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
                         <span class="text-xs font-bold text-emerald-400">Total: R$ ${Number(order.total).toFixed(2)}</span>
-                        <button onclick="window.updateOrderStatus('${order.id}', '${isDone ? 'pending' : 'ready'}')" class="px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition ${isDone ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}">
-                            ${isDone ? '↩️ Em Preparo' : '✅ Pedido Pronto'}
-                        </button>
+                        ${order.isDelivery ? `
+                            <div class="flex items-center gap-2">
+                                <button onclick="window.openDriverPanel('${order.id}')" class="px-3 py-2 rounded-xl font-bold text-xs cursor-pointer transition bg-sky-600 text-white hover:bg-sky-500">🛵 Entregador</button>
+                                <button onclick="window.updateOrderStatus('${order.id}', '${isDone ? 'pending' : 'ready'}')" class="px-3 py-2 rounded-xl font-bold text-xs cursor-pointer transition ${isDone ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}">${isDone ? '↩️ Em Preparo' : '✅ Pronto'}</button>
+                            </div>
+                        ` : `
+                            <button onclick="window.updateOrderStatus('${order.id}', '${isDone ? 'pending' : 'ready'}')" class="px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition ${isDone ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}">
+                                ${isDone ? '↩️ Em Preparo' : '✅ Pedido Pronto'}
+                            </button>
+                        `}
                     </div>
                 </div>
             `;
@@ -1897,9 +1936,98 @@
 
         window.updateOrderStatus = async function(orderId, newStatus) {
             try {
-                await updateDoc(doc(db, "kitchen", orderId), { status: newStatus });
-            } catch(err) { console.error(err); }
+                const ref = doc(db, "kitchen", orderId);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) return;
+                const order = snap.data() || {};
+                if (order.isDelivery === true && newStatus === "delivered") {
+                    await window.markDeliveryDelivered(orderId);
+                    return;
+                }
+                await updateDoc(ref, { status: newStatus, statusUpdatedAt: Date.now() });
+            } catch(err) {
+                console.error("Erro ao atualizar status:", err);
+                showAppDialog("Não foi possível atualizar o pedido.", "error");
+            }
         };
+
+        window.openDriverPanel = function(orderId) {
+            if (!currentRestaurantId || !orderId) return;
+            const url = `${window.location.origin}${window.location.pathname}?restaurante=${encodeURIComponent(currentRestaurantId)}&entregador=true&pedido=${encodeURIComponent(orderId)}`;
+            window.open(url, "_blank", "noopener");
+        };
+
+        window.markDeliveryDelivered = async function(orderId = null) {
+            const targetId = orderId || driverOrderId;
+            if (!targetId) { showAppDialog("Pedido de delivery não identificado.", "warning"); return; }
+            try {
+                if (driverWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(driverWatchId);
+                const ref = doc(db, "kitchen", targetId);
+                const snap = await getDoc(ref);
+                if (!snap.exists()) { cleanupDriverMode(); return; }
+                const order = snap.data() || {};
+                if (order.isDelivery !== true) { showAppDialog("Este pedido não é um delivery.", "warning"); return; }
+                await updateDoc(ref, { status: "delivered", deliveredAt: Date.now(), driverLocation: null, driverLocationUpdatedAt: null });
+                kitchenOrders = kitchenOrders.filter(o => o.id !== targetId);
+                renderKitchenOrders();
+                if (currentActiveOrderId === targetId) { localStorage.removeItem("lastDeliveryOrderId"); currentActiveOrderId = null; }
+                cleanupDriverMode();
+                if (document.getElementById("driver-view") && !document.getElementById("driver-view").classList.contains("hidden")) {
+                    const el=document.getElementById("driver-gps-status"); if(el) el.textContent="✅ Entrega concluída.";
+                    const b=document.getElementById("driver-delivered-btn"); if(b) b.disabled=true;
+                } else {
+                    showAppDialog("Entrega finalizada. O pedido saiu do monitor.", "success");
+                }
+            } catch(err) {
+                console.error("Erro ao finalizar delivery:", err);
+                showAppDialog("Não foi possível finalizar a entrega.", "error");
+            }
+        };
+
+        function cleanupDriverMode() {
+            if (driverWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(driverWatchId);
+            driverWatchId = null;
+        }
+
+        window.startDriverTracking = function() {
+            if (!driverOrderId || !driverRestaurantId) { showAppDialog("Pedido do entregador não identificado.", "warning"); return; }
+            if (!navigator.geolocation) { showAppDialog("Este aparelho não oferece localização pelo navegador.", "error"); return; }
+            if (driverWatchId !== null) navigator.geolocation.clearWatch(driverWatchId);
+            const statusEl=document.getElementById("driver-gps-status");
+            const btn=document.getElementById("driver-start-btn");
+            if(btn) btn.disabled=true;
+            if(statusEl) { statusEl.className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs mb-4"; statusEl.textContent="📡 Compartilhando localização com o cliente..."; }
+            driverWatchId=navigator.geolocation.watchPosition(async pos=>{
+                const latitude=Number(pos.coords.latitude), longitude=Number(pos.coords.longitude);
+                if(!Number.isFinite(latitude)||!Number.isFinite(longitude)) return;
+                try {
+                    await updateDoc(doc(db,"kitchen",driverOrderId),{status:"out_for_delivery",driverLocation:{latitude,longitude,accuracy:Number(pos.coords.accuracy||0)},driverLocationUpdatedAt:Date.now()});
+                    if(statusEl) statusEl.textContent="🟢 Localização compartilhada em tempo real.";
+                } catch(e) { console.error(e); if(statusEl) statusEl.textContent="⚠️ Não foi possível atualizar o GPS."; }
+            },err=>{
+                console.error(err);
+                if(statusEl) statusEl.textContent=err.code===1?"⚠️ Permita o acesso à localização.":"⚠️ Não foi possível obter sua localização.";
+            },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+        };
+
+        function initDriverMode() {
+            const p=new URLSearchParams(window.location.search);
+            if(p.get("entregador")!=="true" || !p.get("restaurante") || !p.get("pedido")) return false;
+            driverRestaurantId=p.get("restaurante"); driverOrderId=p.get("pedido"); currentRestaurantId=driverRestaurantId;
+            document.getElementById("main-navigation").classList.add("hidden");
+            document.querySelectorAll(".view-section").forEach(sec=>sec.classList.add("hidden"));
+            document.getElementById("driver-view").classList.remove("hidden");
+            onSnapshot(doc(db,"kitchen",driverOrderId),snap=>{
+                if(!snap.exists()){ document.getElementById("driver-order-label").textContent="Pedido não encontrado ou já finalizado."; cleanupDriverMode(); return; }
+                const d=snap.data()||{};
+                if(d.isDelivery!==true) return;
+                document.getElementById("driver-order-label").textContent=`Pedido #${driverOrderId.slice(-6).toUpperCase()} • ${d.deliveryInfo?.nome||"Cliente"}`;
+                document.getElementById("driver-order-summary").innerHTML=`<div class="font-bold text-white mb-2">📦 Dados da entrega</div><div class="text-slate-300">${d.deliveryInfo?.rua||""}, ${d.deliveryInfo?.numero||""}</div><div class="text-slate-400">${d.deliveryInfo?.bairro||""}</div>${d.deliveryInfo?.referencia?`<div class="text-slate-500 mt-1">Ref.: ${d.deliveryInfo.referencia}</div>`:""}<div class="text-emerald-400 font-black mt-2">R$ ${Number(d.total||0).toFixed(2)}</div>`;
+                if(d.status==="delivered") cleanupDriverMode();
+            });
+            return true;
+        }
+
 
         // RELATÓRIOS E FECHAMENTO DE MESA
         function updateSalesReportView() {
@@ -2016,55 +2144,9 @@ Obrigado pela preferência!
                         totalItemsSold: (currentRep.totalItemsSold || 0) + totalItems
                     }, { merge: true });
 
-                    // ============================================================
-                    // FECHAMENTO ATÔMICO DA MESA + LIMPEZA DO MONITOR DA COZINHA
-                    // Ao liberar uma mesa, TODOS os pedidos de salão pertencentes
-                    // àquela mesa devem deixar o monitor imediatamente.
-                    // ============================================================
-                    const normalizedClosingTable = String(tableNum).trim().replace(/^0+/, '') || '0';
-
-                    // 1) Buscar todos os pedidos do restaurante no monitor.
-                    // Não usamos where(tableNum == ...) porque pedidos antigos podem
-                    // ter sido gravados como número ou como texto.
-                    const kitchenSnapshot = await getDocs(
-                        query(collection(db, "kitchen"), where("restaurantId", "==", currentRestaurantId))
-                    );
-
-                    const kitchenDeletes = [];
-                    kitchenSnapshot.forEach(kDoc => {
-                        const kData = kDoc.data();
-                        if (kData.isDelivery === true) return;
-
-                        const orderTable = String(kData.tableNum ?? "").trim().replace(/^0+/, '') || '0';
-                        if (orderTable === normalizedClosingTable) {
-                            kitchenDeletes.push(deleteDoc(kDoc.ref));
-                        }
-                    });
-
-                    // 2) Remover do Firestore todos os pedidos dessa mesa.
-                    // Promise.all garante que não fique pedido residual no monitor.
-                    await Promise.all(kitchenDeletes);
-
-                    // 3) Apagar a mesa ativa.
-                    const tableRef = doc(db, "tables", `${currentRestaurantId}_${normalizedClosingTable}`);
-                    await deleteDoc(tableRef);
-
-                    // 4) Atualização imediata da memória local.
-                    // Assim o pedido desaparece da tela sem esperar o próximo
-                    // ciclo do onSnapshot.
-                    kitchenOrders = kitchenOrders.filter(order => {
-                        if (order.isDelivery === true) return true;
-                        const orderTable = String(order.tableNum ?? "").trim().replace(/^0+/, '') || '0';
-                        return orderTable !== normalizedClosingTable;
-                    });
-
-                    delete activeTables[tableNum];
-                    delete activeTables[normalizedClosingTable];
-
-                    renderKitchenOrders();
-                    renderTablesStatusGrid();
-
-                    showAppDialog(`Mesa ${normalizedClosingTable} liberada e pedidos removidos do monitor da cozinha!`, "success");
+                    // Apagar mesa ativa
+                    await deleteDoc(doc(db, "tables", `${currentRestaurantId}_${tableNum}`));
+                    showAppDialog(`Mesa ${tableNum} liberada com sucesso!`, "success");
                     document.getElementById('invoice-preview').innerText = "Insira o número da mesa acima.";
                     activeInvoiceText = "";
                 } catch(err) { console.error(err); }
@@ -2126,63 +2208,49 @@ Obrigado pela preferência!
             window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
         };
 
-        // RASTREAMENTO CLIENTE EM TEMPO REAL
-        function setupClientRealtimeTracking() {
-            if (!currentRestaurantId) return;
-
-            const tracker = document.getElementById('client-delivery-tracker');
-            const tableStatus = document.getElementById('client-table-status');
-
-            if (isDeliveryMode && currentActiveOrderId) {
-                if (tracker) tracker.classList.remove('hidden');
-                if (tableStatus) tableStatus.classList.add('hidden');
-
-                if (unsubscribeActiveOrder) unsubscribeActiveOrder();
-
-                unsubscribeActiveOrder = onSnapshot(doc(db, "kitchen", currentActiveOrderId), (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        const badge = document.getElementById('tracker-status-badge');
-                        if (badge) {
-                            if (data.status === 'ready') {
-                                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
-                                badge.innerText = "🛵 Saiu para Entrega / Pronto";
-                            } else {
-                                badge.className = "px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30";
-                                badge.innerText = "⏳ Preparando Pedido";
-                            }
-                        }
-
-                        const itemsList = document.getElementById('tracker-order-items');
-                        if (itemsList && data.items) {
-                            itemsList.innerHTML = data.items.map(i => `
-                                <li class="flex justify-between">
-                                    <span><b>${i.qty}x</b> ${i.name}</span>
-                                    <span>R$ ${(i.qty * i.price).toFixed(2)}</span>
-                                </li>
-                            `).join('');
-                        }
-
-                        const totalEl = document.getElementById('tracker-order-total');
-                        if (totalEl) totalEl.innerText = Number(data.total || 0).toFixed(2);
-                    }
-                });
-            } else if (!isDeliveryMode && currentTable) {
-                if (tracker) tracker.classList.add('hidden');
-                const tableData = activeTables[currentTable];
-                if (tableData && tableData.orders && tableData.orders.length > 0) {
-                    if (tableStatus) tableStatus.classList.remove('hidden');
-                } else {
-                    if (tableStatus) tableStatus.classList.add('hidden');
-                }
+        // ===== RASTREAMENTO DO DELIVERY EM TEMPO REAL =====
+        function ensureTrackingMap(lat=-5.7945,lng=-35.2110){
+            const el=document.getElementById("tracking-map"); if(!el || typeof L==="undefined") return null;
+            if(!mapInstance){
+                mapInstance=L.map(el).setView([lat,lng],15);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(mapInstance);
             }
+            setTimeout(()=>mapInstance.invalidateSize(),100); return mapInstance;
         }
+        function updateTrackingMap(loc){
+            if(!loc) return; const lat=Number(loc.latitude),lng=Number(loc.longitude); if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
+            const map=ensureTrackingMap(lat,lng); if(!map) return;
+            if(!deliveryMarker) deliveryMarker=L.marker([lat,lng]).addTo(map).bindPopup("🛵 Entregador"); else deliveryMarker.setLatLng([lat,lng]);
+            map.setView([lat,lng],Math.max(map.getZoom(),15),{animate:true});
+            const st=document.getElementById("tracking-map-status"); if(st) st.textContent=`🟢 Entregador localizado • ${new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"})}`;
+        }
+        function resetTrackingMap(){ if(mapInstance){try{mapInstance.remove();}catch(e){}} mapInstance=null;deliveryMarker=null; const el=document.getElementById("tracking-map"); if(el) el.innerHTML=""; }
+        function setupClientRealtimeTracking(){
+            if(!currentRestaurantId) return; const tracker=document.getElementById("client-delivery-tracker"), tableStatus=document.getElementById("client-table-status");
+            if(isDeliveryMode && currentActiveOrderId){
+                tracker.classList.remove("hidden"); if(tableStatus) tableStatus.classList.add("hidden"); ensureTrackingMap();
+                if(unsubscribeActiveOrder) unsubscribeActiveOrder();
+                unsubscribeActiveOrder=onSnapshot(doc(db,"kitchen",currentActiveOrderId),snap=>{
+                    const badge=document.getElementById("tracker-status-badge"), mapStatus=document.getElementById("tracking-map-status");
+                    if(!snap.exists()){ if(badge) badge.innerText="Pedido finalizado"; if(mapStatus) mapStatus.textContent="✅ Entrega finalizada."; return; }
+                    const d=snap.data()||{};
+                    if(badge){
+                        if(d.status==="delivered"){badge.className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";badge.innerText="✅ Entregue";}
+                        else if(d.status==="out_for_delivery"){badge.className="px-3 py-1 text-xs font-bold rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30";badge.innerText="🛵 Saiu para Entrega";}
+                        else if(d.status==="ready"){badge.className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";badge.innerText="📦 Pronto para Entrega";}
+                        else {badge.className="px-3 py-1 text-xs font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30";badge.innerText="⏳ Preparando Pedido";}
+                    }
+                    const driverLabel=document.getElementById("tracker-driver-label"); if(driverLabel) driverLabel.innerText=d.status==="delivered"?"Entrega concluída ✅":d.driverLocation?"Entregador em rota 🛵":"Aguardando saída 🛵";
+                    const list=document.getElementById("tracker-order-items"); if(list&&Array.isArray(d.items)) list.innerHTML=d.items.map(i=>`<li class="flex justify-between"><span><b>${i.qty}x</b> ${i.name}</span><span>R$ ${(i.qty*i.price).toFixed(2)}</span></li>`).join("");
+                    const total=document.getElementById("tracker-order-total"); if(total) total.innerText=Number(d.total||0).toFixed(2);
+                    const oc=document.getElementById("tracker-order-obs-container"),oe=document.getElementById("tracker-order-obs"); if(oc&&oe){if(d.observation){oc.classList.remove("hidden");oe.innerText=d.observation;}else oc.classList.add("hidden");}
+                    if(d.driverLocation) updateTrackingMap(d.driverLocation); else if(mapStatus) mapStatus.textContent=d.status==="delivered"?"✅ Entrega finalizada.":"📍 Aguardando o entregador iniciar a localização...";
+                });
+            } else if(!isDeliveryMode&&currentTable){ if(tracker) tracker.classList.add("hidden"); resetTrackingMap(); const td=activeTables[currentTable]; if(tableStatus) tableStatus.classList.toggle("hidden",!(td&&td.orders&&td.orders.length)); }
+        }
+        window.redirectToTrackingPage=function(){document.getElementById("order-success-modal").classList.add("hidden");setupClientRealtimeTracking();};
 
-        window.redirectToTrackingPage = function() {
-            document.getElementById('order-success-modal').classList.add('hidden');
-            setupClientRealtimeTracking();
-        };
-
+        if(new URLSearchParams(window.location.search).get("entregador")==="true") initDriverMode();
     </script>
 </body>
 </html>
