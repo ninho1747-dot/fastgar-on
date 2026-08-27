@@ -148,7 +148,7 @@
                 <div class="glass-card p-6 rounded-3xl border border-sky-500/30 shadow-2xl">
                     <div class="text-center mb-5">
                         <div class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-3xl mx-auto mb-3">🛵</div>
-                        <h2 class="text-2xl font-black text-white">Painel do Entregador</h2>
+                        <div class="flex items-center justify-between gap-3"><h2 class="text-2xl font-black text-white">Painel do Entregador</h2><button onclick="window.returnToKitchenMonitor()" class="px-3 py-2 rounded-xl font-bold text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">← Monitor</button></div>
                         <p id="driver-order-label" class="text-xs text-slate-400 mt-1">Preparando pedido...</p>
                     </div>
                     <div id="driver-order-summary" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-4 text-xs"></div>
@@ -1921,7 +1921,7 @@
                         <span class="text-xs font-bold text-emerald-400">Total: R$ ${Number(order.total).toFixed(2)}</span>
                         ${order.isDelivery ? `
                             <div class="flex items-center gap-2">
-                                <button onclick="window.openDriverPanel('${order.id}')" class="px-3 py-2 rounded-xl font-bold text-xs cursor-pointer transition bg-sky-600 text-white hover:bg-sky-500">🛵 Entregador</button>
+                                <button onclick="window.startRouteFromMonitor('${order.id}')" class="px-3 py-2 rounded-xl font-bold text-xs cursor-pointer transition bg-sky-600 text-white hover:bg-sky-500">📍 Iniciar Rota</button>
                                 <button onclick="window.updateOrderStatus('${order.id}', '${isDone ? 'pending' : 'ready'}')" class="px-3 py-2 rounded-xl font-bold text-xs cursor-pointer transition ${isDone ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}">${isDone ? '↩️ Em Preparo' : '✅ Pronto'}</button>
                             </div>
                         ` : `
@@ -1951,10 +1951,59 @@
             }
         };
 
+        // Abre o painel do entregador dentro da mesma página, sem nova aba.
         window.openDriverPanel = function(orderId) {
             if (!currentRestaurantId || !orderId) return;
-            const url = `${window.location.origin}${window.location.pathname}?restaurante=${encodeURIComponent(currentRestaurantId)}&entregador=true&pedido=${encodeURIComponent(orderId)}`;
-            window.open(url, "_blank", "noopener");
+            driverRestaurantId = currentRestaurantId;
+            driverOrderId = orderId;
+            document.getElementById("main-navigation")?.classList.add("hidden");
+            document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+            document.getElementById("driver-view")?.classList.remove("hidden");
+            initDriverPanelData();
+        };
+
+        // Inicia a rota diretamente pelo Monitor de Pedidos.
+        window.startRouteFromMonitor = async function(orderId) {
+            window.openDriverPanel(orderId);
+            setTimeout(() => window.startDriverTracking(), 0);
+        };
+
+        let unsubscribeDriverOrder = null;
+
+        window.returnToKitchenMonitor = function() {
+            cleanupDriverMode();
+            if (unsubscribeDriverOrder) { unsubscribeDriverOrder(); unsubscribeDriverOrder = null; }
+            document.getElementById("driver-view")?.classList.add("hidden");
+            document.getElementById("main-navigation")?.classList.remove("hidden");
+            document.getElementById("kitchen-view")?.classList.remove("hidden");
+            window.switchKitchenTab(activeKitchenTab || "delivery");
+            renderKitchenOrders();
+        };
+
+        function initDriverPanelData() {
+            if (!driverOrderId || !driverRestaurantId) return;
+            if (unsubscribeDriverOrder) { unsubscribeDriverOrder(); unsubscribeDriverOrder = null; }
+            const label = document.getElementById("driver-order-label");
+            const summary = document.getElementById("driver-order-summary");
+            unsubscribeDriverOrder = onSnapshot(doc(db, "kitchen", driverOrderId), snap => {
+                if (!snap.exists()) {
+                    if (label) label.textContent = "Pedido não encontrado ou já finalizado.";
+                    cleanupDriverMode();
+                    return;
+                }
+                const d = snap.data() || {};
+                if (d.isDelivery !== true) return;
+                if (label) label.textContent = `Pedido #${driverOrderId.slice(-6).toUpperCase()} • ${d.deliveryInfo?.nome || "Cliente"}`;
+                if (summary) summary.innerHTML = `<div class="font-bold text-white mb-2">📦 Dados da entrega</div><div class="text-slate-300">${d.deliveryInfo?.rua || ""}, ${d.deliveryInfo?.numero || ""}</div><div class="text-slate-400">${d.deliveryInfo?.bairro || ""}</div>${d.deliveryInfo?.referencia ? `<div class="text-slate-500 mt-1">Ref.: ${d.deliveryInfo.referencia}</div>` : ""}<div class="text-emerald-400 font-black mt-2">R$ ${Number(d.total || 0).toFixed(2)}</div>`;
+                if (d.status === "delivered") {
+                    const statusEl = document.getElementById("driver-gps-status");
+                    if (statusEl) statusEl.textContent = "✅ Entrega concluída.";
+                    const btn = document.getElementById("driver-delivered-btn");
+                    if (btn) btn.disabled = true;
+                    cleanupDriverMode();
+                    if (unsubscribeDriverOrder) { unsubscribeDriverOrder(); unsubscribeDriverOrder = null; }
+                }
+            });
         };
 
         window.markDeliveryDelivered = async function(orderId = null) {
@@ -2011,20 +2060,15 @@
         };
 
         function initDriverMode() {
-            const p=new URLSearchParams(window.location.search);
-            if(p.get("entregador")!=="true" || !p.get("restaurante") || !p.get("pedido")) return false;
-            driverRestaurantId=p.get("restaurante"); driverOrderId=p.get("pedido"); currentRestaurantId=driverRestaurantId;
-            document.getElementById("main-navigation").classList.add("hidden");
-            document.querySelectorAll(".view-section").forEach(sec=>sec.classList.add("hidden"));
-            document.getElementById("driver-view").classList.remove("hidden");
-            onSnapshot(doc(db,"kitchen",driverOrderId),snap=>{
-                if(!snap.exists()){ document.getElementById("driver-order-label").textContent="Pedido não encontrado ou já finalizado."; cleanupDriverMode(); return; }
-                const d=snap.data()||{};
-                if(d.isDelivery!==true) return;
-                document.getElementById("driver-order-label").textContent=`Pedido #${driverOrderId.slice(-6).toUpperCase()} • ${d.deliveryInfo?.nome||"Cliente"}`;
-                document.getElementById("driver-order-summary").innerHTML=`<div class="font-bold text-white mb-2">📦 Dados da entrega</div><div class="text-slate-300">${d.deliveryInfo?.rua||""}, ${d.deliveryInfo?.numero||""}</div><div class="text-slate-400">${d.deliveryInfo?.bairro||""}</div>${d.deliveryInfo?.referencia?`<div class="text-slate-500 mt-1">Ref.: ${d.deliveryInfo.referencia}</div>`:""}<div class="text-emerald-400 font-black mt-2">R$ ${Number(d.total||0).toFixed(2)}</div>`;
-                if(d.status==="delivered") cleanupDriverMode();
-            });
+            const p = new URLSearchParams(window.location.search);
+            if (p.get("entregador") !== "true" || !p.get("restaurante") || !p.get("pedido")) return false;
+            driverRestaurantId = p.get("restaurante");
+            driverOrderId = p.get("pedido");
+            currentRestaurantId = driverRestaurantId;
+            document.getElementById("main-navigation")?.classList.add("hidden");
+            document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
+            document.getElementById("driver-view")?.classList.remove("hidden");
+            initDriverPanelData();
             return true;
         }
 
@@ -2232,8 +2276,20 @@ Obrigado pela preferência!
                 if(unsubscribeActiveOrder) unsubscribeActiveOrder();
                 unsubscribeActiveOrder=onSnapshot(doc(db,"kitchen",currentActiveOrderId),snap=>{
                     const badge=document.getElementById("tracker-status-badge"), mapStatus=document.getElementById("tracking-map-status");
-                    if(!snap.exists()){ if(badge) badge.innerText="Pedido finalizado"; if(mapStatus) mapStatus.textContent="✅ Entrega finalizada."; return; }
+                    if(!snap.exists()){
+                        if(badge) badge.innerText="Pedido finalizado";
+                        if(mapStatus) mapStatus.textContent="✅ Entrega finalizada.";
+                        tracker.classList.add("hidden");
+                        resetTrackingMap();
+                        return;
+                    }
                     const d=snap.data()||{};
+                    if(d.status==="delivered"){
+                        tracker.classList.add("hidden");
+                        resetTrackingMap();
+                        if(unsubscribeActiveOrder){ unsubscribeActiveOrder(); unsubscribeActiveOrder=null; }
+                        return;
+                    }
                     if(badge){
                         if(d.status==="delivered"){badge.className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";badge.innerText="✅ Entregue";}
                         else if(d.status==="out_for_delivery"){badge.className="px-3 py-1 text-xs font-bold rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30";badge.innerText="🛵 Saiu para Entrega";}
