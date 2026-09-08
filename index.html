@@ -355,17 +355,6 @@
                             <input type="text" id="dev-rua" placeholder="Ex: Rua Nova" class="w-full p-2.5 text-xs rounded-xl outline-none bg-slate-950 border border-slate-800 text-slate-100 focus:border-sky-500 transition">
                         </div>
                     </div>
-                    <div class="mt-3 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20">
-                        <div class="flex items-start gap-2">
-                            <span class="text-lg">📍</span>
-                            <div class="flex-1">
-                                <p class="text-[11px] font-bold text-sky-300">Localização para o entregador</p>
-                                <p id="client-location-status" class="text-[10px] text-slate-400 mt-0.5">Envie sua localização pelo GPS para facilitar a entrega.</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="window.shareClientLocation()" id="client-location-btn" class="mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl font-bold text-xs transition cursor-pointer">📍 Compartilhar minha localização</button>
-                    </div>
-
                     <div class="grid grid-cols-3 gap-2">
                         <div class="col-span-1">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nº / Apto *</label>
@@ -1903,18 +1892,18 @@
                 renderClientMenu();
 
                 if (isDeliveryMode) {
-                    // O acompanhamento fica ativo imediatamente e o cliente recebe,
-                    // logo após confirmar, o botão para compartilhar o GPS.
+                    // O pedido foi enviado. A localização é solicitada somente agora,
+                    // depois da confirmação, para não atrapalhar o preenchimento dos dados.
                     setupClientRealtimeTracking();
                     const successModal = document.getElementById('order-success-modal');
                     const locationBox = document.getElementById('success-location-box');
                     const locationStatus = document.getElementById('success-location-status');
                     const locationBtn = document.getElementById('success-location-btn');
                     if (locationBox) locationBox.classList.remove('hidden');
-                    if (locationStatus) locationStatus.textContent = "Compartilhe a localização exata do seu celular para o entregador seguir a rota até você.";
+                    if (locationStatus) locationStatus.textContent = "Deseja compartilhar sua localização em tempo real para facilitar a entrega ao entregador?";
                     if (locationBtn) {
                         locationBtn.disabled = false;
-                        locationBtn.textContent = "📍 Compartilhar minha localização";
+                        locationBtn.textContent = "📍 Sim, compartilhar localização";
                         locationBtn.className = "mt-2 w-full bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs shadow-lg transition cursor-pointer";
                     }
                     if (successModal) successModal.classList.remove('hidden');
@@ -2448,13 +2437,11 @@ Obrigado pela preferência!
 
             const buttons=[
                 document.getElementById("success-location-btn"),
-                document.getElementById("tracker-location-btn"),
-                document.getElementById("client-location-btn")
+                document.getElementById("tracker-location-btn")
             ].filter(Boolean);
             const statuses=[
                 document.getElementById("success-location-status"),
-                document.getElementById("tracker-location-status"),
-                document.getElementById("client-location-status")
+                document.getElementById("tracker-location-status")
             ].filter(Boolean);
 
             buttons.forEach(btn=>{btn.disabled=true;btn.textContent="📡 Obtendo localização...";});
