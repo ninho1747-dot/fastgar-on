@@ -153,7 +153,33 @@
                     </div>
                     <div id="driver-order-summary" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-4 text-xs"></div>
                     <div id="driver-gps-status" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-4">📍 Aguardando autorização de localização...</div>
-                    <div id="driver-route-map" class="shadow-inner border border-slate-800 rounded-2xl mb-4 overflow-hidden" style="height:360px"></div>
+                    <div id="driver-route-navigation" class="relative shadow-inner border border-slate-800 rounded-2xl mb-4 overflow-hidden bg-slate-950" style="height:480px">
+                        <div id="driver-route-map" class="absolute inset-0"></div>
+                        <div id="driver-nav-top" class="absolute top-3 left-3 right-3 z-[1000] pointer-events-none">
+                            <div class="bg-slate-950/95 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 shadow-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-sky-500/15 border border-sky-400/20 flex items-center justify-center text-xl">🧭</div>
+                                    <div class="min-w-0">
+                                        <div id="driver-nav-main" class="text-white font-black text-sm truncate">Preparando rota...</div>
+                                        <div id="driver-nav-sub" class="text-slate-400 text-[10px] mt-0.5">Aguardando localização</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="driver-nav-bottom" class="absolute bottom-3 left-3 right-3 z-[1000] pointer-events-none">
+                            <div class="bg-white text-slate-900 rounded-2xl px-4 py-3 shadow-2xl flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Destino</div>
+                                    <div id="driver-nav-destination" class="font-black text-sm truncate max-w-[220px]">Cliente</div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div id="driver-nav-distance" class="font-black text-lg">—</div>
+                                    <div id="driver-nav-eta" class="text-[10px] font-bold text-slate-500">—</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="driver-recenter-btn" onclick="window.recenterDriverRoute()" class="absolute right-3 bottom-24 z-[1001] w-11 h-11 rounded-full bg-white text-slate-900 shadow-xl font-black text-lg flex items-center justify-center cursor-pointer" title="Centralizar rota">⌖</button>
+                    </div>
                     <div id="driver-route-status" class="text-[11px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 mb-4">🗺️ Aguardando localização do cliente e do entregador...</div>
                     <div class="grid grid-cols-2 gap-3">
                         <button id="driver-start-btn" onclick="window.startDriverTracking()" class="bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">📍 Iniciar Rota</button>
@@ -933,6 +959,11 @@
         let driverMarker = null;
         let customerMarker = null;
         let driverRouteLine = null;
+        let driverRouteShadow = null;
+        let driverRouteBounds = null;
+        let driverRouteData = null;
+        let driverLastPosition = null;
+        let driverNavigationActive = false;
         let clientLocationShared = false;
         let lastRouteCalculationAt = 0;
         let lastRouteKey = "";
@@ -2178,14 +2209,21 @@
             if (driverWatchId !== null) navigator.geolocation.clearWatch(driverWatchId);
             const statusEl=document.getElementById("driver-gps-status");
             const btn=document.getElementById("driver-start-btn");
-            if(btn) btn.disabled=true;
-            if(statusEl) { statusEl.className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs mb-4"; statusEl.textContent="📡 Compartilhando localização com o cliente..."; }
+            if(btn) { btn.disabled=true; btn.textContent="🧭 Rota ativa"; btn.classList.remove("bg-sky-600","hover:bg-sky-500"); btn.classList.add("bg-slate-700"); }
+            driverNavigationActive=true;
+            if(statusEl) { statusEl.className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-300 text-xs mb-4"; statusEl.textContent="📡 Navegação iniciada. Compartilhando localização em tempo real..."; }
             driverWatchId=navigator.geolocation.watchPosition(async pos=>{
                 const latitude=Number(pos.coords.latitude), longitude=Number(pos.coords.longitude);
                 if(!Number.isFinite(latitude)||!Number.isFinite(longitude)) return;
                 try {
-                    await updateDoc(doc(db,"kitchen",driverOrderId),{status:"out_for_delivery",driverLocation:{latitude,longitude,accuracy:Number(pos.coords.accuracy||0)},driverLocationUpdatedAt:Date.now()});
-                    if(statusEl) statusEl.textContent="🟢 Localização compartilhada em tempo real.";
+                    const liveDriverLocation={latitude,longitude,accuracy:Number(pos.coords.accuracy||0)};
+                    await updateDoc(doc(db,"kitchen",driverOrderId),{status:"out_for_delivery",driverLocation:liveDriverLocation,driverLocationUpdatedAt:Date.now()});
+                    if(statusEl) statusEl.textContent="🟢 Navegação ativa • localização compartilhada em tempo real.";
+                    try{
+                        const orderSnap=await getDoc(doc(db,"kitchen",driverOrderId));
+                        const orderData=orderSnap.exists()?orderSnap.data():null;
+                        if(orderData?.customerLocation) updateDriverRouteMap(liveDriverLocation,orderData.customerLocation);
+                    }catch(routeErr){ console.warn("Atualização visual da rota:",routeErr); }
                 } catch(e) { console.error(e); if(statusEl) statusEl.textContent="⚠️ Não foi possível atualizar o GPS."; }
             },err=>{
                 console.error(err);
@@ -2499,36 +2537,90 @@ Obrigado pela preferência!
         function ensureDriverRouteMap(lat=-5.7945,lng=-35.2110){
             const el=document.getElementById("driver-route-map"); if(!el||typeof L==="undefined") return null;
             if(!driverMapInstance){
-                driverMapInstance=L.map(el).setView([lat,lng],15);
-                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(driverMapInstance);
+                driverMapInstance=L.map(el,{zoomControl:false,attributionControl:true}).setView([lat,lng],16);
+                L.control.zoom({position:"bottomleft"}).addTo(driverMapInstance);
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20,attribution:"&copy; OpenStreetMap"}).addTo(driverMapInstance);
             }
             setTimeout(()=>driverMapInstance.invalidateSize(),100); return driverMapInstance;
         }
 
+        function createDriverArrowIcon(){
+            return L.divIcon({className:"driver-live-arrow",html:'<div style="width:42px;height:42px;border-radius:50%;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><div style="width:30px;height:30px;border-radius:50%;background:#1d8cf8;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:900;line-height:1">➤</div></div>',iconSize:[42,42],iconAnchor:[21,21]});
+        }
+
+        function updateDriverNavigationCard(distanceMeters=null,durationSeconds=null,customerLoc=null){
+            const main=document.getElementById("driver-nav-main"), sub=document.getElementById("driver-nav-sub");
+            const dest=document.getElementById("driver-nav-destination"), dist=document.getElementById("driver-nav-distance"), eta=document.getElementById("driver-nav-eta");
+            const navDest=customerLoc?.address || "Destino do cliente";
+            if(dest) dest.textContent=navDest;
+            if(distanceMeters!=null){
+                const km=distanceMeters/1000;
+                if(dist) dist.textContent=km<1?`${Math.round(distanceMeters)} m`:`${km.toFixed(1)} km`;
+            }
+            if(durationSeconds!=null){
+                const min=Math.max(1,Math.round(durationSeconds/60));
+                if(eta) eta.textContent=`aprox. ${min} min`;
+                if(main) main.textContent=`${min} min até o cliente`;
+                if(sub) sub.textContent=distanceMeters!=null?"Rota mais rápida disponível":"Seguindo sua localização em tempo real";
+            }else if(main) main.textContent="Rota até o cliente";
+        }
+
+        window.recenterDriverRoute=function(){
+            if(!driverMapInstance) return;
+            if(driverLastPosition){
+                driverMapInstance.setView(driverLastPosition,17,{animate:true,duration:.5});
+            }else if(driverRouteBounds){
+                driverMapInstance.fitBounds(driverRouteBounds,{padding:[80,80],maxZoom:17,animate:true});
+            }
+        };
+
         async function updateDriverRouteMap(driverLoc,customerLoc){
             if(!driverLoc&&!customerLoc)return;
             const base=driverLoc||customerLoc, map=ensureDriverRouteMap(Number(base.latitude),Number(base.longitude)); if(!map)return;
-            if(driverLoc){const p=[Number(driverLoc.latitude),Number(driverLoc.longitude)]; if(!driverMarker) driverMarker=L.marker(p).addTo(map).bindPopup("🛵 Você"); else driverMarker.setLatLng(p);}
-            if(customerLoc){const p=[Number(customerLoc.latitude),Number(customerLoc.longitude)]; if(!customerMarker) customerMarker=L.marker(p).addTo(map).bindPopup("📍 Cliente"); else customerMarker.setLatLng(p);}
+            if(driverLoc){
+                const p=[Number(driverLoc.latitude),Number(driverLoc.longitude)];
+                driverLastPosition=p;
+                if(!driverMarker){ driverMarker=L.marker(p,{icon:createDriverArrowIcon(),zIndexOffset:1000}).addTo(map).bindPopup("🛵 Você"); }
+                else driverMarker.setLatLng(p);
+                if(driverNavigationActive) map.setView(p,17,{animate:true,duration:.35});
+            }
+            if(customerLoc){
+                const p=[Number(customerLoc.latitude),Number(customerLoc.longitude)];
+                if(!customerMarker) customerMarker=L.marker(p,{zIndexOffset:900}).addTo(map).bindPopup("📍 Cliente"); else customerMarker.setLatLng(p);
+            }
             if(driverLoc&&customerLoc){
                 const a=`${Number(driverLoc.longitude)},${Number(driverLoc.latitude)}`, b=`${Number(customerLoc.longitude)},${Number(customerLoc.latitude)}`;
                 const routeKey = `${a}|${b}`;
-                if(Date.now()-lastRouteCalculationAt < 10000 && routeKey===lastRouteKey) return;
+                if(Date.now()-lastRouteCalculationAt < 7000 && routeKey===lastRouteKey) return;
                 lastRouteCalculationAt=Date.now(); lastRouteKey=routeKey;
                 try{
-                    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a};${b}?overview=full&geometries=geojson`);
+                    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a};${b}?overview=full&geometries=geojson&steps=true`);
                     const data=await r.json();
                     if(data.code==="Ok"&&data.routes?.[0]){
-                        const coords=data.routes[0].geometry.coordinates.map(x=>[x[1],x[0]]);
-                        if(driverRouteLine) driverRouteLine.setLatLngs(coords); else driverRouteLine=L.polyline(coords,{weight:6,opacity:.85}).addTo(map);
-                        const km=(data.routes[0].distance/1000).toFixed(1), min=Math.round(data.routes[0].duration/60);
-                        const st=document.getElementById("driver-route-status"); if(st) st.textContent=`🗺️ Rota calculada: ${km} km • aproximadamente ${min} min até o cliente.`;
-                        map.fitBounds(L.latLngBounds(coords),{padding:[35,35]});
+                        const route=data.routes[0], coords=route.geometry.coordinates.map(x=>[x[1],x[0]]);
+                        driverRouteData=route;
+                        if(driverRouteShadow) driverRouteShadow.setLatLngs(coords); else driverRouteShadow=L.polyline(coords,{weight:12,opacity:.22,lineCap:"round",lineJoin:"round"}).addTo(map);
+                        if(driverRouteLine) driverRouteLine.setLatLngs(coords); else driverRouteLine=L.polyline(coords,{weight:7,opacity:.95,color:"#1d8cf8",lineCap:"round",lineJoin:"round"}).addTo(map);
+                        driverRouteBounds=L.latLngBounds(coords);
+                        updateDriverNavigationCard(route.distance,route.duration,customerLoc);
+                        const st=document.getElementById("driver-route-status"); if(st) st.textContent=`🧭 Navegação ativa • ${ (route.distance/1000).toFixed(1) } km • ${Math.max(1,Math.round(route.duration/60))} min`;
+                        if(!driverNavigationActive) map.fitBounds(driverRouteBounds,{padding:[80,80],maxZoom:17});
+                        driverNavigationActive=true;
                     }
-                }catch(e){console.error("Erro ao calcular rota",e); const st=document.getElementById("driver-route-status"); if(st) st.textContent="⚠️ Não foi possível calcular a rota agora. Os pontos estão marcados no mapa.";}
+                }catch(e){
+                    console.error("Erro ao calcular rota",e);
+                    const st=document.getElementById("driver-route-status"); if(st) st.textContent="⚠️ Rota temporariamente indisponível. O mapa continua mostrando sua localização.";
+                }
+            }else{
+                const st=document.getElementById("driver-route-status"); if(st) st.textContent=customerLoc?"📍 Aguardando localização do entregador.":"📍 Aguardando o cliente compartilhar a localização.";
+                const main=document.getElementById("driver-nav-main"); if(main) main.textContent=customerLoc?"Aguardando você iniciar":"Aguardando localização do cliente";
             }
         }
-        function resetDriverRouteMap(){if(driverMapInstance){try{driverMapInstance.remove()}catch(e){}} driverMapInstance=null;driverMarker=null;customerMarker=null;driverRouteLine=null;const el=document.getElementById("driver-route-map");if(el)el.innerHTML="";}
+        function resetDriverRouteMap(){
+            if(driverMapInstance){try{driverMapInstance.remove()}catch(e){}}
+            driverMapInstance=null;driverMarker=null;customerMarker=null;driverRouteLine=null;driverRouteShadow=null;driverRouteBounds=null;driverRouteData=null;driverLastPosition=null;driverNavigationActive=false;lastRouteKey="";
+            const el=document.getElementById("driver-route-map");if(el)el.innerHTML="";
+        }
 
         // ===== RASTREAMENTO DO DELIVERY EM TEMPO REAL =====
         function ensureTrackingMap(lat=-5.7945,lng=-35.2110){
