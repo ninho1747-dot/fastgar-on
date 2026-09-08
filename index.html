@@ -183,7 +183,7 @@
                     <div id="driver-route-status" class="text-[11px] text-slate-400 bg-slate-900/70 border border-slate-800 rounded-xl px-3 py-2 mb-4">🗺️ Aguardando localização do cliente e do entregador...</div>
                     <div class="grid grid-cols-2 gap-3">
                         <button id="driver-start-btn" onclick="window.startDriverTracking()" class="bg-sky-600 hover:bg-sky-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">📍 Iniciar Rota</button>
-                        <button id="driver-delivered-btn" onclick="window.markDeliveryDelivered()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">✅ Entregue</button>
+                        <button id="driver-delivered-btn" type="button" onclick="window.markDeliveryDelivered()" class="bg-emerald-600 touch-manipulation select-none hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-xs transition cursor-pointer">✅ Entregue</button>
                     </div>
                     <p class="text-[10px] text-slate-500 text-center mt-4">Mantenha esta tela aberta durante a rota para compartilhar sua localização com o cliente.</p>
                 </div>
@@ -2116,6 +2116,8 @@
             if (!currentRestaurantId || !orderId) return;
             driverRestaurantId = currentRestaurantId;
             driverOrderId = orderId;
+            const deliveredBtn = document.getElementById("driver-delivered-btn");
+            if (deliveredBtn) deliveredBtn.dataset.orderId = orderId;
             document.getElementById("main-navigation")?.classList.add("hidden");
             document.querySelectorAll(".view-section").forEach(sec => sec.classList.add("hidden"));
             document.getElementById("driver-view")?.classList.remove("hidden");
@@ -2170,31 +2172,82 @@
             });
         };
 
+        let deliveryFinishInProgress = false;
         window.markDeliveryDelivered = async function(orderId = null) {
-            const targetId = orderId || driverOrderId;
+            // Em celulares o navegador pode recriar/atualizar a tela do entregador.
+            // Por isso, usamos também o ID gravado no próprio botão como fallback.
+            const button = document.getElementById("driver-delivered-btn");
+            const targetId = orderId || driverOrderId || button?.dataset?.orderId;
             if (!targetId) { showAppDialog("Pedido de delivery não identificado.", "warning"); return; }
+            if (deliveryFinishInProgress) return;
+            deliveryFinishInProgress = true;
+            if (button) {
+                button.disabled = true;
+                button.dataset.orderId = targetId;
+                button.textContent = "⏳ Finalizando...";
+                button.classList.add("opacity-70");
+            }
             try {
                 if (driverWatchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(driverWatchId);
                 const ref = doc(db, "kitchen", targetId);
                 const snap = await getDoc(ref);
-                if (!snap.exists()) { cleanupDriverMode(); return; }
+                if (!snap.exists()) {
+                    throw new Error("Pedido não encontrado no Firestore.");
+                }
                 const order = snap.data() || {};
-                if (order.isDelivery !== true) { showAppDialog("Este pedido não é um delivery.", "warning"); return; }
-                await updateDoc(ref, { status: "delivered", deliveredAt: Date.now(), driverLocation: null, driverLocationUpdatedAt: null });
+                if (order.isDelivery !== true) {
+                    throw new Error("Este pedido não é um delivery.");
+                }
+
+                // setDoc com merge é mais tolerante em navegadores móveis/offline
+                // do que depender de uma atualização parcial estrita.
+                await setDoc(ref, {
+                    status: "delivered",
+                    deliveredAt: Date.now(),
+                    driverLocation: null,
+                    driverLocationUpdatedAt: null,
+                    statusUpdatedAt: Date.now()
+                }, { merge: true });
+
                 resetDriverRouteMap();
                 kitchenOrders = kitchenOrders.filter(o => o.id !== targetId);
                 renderKitchenOrders();
-                if (currentActiveOrderId === targetId) { localStorage.removeItem("lastDeliveryOrderId"); currentActiveOrderId = null; }
+                if (currentActiveOrderId === targetId) {
+                    localStorage.removeItem("lastDeliveryOrderId");
+                    currentActiveOrderId = null;
+                }
                 cleanupDriverMode();
                 if (document.getElementById("driver-view") && !document.getElementById("driver-view").classList.contains("hidden")) {
-                    const el=document.getElementById("driver-gps-status"); if(el) el.textContent="✅ Entrega concluída.";
-                    const b=document.getElementById("driver-delivered-btn"); if(b) b.disabled=true;
+                    const el=document.getElementById("driver-gps-status");
+                    if(el) {
+                        el.className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs mb-4";
+                        el.textContent="✅ Entrega concluída com sucesso.";
+                    }
+                    if(button) {
+                        button.disabled=true;
+                        button.textContent="✅ Entregue";
+                        button.classList.remove("opacity-70");
+                    }
+                    const startBtn=document.getElementById("driver-start-btn");
+                    if(startBtn) startBtn.disabled=true;
                 } else {
                     showAppDialog("Entrega finalizada. O pedido saiu do monitor.", "success");
                 }
             } catch(err) {
                 console.error("Erro ao finalizar delivery:", err);
-                showAppDialog("Não foi possível finalizar a entrega.", "error");
+                if(button) {
+                    button.disabled=false;
+                    button.textContent="✅ Entregue";
+                    button.classList.remove("opacity-70");
+                }
+                const el=document.getElementById("driver-gps-status");
+                if(el) {
+                    el.className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs mb-4";
+                    el.textContent="⚠️ Não foi possível finalizar. Verifique a internet e tente novamente.";
+                }
+                showAppDialog("Não foi possível finalizar a entrega. Verifique a conexão com a internet e tente novamente.", "error");
+            } finally {
+                deliveryFinishInProgress = false;
             }
         };
 
